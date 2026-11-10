@@ -86,7 +86,7 @@ def create_app(db_path=None):
     def init():
         with conn() as db:
             db.executescript(SCHEMA)
-            for t, col in (('places', "slug TEXT DEFAULT ''"), ('orders', "ref TEXT DEFAULT ''"), ('orders', 'credit INTEGER DEFAULT 0')):
+            for t, col in (('places', "slug TEXT DEFAULT ''"), ('places', 'lat REAL'), ('places', 'lng REAL'), ('orders', "ref TEXT DEFAULT ''"), ('orders', 'credit INTEGER DEFAULT 0')):
                 if col.split()[0] not in [r[1] for r in db.execute(f'PRAGMA table_info({t})')]:
                     db.execute(f'ALTER TABLE {t} ADD COLUMN {col}')
             have = {r[1] for r in db.execute('PRAGMA table_info(shops)')}
@@ -117,6 +117,17 @@ def create_app(db_path=None):
         with conn() as db:
             saved = {r['k'][3:]: r['v'] for r in db.execute("SELECT k,v FROM conf WHERE k LIKE 'co_%'")}
         return {k: saved.get(k) or os.getenv('MOABAP_CO_' + k.upper(), '') for k in CO_KEYS}
+
+    def parse_coord(v):
+        """'37.2886, 127.0515' (구글 지도 우클릭 값) → (위도, 경도). 한국 범위 밖이면 비움."""
+        nums = re.findall(r'-?\d+(?:\.\d+)?', v or '')
+        if len(nums) >= 2:
+            lat, lng = float(nums[0]), float(nums[1])
+            if lat > lng:  # 경도, 위도 순서로 넣었을 때
+                lat, lng = lng, lat
+            if 33 <= lat <= 39 and 124 <= lng <= 132:
+                return round(lat, 6), round(lng, 6)
+        return None, None
 
     @moa.context_processor
     def ctx():
@@ -396,7 +407,11 @@ def create_app(db_path=None):
                         db.execute('INSERT INTO sets(shop_id,name,cat,emoji,price,orig,supply,cap,cook_min,note) VALUES(?,?,?,?,?,?,?,?,?,?)', vals)
                 elif kind == 'place':
                     slug = re.sub(r'[^0-9A-Za-z가-힣-]', '', (f.get('slug') or f['name']).replace(' ', '-'))[:30]
-                    db.execute('INSERT INTO places(name,kind,note,slug) VALUES(?,?,?,?)', (f['name'].strip(), f.get('pkind', '오피스'), f.get('note', ''), slug))
+                    lat, lng = parse_coord(f.get('coord'))
+                    db.execute('INSERT INTO places(name,kind,note,slug,lat,lng) VALUES(?,?,?,?,?,?)', (f['name'].strip(), f.get('pkind', '오피스'), f.get('note', ''), slug, lat, lng))
+                elif kind == 'coord':
+                    lat, lng = parse_coord(f.get('coord'))
+                    db.execute('UPDATE places SET lat=?,lng=? WHERE id=?', (lat, lng, f.get('id', type=int)))
                 elif kind == 'slot' and re.fullmatch(r'\d\d:\d\d', f.get('at', '')):
                     db.execute('INSERT INTO slots(at,cutoff) VALUES(?,?)', (f['at'], f.get('cutoff', type=int) or 40))
                 elif kind == 'applied':

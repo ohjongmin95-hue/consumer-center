@@ -51,10 +51,12 @@
       <button class="cta full" style="margin-top:14px">{{ '가게 고치기' if es else '가게 넣기' }}</button></form>
   </section>
   <section class="sec" id="place"><h2>받는 곳</h2>
-    <div class="tscroll"><table class="tbl">{% for p in places %}<tr class="{{ 'off' if not p.active }}"><td>{{ p.name }}</td><td>{{ p.kind }}</td><td>{{ p.note }}<br><span class="mono">{{ url_for('building_page', key=p.slug or p.id, _external=True) }}</span></td><td>{{ tg('places', p) }}</td></tr>{% else %}<tr><td style="color:var(--mute)">예: 광교 ○○타워 1층 로비, ○○아파트 정문</td></tr>{% endfor %}</table></div>
+    <div class="tscroll"><table class="tbl">{% for p in places %}<tr class="{{ 'off' if not p.active }}"><td>{{ p.name }}</td><td>{{ p.kind }}</td><td>{{ p.note }}<br><span class="mono">{{ url_for('building_page', key=p.slug or p.id, _external=True) }}</span></td><td><form method="post" class="coordf"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="coord"><input type="hidden" name="id" value="{{ p.id }}"><input name="coord" placeholder="지도 좌표" value="{{ '%.6f, %.6f'|format(p.lat, p.lng) if p.lat else '' }}" aria-label="{{ p.name }} 지도 좌표"><button class="mini">저장</button></form></td><td>{{ tg('places', p) }}</td></tr>{% else %}<tr><td style="color:var(--mute)">예: 광교 ○○타워 1층 로비, ○○아파트 정문</td></tr>{% endfor %}</table></div>
     <form method="post" class="form2" style="margin-top:8px"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="place">
       <label class="fld"><span>이름</span><input name="name" required></label><label class="fld"><span>종류</span><select name="pkind"><option>오피스</option><option>아파트</option><option>학교</option></select></label>
       <label class="fld"><span>안내 (선택)</span><input name="note" placeholder="예: 1층 로비 안내데스크 앞"></label><label class="fld"><span>건물 주소 이름 (영문·한글)</span><input name="slug" placeholder="예: jungang-tower"></label>
+      <label class="fld full"><span>지도 좌표 (내 위치로 찾기에 써요)</span><input name="coord" placeholder="예: 37.288612, 127.051470"></label>
+      <p class="note full" style="margin:6px 0 0">구글 지도에서 건물 입구를 마우스 오른쪽 버튼으로 누르면 맨 위에 숫자 두 개가 나와요. 누르면 복사되니 그대로 붙여 넣으세요.</p>
       <button class="cta full" style="margin-top:14px">받는 곳 넣기</button></form>
   </section>
   <section class="sec" id="slot"><h2>도착 시간</h2>

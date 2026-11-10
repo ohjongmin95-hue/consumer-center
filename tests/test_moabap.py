@@ -122,6 +122,12 @@ def test_admin_menu_adds(moa):
     cl.post('/admin/menu', data={'_csrf': t, 'kind': 'company', 'name': '소비자를위한신문', 'owner': '오종민', 'bizno': '111-22-33333', 'mailorder': '제2026-서울강남-0001호', 'addr': '서울시 강남구', 'tel': '02-000-0000'})
     foot = cl.get('/').get_data(as_text=True)
     assert '111-22-33333' in foot and '제2026-서울강남-0001호' in foot and '02-000-0000' in foot
+    cl.post('/admin/menu', data={'_csrf': t, 'kind': 'coord', 'id': '1', 'coord': '127.051470, 37.288612'})
+    with moa.conn() as db:
+        r = db.execute('SELECT lat,lng FROM places WHERE id=1').fetchone()
+    assert (r['lat'], r['lng']) == (37.288612, 127.05147)
+    cl.get('/pick')
+    assert 'id="loc"' in cl.get('/').get_data(as_text=True)
     page = cl.get('/admin/menu').get_data(as_text=True)
     assert '힐스테이트 정문' in page and '김치찌개' in page
 
