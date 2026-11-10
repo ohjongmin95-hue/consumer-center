@@ -1,0 +1,41 @@
+{% extends 'moa_base.html' %}
+{% block title %}주문 상태 | 모아밥{% endblock %}
+{% block head %}{% if o.status not in ('done', 'cancel') %}<meta http-equiv="refresh" content="60">{% endif %}{% endblock %}
+{% block body %}
+<header class="top"><div class="loc">주문 상태</div></header>
+<main class="wrap">
+  <section class="sec">
+    <div class="meta"><span class="re">{{ o.day[5:].replace('-', '월 ') }}일 {{ o.slot }} 도착</span><span>배달비 0원</span></div>
+    <h2 style="margin-top:8px">{{ o.emoji }} {{ o.set_name }}{% if o.qty > 1 %} × {{ o.qty }}{% endif %}</h2>
+    <p class="lead">{{ o.shop }} · {{ o.place }}{% if o.detail %} {{ o.detail }}{% endif %}</p>
+    {% if o.status == 'cancel' %}<p class="note">이 주문은 취소됐어요. 이미 입금하셨다면 같은 계좌로 돌려드려요.</p>
+    {% else %}
+    {% set cur = ['wait', 'paid', 'ready', 'picked', 'done'].index(o.status) %}
+    {% set st = [
+      ('입금 확인', '입금이 확인되면 주문이 확정돼요' if cur == 0 else '확인됐어요'),
+      ('주문 모으기', close.strftime('%H:%M') ~ '에 마감해요 · 지금 ' ~ together ~ '건 모였어요'),
+      ('가게에서 만들기', '마감 뒤 한꺼번에 만들어요'),
+      ('라이더가 픽업', '같은 곳 주문을 한 번에 가져가요'),
+      ('도착', o.slot ~ ' 전후로 ' ~ o.place ~ '에 도착해요')] %}
+    {% set pos = 0 if cur == 0 else (1 if cur == 1 and not closed else (2 if cur == 1 else cur + 1)) %}
+    <div class="steps">{% for b, sm in st %}<div class="st{{ ' done' if loop.index0 < pos or (o.status == 'done') }}{{ ' now' if loop.index0 == pos and o.status != 'done' }}"><i>{{ '✓' if loop.index0 < pos or o.status == 'done' else loop.index }}</i><div><b>{{ b }}</b><small>{{ sm }}</small></div></div>{% endfor %}</div>
+    {% if together > 1 %}<p class="note">이 시간에 같은 곳으로 {{ together }}건이 함께 시켜서 배달비가 0원이 됐어요.</p>{% endif %}
+    {% endif %}
+  </section>
+  {% if o.status == 'wait' %}<section class="sec"><h2>입금해 주세요</h2>
+    <div class="pay"><b>{{ won(o.amount) }}</b><p>{% if bank %}{{ bank }}{% else %}입금 계좌를 곧 문자로 알려드려요.{% endif %}<br>입금자 이름을 <b style="display:inline;font-size:inherit">{{ o.name }}</b>(으)로 해 주세요. {{ close.strftime('%H:%M') }}까지 입금이 없으면 주문이 취소돼요.</p>
+    {% if bank %}<button type="button" class="copy" data-copy="{{ bank }}">계좌 복사</button>{% endif %}</div></section>{% endif %}
+  <section class="sec"><h2>결제 금액</h2>
+    <div class="sum"><span>{{ o.set_name }} × {{ o.qty }}</span><b>{{ won(o.unit * o.qty) }}</b></div>
+    {% if o.discount %}<div class="sum"><span>첫 주문 할인</span><b>-{{ won(o.discount) }}</b></div>{% endif %}
+    <div class="sum"><span>배달비</span><b>0원</b></div>
+    <div class="sum tot"><span>합계</span><b>{{ won(o.amount) }}</b></div>
+  </section>
+  <p class="foot">주문 번호 {{ o.code }} · 이 화면 주소를 저장해 두면 언제든 다시 볼 수 있어요.</p>
+</main>
+{% endblock %}
+{% block bar %}{% with tab='orders' %}{% include 'moa_tabs.html' %}{% endwith %}{% endblock %}
+{% block script %}<script>
+document.addEventListener('click',function(e){var b=e.target.closest('[data-copy]');if(!b)return;var t=b.dataset.copy;
+(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='복사했어요'},function(){prompt('계좌',t)})});
+</script>{% endblock %}

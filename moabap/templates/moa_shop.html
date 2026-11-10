@@ -1,0 +1,18 @@
+{% extends 'moa_base.html' %}
+{% block title %}{{ shop.name }} 주문 | 모아밥{% endblock %}
+{% block head %}<meta name="robots" content="noindex"><meta http-equiv="refresh" content="120">{% endblock %}
+{% block appclass %}adm{% endblock %}
+{% block body %}
+<header class="top"><span class="logo">{{ mark(26) }}모아밥</span><b style="margin-left:auto;font-size:16px">{{ shop.name }}</b></header>
+<main class="wrap">
+  <form class="daybar" method="get"><input type="date" name="day" value="{{ day }}" onchange="this.form.submit()" aria-label="날짜"></form>
+  <div class="stats"><div><small>만들 개수</small><b>{{ by.values()|map('sum', attribute='n')|sum }}개</b></div><div><small>정산 예정</small><b>{{ won(total) }}</b></div></div>
+  {% for slot, rows in by.items() %}<section class="sec">
+    <h2>{{ slot }} 도착분 {% set todo = rows|sum(attribute='todo') %}{% if todo %}<span class="timer">만들 것 {{ todo }}건</span>{% else %}<span class="badge done" style="margin-left:auto">다 만들었어요</span>{% endif %}</h2>
+    <div class="tscroll"><table class="tbl"><tr><th>세트</th><th>개수</th><th>공급가</th></tr>
+    {% for r in rows %}<tr><td>{{ r.name }}</td><td><b>{{ r.n }}</b>개</td><td>{{ won(r.n * r.supply) }}</td></tr>{% endfor %}</table></div>
+    {% if todo %}<form method="post"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="slot" value="{{ slot }}"><input type="hidden" name="day" value="{{ day }}"><button class="cta" style="margin-top:12px">다 만들었어요 · 라이더 불러 주세요</button></form>{% endif %}
+  </section>{% else %}<section class="sec"><p class="lead" style="padding:16px 0;text-align:center">이날 확정된 주문이 아직 없어요.<br>마감되면 여기에 개수가 떠요.</p></section>{% endfor %}
+  <p class="foot">입금이 확인된 주문만 보여요. 이 주소는 가게 전용이니 다른 사람과 나누지 마세요.</p>
+</main>
+{% endblock %}
