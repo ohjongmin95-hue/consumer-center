@@ -1,5 +1,5 @@
 #!/bin/bash
-# 인스타그램 DM 받기를 켭니다. 메타 개발자 앱의 Instagram 앱 ID와 시크릿을 넣으면, 웹훅 확인 토큰을 만들어 함께 저장하고 소보루 CX를 다시 시작합니다.
+# 인스타그램 DM 받기를 켭니다. 메타 개발자 앱의 Instagram 앱 ID와 시크릿을 넣으면, 웹훅 확인 토큰을 만들어 함께 저장하고 소보루CX를 다시 시작합니다.
 # 앱 ID·시크릿 위치: developers.facebook.com > 내 앱 > Instagram > API setup with Instagram business login
 # 사용법: sudo bash /opt/soboru/app/deploy/set-instagram.sh   (앱 ID와 시크릿은 실행하면 물어봅니다. 시크릿은 화면에 보이지 않아요)
 set -euo pipefail

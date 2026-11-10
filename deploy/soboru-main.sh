@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # soboru.co.kr(+www)에 지금의 소보루 사이트(soboru 서비스, 127.0.0.1:8000)를 연결합니다.
 # 기존 nginx 파일(soboru, soboru-platform)과 인증서는 건드리지 않고, 새 파일 하나와 새 인증서 하나만 만듭니다.
-# biz.soboru.co.kr·cs.soboru.co.kr(소보루 CX)과 consumerjebo.co.kr은 그대로 동작합니다.
+# biz.soboru.co.kr·cs.soboru.co.kr(소보루CX)과 consumerjebo.co.kr은 그대로 동작합니다.
 #
 # 순서 (단계마다 따로 실행):
 #   1) 가비아 DNS에 soboru.co.kr, www.soboru.co.kr A 레코드 → 이 서버 IP

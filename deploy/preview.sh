@@ -17,7 +17,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   [[ "$v" =~ ^\"(.*)\"$ || "$v" =~ ^\'(.*)\'$ ]] && v="${BASH_REMATCH[1]}"
   export "$k=$v"
 done < /etc/soboru-platform.env
-# AI 키가 소보루 CX 설정에 아직 없으면, AI 서버 설정에서 읽어서 이번 점검에만 씁니다 (화면에 보이지 않음)
+# AI 키가 소보루CX 설정에 아직 없으면, AI 서버 설정에서 읽어서 이번 점검에만 씁니다 (화면에 보이지 않음)
 if [ -z "${OPENAI_API_KEY:-}" ] && [ -f /opt/soboru-cs/.env ]; then
   OPENAI_API_KEY="$(grep -E '^OPENAI_API_KEY=' /opt/soboru-cs/.env | head -1 | cut -d= -f2- | tr -d "\"' ")"; export OPENAI_API_KEY
 fi

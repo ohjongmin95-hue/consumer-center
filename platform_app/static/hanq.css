@@ -2309,7 +2309,7 @@ main.pg.cxpg,body.v2 main.pg.cxpg{padding:0}
 .bl-tier input{grid-row:1/3}.bl-tier.on,.bl-tier:has(input:checked){box-shadow:inset 0 0 0 2px var(--accent);background:var(--accent-soft)}
 .bl-tn{font-weight:700}.bl-tn em{font-style:normal;font-size:12px;font-weight:700;color:var(--accent-ink);margin-left:6px}
 .bl-tp{grid-column:3;grid-row:1;font-size:15px}.bl-tc{grid-column:2/4;color:var(--fg3);font-size:13.5px}
-/* 상담 만족도 (소보루 CX) */
+/* 상담 만족도 (소보루CX) */
 .csat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:4px}
 .csat-opt{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 2px;border-radius:14px;background:var(--fill);font-size:13px;font-weight:500;color:var(--fg2);cursor:pointer;text-align:center}
 .csat-opt input{position:absolute;opacity:0;pointer-events:none}

@@ -53,7 +53,7 @@ chmod 644 /etc/cron.d/soboru-expert-digest
 command -v ffmpeg >/dev/null || apt-get install -y -q ffmpeg >/dev/null 2>&1 || echo "ffmpeg 설치 실패: sudo apt-get install -y ffmpeg"
 # SOBORU 플랫폼(한큐 + 소보루 비즈)이 설치돼 있으면 같이 다시 시작
 if [ -f /etc/systemd/system/soboru-platform.service ]; then
-  # 소비자제보센터에 넣어 둔 메일 설정을 소보루 CX에도 똑같이 넣음 (비밀번호 찾기·알림 메일)
+  # 소비자제보센터에 넣어 둔 메일 설정을 소보루CX에도 똑같이 넣음 (비밀번호 찾기·알림 메일)
   if [ -f /etc/soboru.env ] && [ -f /etc/soboru-platform.env ] && grep -q '^SMTP_HOST=.' /etc/soboru.env && ! grep -q '^SMTP_HOST=.' /etc/soboru-platform.env; then
     grep -E '^SMTP_(HOST|PORT|USER|PASSWORD|FROM)=' /etc/soboru.env >> /etc/soboru-platform.env
   fi
@@ -62,7 +62,7 @@ if [ -f /etc/systemd/system/soboru-platform.service ]; then
     IP="$(curl -fsS -m 5 https://api.ipify.org || true)"
     if echo "$IP" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then echo "SERVER_IP=$IP" >> /etc/soboru-platform.env; fi
   fi
-  # AI 상담 키(OpenAI): 이미 서버의 AI 서비스 설정에 있으면 소보루 CX 설정에도 복사 (화면·채팅에 키를 적지 않아도 됨)
+  # AI 상담 키(OpenAI): 이미 서버의 AI 서비스 설정에 있으면 소보루CX 설정에도 복사 (화면·채팅에 키를 적지 않아도 됨)
   if [ -f /opt/soboru-cs/.env ] && [ -f /etc/soboru-platform.env ]; then
     for k in OPENAI_API_KEY SOBORU_AI_MODEL; do
       if grep -q "^$k=." /opt/soboru-cs/.env && ! grep -q "^$k=." /etc/soboru-platform.env; then grep -m1 "^$k=" /opt/soboru-cs/.env >> /etc/soboru-platform.env; echo "$k 설정을 AI 서버에서 가져왔어요"; fi
@@ -89,9 +89,9 @@ if [ -f /etc/systemd/system/soboru-platform.service ]; then
     git -C $APP checkout -q -B "$BRANCH" "$PREV"; systemctl restart soboru soboru-platform; sleep 3
     echo "되돌림 완료: $(git -C $APP log -1 --format='%h %s')"; exit 1
   fi
-  echo "소보루 CX 응답: $CODE (정상)"
-  if grep -q '^SMTP_HOST=.' /etc/soboru-platform.env 2>/dev/null; then echo "소보루 CX 메일: 켜져 있어요"
-  else echo "소보루 CX 메일: 꺼져 있어요. 켜려면 set-mail.sh를 한 번 실행해 주세요."; fi
+  echo "소보루CX 응답: $CODE (정상)"
+  if grep -q '^SMTP_HOST=.' /etc/soboru-platform.env 2>/dev/null; then echo "소보루CX 메일: 켜져 있어요"
+  else echo "소보루CX 메일: 꺼져 있어요. 켜려면 set-mail.sh를 한 번 실행해 주세요."; fi
   # 답변 지연 알림 · 불량 경보 · 월간 리포트 (한 시간마다, 같은 알림은 한 번만)
   cat > /etc/cron.hourly/soboru-platform-late <<'CRON'
 #!/bin/sh

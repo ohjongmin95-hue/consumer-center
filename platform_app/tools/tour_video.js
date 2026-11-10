@@ -137,7 +137,7 @@ h1 em{font-style:normal;color:#ef920e}
 .price{margin-top:32px;display:inline-flex;gap:12px;align-items:center;background:#fff6e8;color:#b8660a;border-radius:999px;padding:14px 28px;font-size:24px;font-weight:700;animation-delay:.75s!important}
 .price i{width:6px;height:6px;border-radius:50%;background:#ef920e}
 @keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-</style></head><body><div class="w"><img src="${CHAR}" alt=""><div class="brand">소보루 CX</div>
+</style></head><body><div class="w"><img src="${CHAR}" alt=""><div class="brand">소보루CX</div>
 <h1>쇼핑몰 문의, <em>AI가 먼저</em> 답해요</h1><div class="price">월 ${START_PRICE}원부터<i></i>${TRIAL_DAYS}일 무료 체험</div></div></body></html>`;
 
 (async()=>{
