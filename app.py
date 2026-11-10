@@ -561,7 +561,7 @@ def report_rows(where='1=1',args=(),limit=20,offset=0,order='id DESC'):
 _DONE="(status='종결' OR COALESCE(confirmed_at,'')<>'')"
 _NEW="(status='접수' AND COALESCE(reviewed_at,'')='' AND COALESCE(forwarded_at,'')='' AND COALESCE(seen_at,'')='' AND NOT "+_DONE+")"
 REPORT_STAGES={'new':('접수',_NEW),'active':('처리 중','(NOT '+_NEW+' AND NOT '+_DONE+')'),
-               'answer':('기업 답변',"(status='기업 답변 도착' OR EXISTS(SELECT 1 FROM messages m WHERE m.case_id=cases.id AND m.author='기업 답변' AND m.public=1))"),'done':('종결',_DONE)}
+               'answer':('기업 답변 완료',"(status='기업 답변 도착' OR EXISTS(SELECT 1 FROM messages m WHERE m.case_id=cases.id AND m.author='기업 답변' AND m.public=1))"),'done':('종결',_DONE)}
 def notice_lines(text):
     """'제보 전 꼭 읽어 주세요' 줄들. 운영자 2026-11-03: 로그인 제보라 조회 비밀번호·삭제 요청 줄은 뺌 (예전에 저장한 문구에 남아 있어도)."""
     drop=('조회 비밀번호는 꼭 기억','직접 고치거나 지울 수 없어요')

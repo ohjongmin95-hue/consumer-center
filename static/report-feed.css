@@ -289,6 +289,7 @@ body:has(.hero-wall){overflow-x:clip}
 .nn-vc-card .rf-st.st-5 .step-badge{background:#fff4e6;color:#e8590c}
 .nn-vc-card .rf-st.st-1 .step-badge{background:#f2f4f6;color:#6b7684}
 .nn-vc-card .rf-st.st-6 .step-badge{background:#e7f6ec;color:#2e9d5b}
+.nn-vc-card .rf-st.st-ans .step-badge{background:#e8f3ff;color:#1b64da}
 /* 사진 없는 제보도 같은 자리를 차분한 회색 칸으로 (카드 높이를 맞춤) */
 .rf-photo{align-items:stretch}
 .rf-photo .nn-vc-card{height:100%}
@@ -2079,7 +2080,7 @@ body .rf-list .vc-simple h3{margin:0;font-size:17px;font-weight:700;line-height:
 .rf-list .vc-simple time{flex:none;font-variant-numeric:tabular-nums}
 .rf-list .vc-simple .vcs-st{flex:none;display:inline-flex;align-items:center;gap:6px;font-weight:700;--c:#3182F6;color:var(--c)}
 .rf-list .vc-simple .vcs-st::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
-.rf-list .vc-simple .vcs-st.vcs-1{--c:#EF920E}.rf-list .vc-simple .vcs-st.vcs-2{--c:#03A35F}.rf-list .vc-simple .vcs-st.vcs-3{--c:#652D1C}
+.rf-list .vc-simple .vcs-st.vcs-1{--c:#EF920E}.rf-list .vc-simple .vcs-st.vcs-2{--c:#03A35F}.rf-list .vc-simple .vcs-st.vcs-3{--c:#652D1C}.rf-list .vc-simple .vcs-st.vcs-ans{--c:#3182F6}
 .rf-list .vc-simple .vcs-n{display:inline-flex;align-items:center;gap:3px;flex:none;font-variant-numeric:tabular-nums}
 .rf-list .vc-simple .vcs-n svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
 @media(max-width:700px){.rf-list .vc-simple,.rf-list .vc-simple.is-sample{padding:18px 20px;min-height:0;gap:10px;border:0;border-radius:0;background:#fff}.rf-list .vc-simple:hover{box-shadow:none}body .rf-list .vc-simple h3{min-height:0}}

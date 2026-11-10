@@ -1797,6 +1797,23 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('숨김테스트몰', self.client.get('/reports').get_data(as_text=True))
         self.assertNotIn('숨김테스트몰', self.client.get('/rss.xml').get_data(as_text=True))
 
+    def test_answer_done_label(self):
+        # 운영자 2026-11-10: 기업이 공식 답변한 제보는 공개 목록에서 '기업 답변 완료'
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '답변몰', 'subject': '답변 표시 제보', 'description': '본문', 'reporter_name': '김소비',
+                'phone': '010-2222-6666', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db:
+            case_id = db.execute("SELECT id FROM cases WHERE subject='답변 표시 제보'").fetchone()['id']
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'publish_review', 'decision': 'approve'})
+        self.assertNotIn('기업 답변 완료</span>', self.client.get('/reports').get_data(as_text=True))
+        with self.site.conn() as db:
+            db.execute("INSERT INTO messages(case_id,author,body,created,public) VALUES(?,'기업 답변','확인해 볼게요.',?,1)", (case_id, datetime.datetime.now().isoformat(timespec='seconds')))
+        page = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('vcs-ans', page)
+        self.assertIn('기업 답변 완료', self.client.get('/reports?st=answer').get_data(as_text=True))
+
     def test_aligo_vendor(self):
         # MSG_VENDOR=aligo: 알리고에서 승인된 템플릿 문구를 받아 변수를 채워 보냄. 솔라피 값은 그대로 둬도 안 씀
         notify, bizmsg = self.site.notify, self.site.notify.bizmsg
