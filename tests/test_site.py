@@ -2840,6 +2840,10 @@ class SiteTest(unittest.TestCase):
                      f"/reports/{ids['환불이 안 돼요']}", '소비자고발제보센터 드림\nhttps://consumerjebo.co.kr', '향후 추가 취재 및 보도가 진행될 수 있음'):
             self.assertIn(text, req['body'])
         self.assertNotIn('010-9999-8888', req['body'])  # AI가 돌려준 개인정보도 지움
+        import companydesk
+        _, named = companydesk.compose({'paragraphs': ['내용'], 'questions': ['질문']}, '고양이몰', '', '이지우 기자')
+        self.assertIn('안녕하세요. 소비자고발제보센터(소비자를위한신문) 이지우 기자입니다.', named)
+        self.assertIn('소비자고발제보센터 이지우 기자 드림', named)
         self.assertNotIn('■ 제보 내용 확인', secret_req['body'])  # 비밀글은 링크 없이
         cid = ids['환불이 안 돼요']
         admin = self.login_admin()
