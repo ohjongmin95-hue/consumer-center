@@ -3096,3 +3096,4 @@ company_fix.fix_old_cases(conn,link_company)  # 예전 제보의 큰 기업 이�
 link_all_cases()  # 큰 기업 미리 등록: 처음 배포할 때 한 번만 (company_mail.py, data/companies_seed.csv)  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
 
 if __name__=='__main__':app.run(debug=False)
+import moabap;app.wsgi_app=moabap.mount(app.wsgi_app)  # 모아밥: MOABAP_HOST 주소로 오면 모아배달 앱, 따로 DB (moabap/, 운영자 2026-11-11)

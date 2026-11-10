@@ -1,0 +1,29 @@
+{
+  "name": "moabap-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "expo": "~57.0.28",
+    "expo-build-properties": "~57.0.22",
+    "expo-constants": "~57.0.21",
+    "expo-linking": "~57.0.12",
+    "expo-splash-screen": "~57.0.10",
+    "expo-status-bar": "~57.0.1",
+    "expo-web-browser": "~57.0.3",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-webview": "13.16.1"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "ios": "expo start --ios",
+    "android": "expo start --android",
+    "typecheck": "tsc --noEmit"
+  },
+  "private": true
+}

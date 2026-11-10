@@ -4,3 +4,4 @@ cases.sqlite3
 private_uploads/
 .venv/
 platform.sqlite3
+moabap.sqlite3*

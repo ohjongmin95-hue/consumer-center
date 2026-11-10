@@ -1,0 +1,12 @@
+{% extends 'moa_base.html' %}
+{% block title %}주문 내역 | 모아밥{% endblock %}
+{% block body %}
+<header class="top"><div class="loc">주문 내역</div></header>
+<main class="wrap">
+  <section class="sec">{% if rows %}<div class="olist">
+  {% for o in rows %}<a href="{{ url_for('order_page', code=o.code) }}"><span class="ic" aria-hidden="true">{{ o.emoji }}</span><div><b>{{ o.set_name }}{% if o.qty > 1 %} × {{ o.qty }}{% endif %}</b><small>{{ o.day[5:].replace('-', '/') }} {{ o.slot }} 도착 · {{ won(o.amount) }}</small></div><span class="badge {{ o.status }}">{{ step_names[o.status] }}</span></a>{% endfor %}
+  </div>{% else %}<p class="lead" style="padding:24px 0;text-align:center">아직 주문이 없어요.<br>이 휴대폰에서 시킨 주문이 여기에 모여요.</p>{% endif %}</section>
+  <a class="cta soft" href="{{ url_for('home') }}">세트 보러 가기</a>
+</main>
+{% endblock %}
+{% block bar %}{% with tab='orders' %}{% include 'moa_tabs.html' %}{% endwith %}{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'moa_base.html' %}
+{% block title %}운영 | 모아밥{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block appclass %}adm{% endblock %}
+{% block body %}
+<header class="top"><span class="logo">{{ mark(26) }}모아밥</span><nav><a class="on" href="{{ url_for('admin') }}">주문 묶음</a><a href="{{ url_for('admin_menu') }}">가게·세트</a><a href="{{ url_for('admin_logout') }}">나가기</a></nav></header>
+<main class="wrap">
+  <form class="daybar" method="get"><input type="date" name="day" value="{{ day }}" onchange="this.form.submit()" aria-label="날짜"></form>
+  <div class="stats"><div><small>주문</small><b>{{ stat.n }}건</b></div><div><small>입금 확인</small><b>{{ stat.paid }}건</b></div><div><small>묶음</small><b>{{ stat.batches }}개</b></div><div><small>매출</small><b>{{ won(stat.amount) }}</b></div></div>
+  {% for slot, places in slots.items() %}<section class="sec"><h2>{{ slot }} 도착</h2>
+    {% for place, rows in places.items() %}{% set live = rows|rejectattr('status', 'equalto', 'cancel')|list %}<form class="batch" method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="day" value="{{ day }}">
+      <h3>📍 {{ place }} <span class="badge">{{ live|length }}건 · {{ live|sum(attribute='qty') }}개</span></h3>
+      <div class="tscroll"><table class="tbl"><tr><th></th><th>상태</th><th>받는 분</th><th>세트</th><th>금액</th><th>요청</th></tr>
+      {% for r in rows %}<tr class="{{ 'off' if r.status == 'cancel' }}"><td><input type="checkbox" name="id" value="{{ r.id }}" aria-label="{{ r.name }} 고르기"{% if r.status == 'cancel' %} disabled{% endif %}></td>
+        <td><span class="badge {{ r.status }}">{{ step_names[r.status] }}</span></td><td>{{ r.name }}<br><span class="mono">{{ r.phone }}</span></td>
+        <td>{{ r.set_name }} × {{ r.qty }}<br><small style="color:var(--mute)">{{ r.shop }}</small></td><td>{{ won(r.amount) }}{% if r.discount %}<br><small style="color:var(--mute)">할인 {{ won(r.discount) }}</small>{% endif %}</td><td>{{ r.detail }} {{ r.memo }}</td></tr>{% endfor %}</table></div>
+      <div class="acts"><button name="act" value="paid" class="go">입금 확인</button><button name="act" value="ready">조리 완료</button><button name="act" value="picked">픽업</button><button name="act" value="done">도착</button><button name="act" value="cancel" class="no">취소</button></div>
+    </form>{% endfor %}
+  </section>{% else %}<section class="sec"><p class="lead" style="padding:16px 0;text-align:center">이날 주문이 없어요.</p></section>{% endfor %}
+</main>
+{% endblock %}
+{% block script %}<script>
+document.querySelectorAll('.batch').forEach(function(f){var h=f.querySelector('h3');h.style.cursor='pointer';h.title='눌러서 모두 고르기';
+h.addEventListener('click',function(){var bs=f.querySelectorAll('input[name=id]:not(:disabled)'),on=[].some.call(bs,function(b){return !b.checked});bs.forEach(function(b){b.checked=on})})});
+document.addEventListener('submit',function(e){var f=e.target;if(f.classList.contains('batch')&&!f.querySelector('input[name=id]:checked')){e.preventDefault();alert('주문을 먼저 골라 주세요. 장소 이름을 누르면 모두 골라져요.')}});
+</script>{% endblock %}
