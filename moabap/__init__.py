@@ -19,7 +19,7 @@ import secrets
 import sqlite3
 from pathlib import Path
 
-from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, send_from_directory, session, url_for
 
 BASE = Path(__file__).parent
 STEPS = ('wait', 'paid', 'ready', 'picked', 'done')  # 입금 대기 → 주문 확정 → 조리 완료 → 픽업 → 도착
@@ -61,6 +61,8 @@ def create_app(db_path=None):
     moa.config.update(SESSION_COOKIE_NAME='moabap', SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
                       SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY') == '1')
     DB = Path(db_path or os.getenv('MOABAP_DB', str(BASE.parent / 'moabap.sqlite3')))
+    IMG = DB.parent / 'moabap-img'  # 세트 사진 (DB 옆 폴더)
+    moa.config['MAX_CONTENT_LENGTH'] = 12 * 1024 * 1024
     FIRST_COUPON = int(os.getenv('MOABAP_FIRST_COUPON', '2000'))
     AREA = os.getenv('MOABAP_AREA', '광교중앙역 주변')
     # 같은 건물·같은 시간에 모인 사람 수별 할인 (다음 주문에서 빼 줌). '5:1000,10:2000' = 5명 넘으면 1,000원, 10명 넘으면 2,000원
@@ -86,7 +88,7 @@ def create_app(db_path=None):
     def init():
         with conn() as db:
             db.executescript(SCHEMA)
-            for t, col in (('places', "slug TEXT DEFAULT ''"), ('orders', "ref TEXT DEFAULT ''"), ('orders', 'credit INTEGER DEFAULT 0')):
+            for t, col in (('places', "slug TEXT DEFAULT ''"), ('places', 'lat REAL'), ('sets', "photo TEXT DEFAULT ''"), ('places', 'lng REAL'), ('orders', "ref TEXT DEFAULT ''"), ('orders', 'credit INTEGER DEFAULT 0')):
                 if col.split()[0] not in [r[1] for r in db.execute(f'PRAGMA table_info({t})')]:
                     db.execute(f'ALTER TABLE {t} ADD COLUMN {col}')
             have = {r[1] for r in db.execute('PRAGMA table_info(shops)')}
@@ -118,10 +120,67 @@ def create_app(db_path=None):
             saved = {r['k'][3:]: r['v'] for r in db.execute("SELECT k,v FROM conf WHERE k LIKE 'co_%'")}
         return {k: saved.get(k) or os.getenv('MOABAP_CO_' + k.upper(), '') for k in CO_KEYS}
 
+    def conf_get(k):
+        with conn() as db:
+            r = db.execute('SELECT v FROM conf WHERE k=?', (k,)).fetchone()
+        return r['v'] if r else ''
+
+    def site_code(v):
+        """네이버·구글 사이트 확인: <meta ... content="코드"> 통째로 붙여도, 코드만 붙여도 코드만 남긴다."""
+        m = re.search(r'content=["\']([^"\']+)', v or '')
+        return re.sub(r'[^0-9A-Za-z_-]', '', m.group(1) if m else (v or ''))[:100]
+
+    @moa.get('/robots.txt')
+    def robots():
+        body = 'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /s/\nDisallow: /o/\nDisallow: /orders\n\nSitemap: ' + url_for('sitemap', _external=True) + '\n'
+        return moa.response_class(body, mimetype='text/plain')
+
+    @moa.get('/sitemap.xml')
+    def sitemap():
+        with conn() as db:
+            sets = db.execute('SELECT s.id FROM sets s JOIN shops h ON h.id=s.shop_id WHERE s.active=1 AND h.active=1').fetchall()
+            places = db.execute('SELECT id,slug FROM places WHERE active=1').fetchall()
+        urls = [url_for(e, _external=True) for e in ('home', 'about', 'join', 'refund', 'privacy')]
+        urls += [url_for('set_page', sid=r['id'], _external=True) for r in sets]
+        urls += [url_for('building_page', key=r['slug'] or r['id'], _external=True) for r in places]
+        xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + ''.join(f'<url><loc>{u}</loc></url>\n' for u in urls) + '</urlset>\n'
+        return moa.response_class(xml, mimetype='application/xml')
+
+    def save_photo(up):
+        """올린 사진을 가로 1200px JPG로 줄여 저장하고 파일 이름을 돌려준다. 못 읽으면 ''."""
+        try:
+            from PIL import Image, ImageOps
+            im = ImageOps.exif_transpose(Image.open(up.stream))
+            im = im.convert('RGB')
+            im.thumbnail((1200, 1200))
+            IMG.mkdir(parents=True, exist_ok=True)
+            name = secrets.token_hex(8) + '.jpg'
+            im.save(IMG / name, 'JPEG', quality=84, optimize=True, progressive=True)
+            return name
+        except Exception:
+            return ''
+
+    @moa.get('/img/<name>')
+    def img(name):
+        if not re.fullmatch(r'[0-9a-f]{16}\.jpg', name):
+            abort(404)
+        return send_from_directory(IMG, name, max_age=31536000)
+
+    def parse_coord(v):
+        """'37.2886, 127.0515' (구글 지도 우클릭 값) → (위도, 경도). 한국 범위 밖이면 비움."""
+        nums = re.findall(r'-?\d+(?:\.\d+)?', v or '')
+        if len(nums) >= 2:
+            lat, lng = float(nums[0]), float(nums[1])
+            if lat > lng:  # 경도, 위도 순서로 넣었을 때
+                lat, lng = lng, lat
+            if 33 <= lat <= 39 and 124 <= lng <= 132:
+                return round(lat, 6), round(lng, 6)
+        return None, None
+
     @moa.context_processor
     def ctx():
         return dict(csrf=csrf, won=won, area=AREA, step_names=STEP_NAMES, bank=os.getenv('MOABAP_BANK', ''),
-                    biz=os.getenv('MOABAP_BIZ', ''), co=company(), contact=os.getenv('MOABAP_CONTACT', ''), first_coupon=FIRST_COUPON, cats=CATS, gnb_b=session.get('place_name', ''))
+                    biz=os.getenv('MOABAP_BIZ', ''), co=company(), naver_code=conf_get('naver_code'), google_code=conf_get('google_code'), css_v=int((BASE / 'static' / 'moa.css').stat().st_mtime), contact=os.getenv('MOABAP_CONTACT', ''), first_coupon=FIRST_COUPON, cats=CATS, gnb_b=session.get('place_name', ''))
 
     def slot_dt(day, at):
         h, m = map(int, at.split(':'))
@@ -391,16 +450,32 @@ def create_app(db_path=None):
                     vals = (f.get('shop_id', type=int), f['name'].strip(), f.get('cat', '한식'), f.get('emoji') or '🍱', f.get('price', type=int) or 0, f.get('orig', type=int) or 0,
                             f.get('supply', type=int) or 0, f.get('cap', type=int) or 50, f.get('cook_min', type=int) or 15, f.get('note', ''))
                     if f.get('id'):
-                        db.execute('UPDATE sets SET shop_id=?,name=?,cat=?,emoji=?,price=?,orig=?,supply=?,cap=?,cook_min=?,note=? WHERE id=?', vals + (f.get('id', type=int),))
+                        sid = f.get('id', type=int)
+                        db.execute('UPDATE sets SET shop_id=?,name=?,cat=?,emoji=?,price=?,orig=?,supply=?,cap=?,cook_min=?,note=? WHERE id=?', vals + (sid,))
                     else:
-                        db.execute('INSERT INTO sets(shop_id,name,cat,emoji,price,orig,supply,cap,cook_min,note) VALUES(?,?,?,?,?,?,?,?,?,?)', vals)
+                        sid = db.execute('INSERT INTO sets(shop_id,name,cat,emoji,price,orig,supply,cap,cook_min,note) VALUES(?,?,?,?,?,?,?,?,?,?)', vals).lastrowid
+                    up = request.files.get('photo')
+                    if up and up.filename:
+                        name = save_photo(up)
+                        if name:
+                            db.execute('UPDATE sets SET photo=? WHERE id=?', (name, sid))
+                        else:
+                            flash('사진을 읽지 못했어요. JPG·PNG 사진으로 다시 올려 주세요.')
+                    elif f.get('photo_del'):
+                        db.execute("UPDATE sets SET photo='' WHERE id=?", (sid,))
                 elif kind == 'place':
                     slug = re.sub(r'[^0-9A-Za-z가-힣-]', '', (f.get('slug') or f['name']).replace(' ', '-'))[:30]
-                    db.execute('INSERT INTO places(name,kind,note,slug) VALUES(?,?,?,?)', (f['name'].strip(), f.get('pkind', '오피스'), f.get('note', ''), slug))
+                    lat, lng = parse_coord(f.get('coord'))
+                    db.execute('INSERT INTO places(name,kind,note,slug,lat,lng) VALUES(?,?,?,?,?,?)', (f['name'].strip(), f.get('pkind', '오피스'), f.get('note', ''), slug, lat, lng))
+                elif kind == 'coord':
+                    lat, lng = parse_coord(f.get('coord'))
+                    db.execute('UPDATE places SET lat=?,lng=? WHERE id=?', (lat, lng, f.get('id', type=int)))
                 elif kind == 'slot' and re.fullmatch(r'\d\d:\d\d', f.get('at', '')):
                     db.execute('INSERT INTO slots(at,cutoff) VALUES(?,?)', (f['at'], f.get('cutoff', type=int) or 40))
                 elif kind == 'applied':
                     db.execute('UPDATE applies SET done=1-done WHERE id=?', (f.get('id', type=int),))
+                elif kind == 'seo':
+                    db.executemany('INSERT OR REPLACE INTO conf(k,v) VALUES(?,?)', [('naver_code', site_code(f.get('naver'))), ('google_code', site_code(f.get('google')))])
                 elif kind == 'company':
                     db.executemany('INSERT OR REPLACE INTO conf(k,v) VALUES(?,?)', [('co_' + k, (f.get(k) or '').strip()[:120]) for k in CO_KEYS])
                 elif kind == 'toggle' and f.get('table') in ('shops', 'sets', 'places', 'slots'):

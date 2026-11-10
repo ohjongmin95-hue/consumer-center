@@ -10,7 +10,8 @@
       <small>{% if nt %}{{ nt[0] - n }}명 더 모이면 모두 {{ won(nt[1]) }} 돌려받아요{% else %}최대 할인 달성! 모두 {{ won(tier(n)) }} 돌려받아요{% endif %}</small></div>{% endfor %}
     <p class="note">모인 사람 수만큼 할인돼요. 마감 뒤 다음 주문에서 바로 빠져요. 아래 세트를 고르고 주문하면 '사내 단톡에 공유하기' 링크가 생겨요.</p>
   </section>{% elif not b and places %}<section class="sec" id="pick"><h2>우리 건물 고르기</h2><p class="lead">건물을 고르면 같은 건물 사람들과 모아서 더 싸게 시켜요.</p>
-    <div class="bchips">{% for p in places %}<a href="{{ url_for('building_page', key=p.slug or p.id) }}">{{ '🏢' if p.kind == '오피스' else '🏠' }} {{ p.name }}</a>{% endfor %}</div></section>{% endif %}
+    <div class="bchips">{% for p in places %}<a href="{{ url_for('building_page', key=p.slug or p.id) }}"{% if p.lat %} data-lat="{{ p.lat }}" data-lng="{{ p.lng }}"{% endif %}>{{ '🏢' if p.kind == '오피스' else '🏠' }} {{ p.name }}</a>{% endfor %}</div>
+    {% if places|selectattr('lat')|list %}<button type="button" class="locbtn" id="loc">📍 내 위치로 가까운 건물 찾기</button><p class="locmsg" id="locmsg" role="status" hidden></p>{% endif %}</section>{% endif %}
   {% if cats_on|length > 1 %}<nav class="cats" aria-label="종류">
     <a href="{{ url_for('home', p=price or None) }}"{% if not cat %} class="on"{% endif %}><i>🍽️</i>전체</a>
     {% for k, ic in cats_on %}<a href="{{ url_for('home', cat=k, p=price or None) }}"{% if cat == k %} class="on"{% endif %}><i>{{ ic }}</i>{{ k }}</a>{% endfor %}
@@ -21,7 +22,7 @@
     {% if prices|length > 1 %}<div class="ptabs"><a href="{{ url_for('home', cat=cat or None) }}"{% if not price %} class="on"{% endif %}>전체</a>{% for p in prices %}<a href="{{ url_for('home', cat=cat or None, p=p) }}"{% if price == p %} class="on"{% endif %}>{{ won(p) }}</a>{% endfor %}</div>{% endif %}
     <div class="grid">
     {% for s in sets %}<a class="item" href="{{ url_for('set_page', sid=s.id) }}">
-      <div class="ph c{{ s.id % 6 }}"><span aria-hidden="true">{{ s.emoji }}</span>{% if s.hygiene %}<span class="safe">위생 인증</span>{% endif %}{% if joined.get(s.id) %}<span class="n">{{ joined[s.id] }}명 모였어요</span>{% endif %}</div>
+      <div class="ph c{{ s.id % 6 }}{{ ' pic' if s.photo }}">{% if s.photo %}<img src="{{ url_for('img', name=s.photo) }}" alt="{{ s.name }}" loading="lazy">{% else %}<span aria-hidden="true">{{ s.emoji }}</span>{% endif %}{% if s.hygiene %}<span class="safe">위생 인증</span>{% endif %}{% if joined.get(s.id) %}<span class="n">{{ joined[s.id] }}명 모였어요</span>{% endif %}</div>
       <b>{{ s.name }}</b><span class="shop">{{ s.shop }}</span>
       <div class="pr"><strong>{{ won(s.price) }}</strong>{% if s.orig > s.price %}<s>{{ won(s.orig) }}</s>{% endif %}</div>
       <div class="meta">{% if again.get(s.id) %}<span class="re">재주문 {{ again[s.id] }}%</span>{% endif %}<span>배달비 0원</span></div>
@@ -36,6 +37,19 @@
 {% endblock %}
 {% block bar %}{% with tab='home' %}{% include 'moa_tabs.html' %}{% endwith %}{% endblock %}
 {% block script %}<script>
+(function(){var b=document.getElementById('loc');if(!b)return;var m=document.getElementById('locmsg');
+function say(t){m.hidden=false;m.textContent=t}
+function km(a,b,c,d){var r=Math.PI/180,x=Math.sin((c-a)*r/2),y=Math.sin((d-b)*r/2);return 12742*Math.asin(Math.sqrt(x*x+Math.cos(a*r)*Math.cos(c*r)*y*y))}
+function fmt(k){return k<1?Math.round(k*1000/10)*10+'m':k.toFixed(1)+'km'}
+b.addEventListener('click',function(){if(!navigator.geolocation){say('이 기기에서는 위치를 쓸 수 없어요. 아래에서 건물을 골라 주세요.');return}
+b.disabled=true;b.textContent='📍 위치를 찾고 있어요';
+navigator.geolocation.getCurrentPosition(function(p){var la=p.coords.latitude,ln=p.coords.longitude,box=document.querySelector('#pick .bchips'),
+chips=[].slice.call(box.querySelectorAll('a[data-lat]'));chips.forEach(function(a){a._k=km(la,ln,+a.dataset.lat,+a.dataset.lng);var d=a.querySelector('.dist')||a.appendChild(document.createElement('span'));d.className='dist';d.textContent=fmt(a._k)});
+chips.sort(function(x,y){return x._k-y._k});chips.slice().reverse().forEach(function(a){box.insertBefore(a,box.firstChild)});
+var n=chips[0];b.remove();if(!n)return;
+if(n._k>3){say('아직 내 주변에는 모아밥 건물이 없어요. 가장 가까운 곳은 '+fmt(n._k)+' 떨어진 '+n.textContent.replace(n.querySelector('.dist').textContent,'').trim()+'이에요.')}
+else{n.classList.add('near');say('가장 가까운 건물을 맨 앞에 놓았어요. 눌러서 들어가세요.')}},
+function(e){b.disabled=false;b.textContent='📍 내 위치로 가까운 건물 찾기';say(e.code===1?'위치 사용을 허용하지 않았어요. 아래에서 건물을 직접 골라 주세요.':'위치를 찾지 못했어요. 아래에서 건물을 직접 골라 주세요.')},{enableHighAccuracy:true,timeout:10000,maximumAge:60000})})})();
 (function(){var e=document.querySelector('.timer[data-close]');if(!e)return;var c=new Date(e.dataset.close),at=e.textContent.split(' ')[0];
 function t(){var s=Math.floor((c-new Date())/1000);if(s<=0){e.textContent=at+' 도착분 마감';return}if(s>=3600*6)return;
 e.textContent='마감까지 '+String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor(s%3600/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}t();setInterval(t,1000)})();

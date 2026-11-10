@@ -72,6 +72,7 @@ function Main() {
           ref={web}
           source={{ uri: start }}
           applicationNameForUserAgent={UA_SUFFIX}
+          geolocationEnabled
           injectedJavaScriptBeforeContentLoaded={BEFORE_LOAD}
           onMessage={onMessage}
           onNavigationStateChange={onNav}

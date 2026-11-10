@@ -231,3 +231,17 @@ article.sec h3{font-size:16px;margin:18px 0 4px}article.sec p{margin:0;color:var
 .sitefoot .links{display:flex;flex-wrap:wrap;gap:4px 12px;margin:10px 0 8px}.sitefoot .links a{color:#4E5968}
 .sitefoot .mute{color:#8B95A1}
 @media (min-width:960px){.sitefoot{max-width:1120px;padding-bottom:40px}}
+
+/* 운영자: 받는 곳 좌표 */
+.coordf{display:flex;gap:6px;align-items:center}.coordf input{width:180px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px}
+/* 내 위치로 가까운 건물 */
+.locbtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:12px;padding:13px 16px;border:0;border-radius:14px;background:#F6EFFF;color:#6B3FD4;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.locmsg{font-size:14px;color:var(--sub);margin:10px 0 0;line-height:21px}
+.bchips a .dist{margin-left:6px;font-size:13px;font-weight:600;color:var(--mute)}
+.bchips a.near{background:#2B1B3D;color:#fff}.bchips a.near .dist{color:#E9DDFF}
+
+/* 세트 사진 */
+.ph.pic,.dph.pic{overflow:hidden;background:#F2F4F6}
+.ph.pic>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dph.pic{display:block}.dph.pic>img{display:block;width:100%;height:100%;object-fit:cover}
+.ph.pic .safe,.ph.pic .n{z-index:1}

@@ -4,6 +4,6 @@
   {% if co.addr %}<p>{{ co.addr }}</p>{% endif %}
   {% if co.tel or contact %}<p>{% if co.tel %}대표전화 {{ co.tel }}{% endif %}{% if co.tel and contact %} · {% endif %}{% if contact %}{{ contact }}{% endif %}</p>{% endif %}
   {% if not co.bizno and biz %}<p>{{ biz }}</p>{% endif %}
-  <p class="links"><a href="{{ url_for('about') }}">모아밥 소개</a><a href="{{ url_for('refund') }}">취소·환불 정책</a><a href="{{ url_for('privacy') }}"><b>개인정보처리방침</b></a><a href="{{ url_for('join') }}">사장님 함께하기</a></p>
+  <p class="links"><a href="{{ url_for('about') }}">모아밥 소개</a><a href="{{ url_for('refund') }}">취소·환불 정책</a><a href="{{ url_for('privacy') }}"><b>개인정보처리방침</b></a><a href="{{ url_for('join') }}">사장님 함께하기</a><a href="{{ url_for('admin') }}">관리자</a></p>
   <p class="mute">모아밥은 통신판매중개자이며 통신판매의 당사자가 아니에요. 세트의 정보와 품질은 판매자인 각 가게가 책임져요.</p>
 </footer>
