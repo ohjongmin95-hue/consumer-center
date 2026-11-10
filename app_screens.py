@@ -13,8 +13,9 @@ from flask import render_template, request
 
 TABS = {'hot': '인기', 'new': '최신', 'answer': '답변 완료', 'done': '해결됨'}
 RANK_TABS = {'good': '잘 답하는 곳', 'bad': '아쉬운 곳', 'fast': '답변 빠른 곳'}
-CARD_N = 3      # 업종 카드 한 장에 보이는 기업 수
+CARD_N = 5      # 업종 카드 한 장에 보이는 기업 수
 ONE_IND_N = 10  # 업종 하나만 볼 때
+WANTS = ('환불', '교환', '수리', '해지', '배상', '보상', '사과', '취소', '재발 방지')  # 공동 대응 '요구' 태그: 관련 고발의 요청 사항에 이 말이 있으면
 
 
 def install(S):
@@ -32,12 +33,14 @@ def install(S):
     def ticker(db):
         """최근에 실제로 일어난 좋은 소식 한 줄씩: 기업이 답했거나, 제보자가 해결됐다고 알린 고발."""
         out = []
-        for r in db.execute("""SELECT c.id,c.company,c.company_hidden,MAX(m.created) AS at FROM messages m JOIN cases c ON c.id=m.case_id
+        for r in db.execute("""SELECT c.id,c.company,c.company_hidden,c.company_id,MAX(m.created) AS at FROM messages m JOIN cases c ON c.id=m.case_id
                 WHERE m.author='기업 답변' AND m.public=1 AND c.public_consent=1 AND c.published=1 GROUP BY c.id ORDER BY at DESC LIMIT 6"""):
-            out.append((r['at'], '📨', f"{S.pub_company(r)}이(가) 고발에 답했어요", r['id'], 'ans'))
-        for r in db.execute("""SELECT id,company,company_hidden,confirmed_at AS at FROM cases WHERE outcome='resolved' AND public_consent=1 AND published=1
-                AND COALESCE(confirmed_at,'')<>'' ORDER BY confirmed_at DESC LIMIT 6"""):
-            out.append((r['at'], '🎉', f"{S.pub_company(r)} 고발이 해결됐어요", r['id'], 'done'))
+            co = S.pub_company(r); out.append((r['at'], co[:1], f"{co}이(가) 고발에 답했어요", r['id'], 'ans'))
+        for r in db.execute("""SELECT c.id,c.company,c.company_hidden,c.confirmed_at AS at,u.nickname FROM cases c LEFT JOIN users u ON u.id=c.user_id AND u.status='active'
+                WHERE c.outcome='resolved' AND c.public_consent=1 AND c.published=1
+                AND COALESCE(c.confirmed_at,'')<>'' ORDER BY c.confirmed_at DESC LIMIT 6"""):
+            nick = r['nickname'] or '소비자'
+            out.append((r['at'], nick[:1], f"{S.pub_company(r)} 고발 해결됐어요, 고마워요!", r['id'], 'done'))
         out.sort(key=lambda x: x[0] or '', reverse=True)
         return out[:6]
 
@@ -55,9 +58,17 @@ def install(S):
             FROM damage_groups g WHERE g.status IN ('open','active') ORDER BY n DESC,g.id DESC LIMIT ?""", (limit,)).fetchall()
 
     def home_list(tab):
-        if tab == 'hot': return S.report_rows(order=S.HOT_ORDER, limit=6)
-        if tab in ('answer', 'done'): return S.report_rows(S.REPORT_STAGES[tab][1], (), 6)
-        return S.report_rows(limit=6)
+        if tab == 'hot': rows = S.report_rows(order=S.HOT_ORDER, limit=6)
+        elif tab in ('answer', 'done'): rows = S.report_rows(S.REPORT_STAGES[tab][1], (), 6)
+        else: rows = S.report_rows(limit=6)
+        # 헤이마오 목록처럼 글쓴이(닉네임·얼굴)와 공감·댓글 수를 붙임. 사진은 템플릿에서 og_photo로 (가린 사본만)
+        ids = [r['no'] for r in rows]
+        if ids:
+            with S.conn() as db:
+                who = {r['id']: r for r in db.execute("SELECT c.id,u.id AS uid,u.nickname FROM cases c LEFT JOIN users u ON u.id=c.user_id AND u.status='active' WHERE c.id IN (%s)" % ','.join('?' * len(ids)), ids)}
+            for r in rows:
+                w = who.get(r['no']); r['uid'] = w['uid'] if w else None; r['nick'] = (w['nickname'] if w else '') or ''
+        return rows
 
     def app_home():
         tab = request.args.get('t', 'hot')
@@ -112,7 +123,21 @@ def install(S):
                 (SELECT COUNT(*) FROM cases c WHERE c.group_id=g.id AND (c.status='기업 답변 도착' OR EXISTS(SELECT 1 FROM messages m WHERE m.case_id=c.id AND m.author='기업 답변' AND m.public=1))) AS n_answer
                 FROM damage_groups g WHERE g.status IN ('open','active','closed')
                 ORDER BY CASE g.status WHEN 'closed' THEN 1 ELSE 0 END,{order}""").fetchall()
-        return render_template('app_groups.html', groups=rows, sort=sort, statuses=S.GROUP_STATUSES)
+            extra = {}
+            for g_ in rows:
+                cs = db.execute('SELECT id,category,request_text FROM cases WHERE group_id=?', (g_['id'],)).fetchall()
+                ids = [c['id'] for c in cs]
+                q = ','.join('?' * len(ids))
+                like = db.execute(f"SELECT COUNT(*) FROM board_votes WHERE kind='metoo' AND target IN ({q})", ['case:%d' % i for i in ids]).fetchone()[0] if ids else 0
+                talk = db.execute(f'SELECT COUNT(*) FROM case_comments WHERE hidden=0 AND case_id IN ({q})', ids).fetchone()[0] if ids else 0
+                cats = []
+                for c in cs:
+                    lab = jebo.cat_label(c['category'])
+                    if lab and lab not in cats: cats.append(lab)
+                wants = [w for w in WANTS if any(w in (c['request_text'] or '') for c in cs)]
+                rate = round(100 * g_['n_answer'] / g_['n_cases']) if g_['n_cases'] else 0
+                extra[g_['id']] = dict(cats=cats[:3], wants=wants[:3], like=like, talk=talk, rate=rate)
+        return render_template('app_groups.html', groups=rows, sort=sort, statuses=S.GROUP_STATUSES, extra=extra)
 
     def wrap(name, view):
         old = app.view_functions[name]

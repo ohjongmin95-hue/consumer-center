@@ -6,12 +6,23 @@
   <nav class="ap-seg"><a href="{{ url_for('groups') }}"{% if sort == 'many' %} class="on" aria-current="true"{% endif %}>{{ ui('app.g_many', '많이 모인 순') }}</a><a href="{{ url_for('groups', sort='new') }}"{% if sort == 'new' %} class="on" aria-current="true"{% endif %}>{{ ui('app.g_new', '최신 순') }}</a></nav>
   {% for gr in groups %}<section class="ap-card ap-gc{{ ' is-closed' if gr['status'] == 'closed' }}">
     <div class="ap-co"><span class="ap-lg c{{ gr['id'] % 6 }}" aria-hidden="true">{{ gr['company'][:1] }}</span><b>{{ gr['company'] }}</b>{% if gr['status'] != 'open' %}<em class="ap-badge">{{ statuses[gr['status']] }}</em>{% endif %}</div>
-    <div class="ap-nums"><span><small>{{ ui('app.g_people', '함께하는 사람') }}</small><b>{{ gr['n_members'] }}{{ ui('app.people', '명') }}</b></span><span><small>{{ ui('app.g_answer', '기업 답변') }}</small><b>{% if gr['n_answer'] %}{{ ui('app.g_ans_yes', '답변 있음') }}{% elif gr['status'] == 'closed' %}{{ ui('app.g_ans_no', '없음') }}{% else %}{{ ui('app.g_ans_wait', '기다리는 중') }}{% endif %}</b></span></div>
+    {% set x = extra[gr['id']] %}<div class="ap-nums"><span><small>{{ ui('app.g_people', '함께하는 사람') }}</small><b class="hl">{{ gr['n_members'] }}{{ ui('app.people', '명') }}</b></span><span><small>{{ ui('app.g_rate', '기업 처리율') }}</small><b class="hl">{{ x.rate }}%</b></span></div>
     <h2>{{ gr['title'] }}</h2>
-    {% if gr['summary'] %}<p>{{ gr['summary']|truncate(90, True, '…') }}</p>{% endif %}
+    {% if gr['summary'] %}<p>{{ gr['summary']|truncate(110, True, '…') }}</p>{% endif %}
+    {% if x.cats or x.wants %}<div class="ap-tags">{% if x.cats %}<div><small>{{ ui('app.g_tag_damage', '피해') }}</small>{% for t in x.cats %}<i>{{ t }}</i>{% endfor %}</div>{% endif %}{% if x.wants %}<div><small>{{ ui('app.g_tag_want', '요구') }}</small>{% for t in x.wants %}<i>{{ t }}</i>{% endfor %}</div>{% endif %}</div>{% endif %}
+    <div class="ap-act"><span><i class="tf" aria-hidden="true">👍</i>{{ ui('app.metoo', '공감') }} {{ x.like }}</span><span><i class="tf" aria-hidden="true">💬</i>{{ ui('app.talk', '댓글') }} {{ x.talk }}</span><button type="button" class="ap-share" data-share="{{ url_for('group_page', group_id=gr['id'], _external=True) }}" data-title="{{ gr['company'] }} {{ gr['title'] }}"><i class="tf" aria-hidden="true">📢</i>{{ ui('app.share', '공유') }}</button></div>
     {% if gr['status'] == 'open' %}<a class="ap-join" href="{{ url_for('group_page', group_id=gr['id']) }}">{{ ui('app.g_join', '나도 함께하기') }}</a>{% else %}<a class="ap-link" href="{{ url_for('group_page', group_id=gr['id']) }}">{{ ui('app.g_view', '진행 상황 보기') }} ›</a>{% endif %}
   </section>{% else %}
   <div class="ap-card ap-none"><i class="tf" aria-hidden="true">🤝</i><p>{{ ui('groups.empty2', '지금 진행 중인 공동 대응이 없어요. 같은 피해를 겪은 사람이 더 있을 것 같다면 먼저 제안해 주세요.') }}</p></div>{% endfor %}
   <a class="ap-all" href="{{ url_for('group_new') }}">{{ ui('groups.new_title', '공동 대응 제안하기') }}</a>
 </main>
+<script>
+// 공유: 휴대폰 공유 창(앱은 App.tsx가 navigator.share를 앱 공유로 바꿈), 그것도 없으면 주소 복사
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('.ap-share'); if (!b) return;
+  var url = b.dataset.share, title = b.dataset.title;
+  if (navigator.share) { navigator.share({ url: url, title: title }).catch(function () {}); return; }
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { b.lastChild.textContent = '복사됨'; });
+});
+</script>
 {% endblock %}
