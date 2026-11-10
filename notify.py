@@ -108,7 +108,8 @@ def short(text, limit=30):
     return text if len(text) <= limit else text[:limit - 1] + '…'
 
 
-def send_email(to, subject, body, html=None, headers=None, from_name=None):
+def send_email(to, subject, body, html=None, headers=None, from_name=None, bcc=None):
+    # bcc: 받는 사람에게 보이지 않는 사본 (기업 안내 메일을 운영 메일함에 남기기, 2026-11-10)
     # html이 있으면 글(body)과 HTML 두 가지를 함께 보냄. headers는 List-Unsubscribe 같은 머리글 (소보루 레터)
     msg = EmailMessage()
     msg['Subject'] = subject
@@ -127,7 +128,8 @@ def send_email(to, subject, body, html=None, headers=None, from_name=None):
         server.starttls()
     with server:
         server.login(env('SMTP_USER'), env('SMTP_PASSWORD'))
-        server.send_message(msg)
+        extra = [b for b in (bcc or []) if b and b != to]
+        server.send_message(msg, to_addrs=[to] + extra) if extra else server.send_message(msg)
 
 
 def http_post(url, payload, headers):

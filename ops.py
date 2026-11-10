@@ -7,7 +7,7 @@
 - 운영 통계: 실제 DB로 계산하고 집계 기간과 산식을 함께 보여 줌
 app.py 끝에서 install(S)로 붙임 (jebo.py와 같은 방식).
 """
-import datetime, hashlib, re, secrets
+import datetime, hashlib, os, re, secrets
 import company_mail
 from pathlib import Path
 from flask import request, redirect, url_for, flash, abort, render_template, session, g, has_request_context, after_this_request
@@ -211,7 +211,8 @@ def install(S):
         html = render_template('company_notice_email.html', subject=subject, company=company['name'], site=notify.CENTER, intro=notify.INTRO, receipt=case['receipt'],
                                category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind')
         try:
-            notify.send_email(to, subject, body, html=html); status, memo = '보냄', ''
+            # 운영 메일함(OPS_EMAIL, 하이웍스)에 사본을 남겨 보낸 기록을 볼 수 있게 (운영자 2026-11-10)
+            notify.send_email(to, subject, body, html=html, from_name=notify.CENTER, bcc=[os.getenv('OPS_EMAIL', '').strip()]); status, memo = '보냄', ''
         except Exception as e:
             status, memo = '실패', str(e)[:200]
         db.execute('INSERT INTO company_notices(case_id,company_id,kind,target,status,memo,actor,created) VALUES(?,?,?,?,?,?,?,?)',
