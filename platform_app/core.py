@@ -1,6 +1,6 @@
 """SOBORU 플랫폼 공통: DB, 처리 규칙(플레이북), 사건 처리 동작, 보안 도우미.
 
-소비자용 고객센터(소보루 CX)과 기업용(소보루 CX)이 같은 DB의 같은 사건을 다룬다.
+소비자용 고객센터(소보루CX)과 기업용(소보루CX)이 같은 DB의 같은 사건을 다룬다.
 홈페이지(소비자제보센터, 저장소 최상위 app.py)와는 DB도 서비스도 따로 쓴다.
 """
 import os, re, sqlite3, secrets, hashlib, hmac, datetime, contextlib, smtplib, threading, json, urllib.request, urllib.error
@@ -22,13 +22,13 @@ SECRET=os.getenv('SECRET_KEY') or secrets.token_hex(32)
 CONSUMER_HOST=os.getenv('CONSUMER_HOST','').strip().lower()
 BUSINESS_HOST=os.getenv('BUSINESS_HOST','').strip().lower()
 PILOT=os.getenv('PLATFORM_MODE','pilot')!='live'
-CNAME=os.getenv('CONSUMER_NAME','소보루 CX')  # 소비자 서비스 이름 (로고·제목·메일)
-BNAME=os.getenv('BUSINESS_NAME','소보루 CX')
+CNAME=os.getenv('CONSUMER_NAME','소보루CX')  # 소비자 서비스 이름 (로고·제목·메일)
+BNAME=os.getenv('BUSINESS_NAME','소보루CX')
 COPY_SITES={'me':'고객센터','biz':'기업용','all':'두 곳 모두'}  # 문구 고치기 적용 범위  # 기업 서비스 이름
 # 개인정보 처리방침에 적는 운영 주체 (개인정보 보호법 제30조). 보호책임자는 대표자 (같은 법 제31조, 시행령 제32조제2항제2호가목)
 OPERATOR={'name':'소보루','ceo':'오규섭','biz_no':'129-14-81596','address':'서울시 강남구 논현로 310-1 4층 401호','manager':'오민주','phone':'02-749-7515','mail_order':''}  # mail_order: 통신판매업 신고번호 (신고하면 넣는다, 비어 있으면 안 보임)
 PRIVACY_SINCE='2026년 10월 12일'
-TERMS_SINCE='2026년 10월 13일'  # 소보루 CX 기업 회원 이용약관 시행일
+TERMS_SINCE='2026년 10월 13일'  # 소보루CX 기업 회원 이용약관 시행일
 REFUND_SINCE='2026년 10월 18일'  # 환불 정책 시행일
 RETENTION_YEARS=3  # 마지막 처리일부터 이 기간이 지난 요청은 purge_old()가 파기
 # 검색 노출: 이 화면들만 검색에 나오고 나머지(내 접수, 요청, 운영 등)는 noindex
@@ -529,7 +529,7 @@ def notify_consumer(c,subject,text):
     send_kakao(c['phone'],{'#{회사}':short(c['company_name'],20),'#{내용}':short(text.split('\n')[0],40),'#{접수번호}':c['no'],'#{링크}':site_url('me','/mine')},'CS_KAKAO_TPL_REPLY','소비자 알림톡')
     send_push(c['id'],c['company_name'],text.split('\n')[0])
 def send_push(case_id,title,body):
-    """소보루 CX 앱에서 이 요청을 열어 둔 휴대폰에 알림 (Expo 푸시). 앱을 안 쓰면 아무것도 안 한다."""
+    """소보루CX 앱에서 이 요청을 열어 둔 휴대폰에 알림 (Expo 푸시). 앱을 안 쓰면 아무것도 안 한다."""
     with conn() as db:toks=[r[0] for r in db.execute('SELECT token FROM app_push WHERE case_id=?',(case_id,))]
     expo_push(toks,title,body,{'case_id':case_id},'app_push')
 def send_biz_push(company_id,title,body,case_id):

@@ -2,7 +2,7 @@
 {% import '_i.html' as i %}
 {% macro bar(tab='') -%}
 <header class="gnb"><div class="wrap">
-<a class="logo cs-logo" href="{{ url_for('company_page',company_id=CS.id) if CS else url_for('home') }}"><img class="cxlogo" src="{{ url_for('static',filename='cx-logo.png') }}?v=1" alt="소보루 CX" width="485" height="96"></a>
+<a class="logo cs-logo" href="{{ url_for('company_page',company_id=CS.id) if CS else url_for('home') }}"><img class="cxlogo" src="{{ url_for('static',filename='cx-logo.png') }}?v=1" alt="소보루CX" width="485" height="96"></a>
 <nav>
 <a href="{{ url_for('mine') }}" class="{{ 'on' if tab=='mine' }}">내 접수{% if n_mine %}<span class="cnt">{{ n_mine }}</span>{% endif %}</a>
 <a href="{{ url_for('guide') }}" class="{{ 'on' if tab=='guide' }}">이용 안내</a>

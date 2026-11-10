@@ -1,4 +1,4 @@
-"""기업용 소보루 CX (+ 센터 운영 화면 /ops).
+"""기업용 소보루CX (+ 센터 운영 화면 /ops).
 
 기업: 가입 → 운영자 승인 → 로그인 → 승인 카드(승인·보류·자료 요청), 전체 요청, 자동 처리 규칙, 설정.
 운영자: 기업 가입 승인, 기업 목록, 비입점 기업 요청 처리(전달 시도·회신 기록·피해구제 안내).
@@ -86,7 +86,7 @@ def pay_guard():
     co=real()
     if co and not billing.open_ok(co):
         if request.method=='GET':return redirect(url_for('pay.page'))
-        flash('결제가 확인되지 않아 소보루 CX를 쓸 수 없어요. 카드를 등록하거나 결제해 주세요.','error');return redirect(url_for('pay.page'))
+        flash('결제가 확인되지 않아 소보루CX를 쓸 수 없어요. 카드를 등록하거나 결제해 주세요.','error');return redirect(url_for('pay.page'))
 def login_required(f):
     @functools.wraps(f)
     def w(*a,**k):
@@ -295,7 +295,7 @@ def google_callback():
     return redirect(url_for('signup'))
 
 # ---------- 처음 설정 도우미 (/start) ----------
-TEST_CASE=dict(channel='기타',category='배송 조회',title='[시험 문의] 주문한 상품은 언제 오나요?',body='소보루 CX 시험 문의예요. 실제 고객이 아니에요. 답변을 보내 보세요.',want='배송 확인',name='시험 고객')
+TEST_CASE=dict(channel='기타',category='배송 조회',title='[시험 문의] 주문한 상품은 언제 오나요?',body='소보루CX 시험 문의예요. 실제 고객이 아니에요. 답변을 보내 보세요.',want='배송 확인',name='시험 고객')
 @app.route('/start',methods=['GET','POST'])
 @login_required
 def start():
@@ -1623,7 +1623,7 @@ def ops_keys():
 COPY_PAGES=[('c_home.html','고객 첫 화면'),('c_new.html','요청 접수'),('c_done.html','접수 완료'),('c_mine.html','내 접수'),('c_case.html','접수 상세'),
  ('c_company.html','기업별 고객센터'),('c_guide.html','이용 안내'),('c_relief.html','피해구제 안내'),('c_privacy.html','개인정보 처리방침'),('c_error.html','오류 화면'),
  ('_c.html','고객 공통 메뉴'),('_chat.html','상담 챗봇'),('consumer.py','고객 안내 메시지'),
- ('b_intro.html','소보루 CX 소개'),('b_login.html','로그인'),('b_signup.html','가입'),('b_start.html','처음 설정'),('b_forgot.html','비밀번호 찾기'),
+ ('b_intro.html','소보루CX 소개'),('b_login.html','로그인'),('b_signup.html','가입'),('b_start.html','처음 설정'),('b_forgot.html','비밀번호 찾기'),
  ('b_decide.html','사장님 홈'),('b_all.html','요청 목록'),('b_case.html','요청 상세'),('b_new.html','직접 등록'),('b_rules.html','자동 처리'),('b_stats.html','통계'),
  ('b_report.html','리포트'),('insights.py','리포트 분석 문구'),('b_guide.html','응대 가이드'),('law.py','응대 가이드 상황별 문구'),('b_news.html','법·제도 소식'),
  ('b_settings.html','설정'),('b_record.html','처리 기록'),('b_terms.html','약관'),('b_refund.html','환불 정책'),('b_pricing.html','요금 안내'),('_b.html','기업 공통 메뉴'),('business.py','기업 안내 메시지'),
@@ -1632,7 +1632,7 @@ COPY_PAGES=[('c_home.html','고객 첫 화면'),('c_new.html','요청 접수'),(
 @app.route('/ops/copy',methods=['GET','POST'])
 @ops_required
 def ops_copy():
-    """문구 고치기: 고객센터·소보루 CX 화면의 문구를 바꾼다. 템플릿은 그대로 두고 화면에 내보낼 때만 바꾼다.
+    """문구 고치기: 고객센터·소보루CX 화면의 문구를 바꾼다. 템플릿은 그대로 두고 화면에 내보낼 때만 바꾼다.
     저장하면 그대로 유지되고, 같은 자리에서 언제든 다시 고칠 수 있다."""
     q=clean(request.values.get('q'),100);pg=request.values.get('pg','')
     ajax=request.headers.get('X-Requested-With')=='fetch'
@@ -1676,7 +1676,7 @@ def ops_copy():
 
 
 VISUAL_PAGES=[('me','/','고객 첫 화면',0),('me','/new','요청 접수',0),('me','/guide','이용 안내',0),('me','/mine','내 접수',0),('me','/to/','기업별 고객센터',0),('me','/privacy','개인정보 처리방침',0),
- ('biz','/','소보루 CX 소개',0),('biz','/login','로그인',0),('biz','/signup','가입',0),('biz','/forgot','비밀번호 찾기',0),('biz','/terms','약관',0),('biz','/pricing','요금 안내',0),('biz','/refund','환불 정책',0),
+ ('biz','/','소보루CX 소개',0),('biz','/login','로그인',0),('biz','/signup','가입',0),('biz','/forgot','비밀번호 찾기',0),('biz','/terms','약관',0),('biz','/pricing','요금 안내',0),('biz','/refund','환불 정책',0),
  ('biz','/','사장님 홈',1),('biz','/all','요청 목록',1),('biz','/rules','자동 처리',1),('biz','/stats','통계',1),('biz','/report','리포트',1),('biz','/guide','응대 가이드',1),('biz','/news','법·제도 소식',1),('biz','/new','직접 등록',1),('biz','/settings','설정',1)]
 
 def visual_companies():

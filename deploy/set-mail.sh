@@ -2,7 +2,7 @@
 # 새 제보 알림 메일을 켭니다. 보내는 메일 계정(지메일·네이버)과 받을 주소를 서버 설정에 넣고 사이트를 다시 시작합니다.
 # 사용법: sudo bash /opt/soboru/app/deploy/set-mail.sh 보내는주소@gmail.com 받을주소1,받을주소2
 #   앱 비밀번호는 실행하면 화면에 안 보이게 물어봄 (명령어·기록에 남지 않게). 예전처럼 둘째 칸에 넣어도 됨.
-#   소보루 CX(/etc/soboru-platform.env)는 따로 설정하므로 건드리지 않음. 같은 계정을 넣으려면 맨 끝에 --cs
+#   소보루CX(/etc/soboru-platform.env)는 따로 설정하므로 건드리지 않음. 같은 계정을 넣으려면 맨 끝에 --cs
 #   회사 주소(구글 워크스페이스): sudo bash .../set-mail.sh letter@consumerjebo.co.kr 받을주소
 #   회사 메일은 메일 서버(MX)를 보고 하이웍스(smtps.hiworks.com)·네이버웍스(smtp.worksmobile.com)·구글을 알아서 고름. 직접 정하기: sudo MAIL_HOST=smtp.example.com bash .../set-mail.sh ...
 #   보내기 전용 서비스(Brevo 등)로 보낼 때: 로그인 아이디가 보내는 주소와 다르면 MAIL_USER로 따로 줌. 보내는 주소는 그대로 FROM.
@@ -43,7 +43,7 @@ grep -vE '^(SMTP_HOST|SMTP_PORT|SMTP_USER|SMTP_PASSWORD|ADMIN_ALERT_EMAIL|MAIL_F
 printf 'SMTP_HOST=%s\nSMTP_PORT=465\nSMTP_USER=%s\nSMTP_PASSWORD=%s\nADMIN_ALERT_EMAIL=%s\nMAIL_FROM=%s\n' "$HOST" "$USER_ID" "$PW" "$TO" "$FROM" >> "$TMP"
 cat "$TMP" > "$ENV_FILE"; rm -f "$TMP"
 systemctl restart soboru
-# 소보루 CX가 설치돼 있으면 같은 메일 계정을 거기에도 넣음 (사장님 비밀번호 찾기·알림 메일)
+# 소보루CX가 설치돼 있으면 같은 메일 계정을 거기에도 넣음 (사장님 비밀번호 찾기·알림 메일)
 PENV=/etc/soboru-platform.env
 if [[ $CS == 1 && -f $PENV ]]; then
   TMP=$(mktemp)
@@ -51,7 +51,7 @@ if [[ $CS == 1 && -f $PENV ]]; then
   printf 'SMTP_HOST=%s\nSMTP_PORT=465\nSMTP_USER=%s\nSMTP_PASSWORD=%s\nSMTP_FROM=%s\n' "$HOST" "$USER_ID" "$PW" "$FROM" >> "$TMP"
   cat "$TMP" > "$PENV"; rm -f "$TMP"
   systemctl restart soboru-platform 2>/dev/null || true
-  echo "소보루 CX에도 같은 메일 계정을 넣었습니다."
+  echo "소보루CX에도 같은 메일 계정을 넣었습니다."
 fi
 echo "저장했습니다. 이제 새 제보가 들어오면 $TO 로 메일이 갑니다."
 # 연결 시험: 받을 주소 첫 번째로 시험 메일 한 통 (실패하면 이유를 보여 줌)

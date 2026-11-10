@@ -228,7 +228,7 @@ def manage():
                 if wh and act=='hook_del':db.execute('DELETE FROM webhooks WHERE id=?',(wh['id'],));db.execute('DELETE FROM webhook_log WHERE webhook_id=?',(wh['id'],));flash('웹훅을 지웠어요','ok')
                 elif wh and act=='hook_on':db.execute('UPDATE webhooks SET active=1,fails=0 WHERE id=?',(wh['id'],));flash('웹훅을 다시 켰어요','ok')
                 elif wh:
-                    ok=deliver(db,wh,'ping','',{'message':'소보루 CX 웹훅 시험이에요'})
+                    ok=deliver(db,wh,'ping','',{'message':'소보루CX 웹훅 시험이에요'})
                     flash('시험 알림을 보냈어요' if ok else '시험 알림을 보내지 못했어요. 아래 보낸 기록을 확인해 주세요','ok' if ok else 'error')
             if not new_key:return redirect(url_for('api.manage'))
         keys=db.execute('SELECT * FROM api_keys WHERE company_id=? ORDER BY revoked!=\'\',id DESC',(co['id'],)).fetchall()

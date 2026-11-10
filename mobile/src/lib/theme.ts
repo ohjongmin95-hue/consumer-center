@@ -1,8 +1,8 @@
-// 소보루 CX 색과 간격. 웹(platform_app/static/hanq.css)과 같은 값을 쓴다.
+// 소보루CX 색과 간격. 웹(platform_app/static/hanq.css)과 같은 값을 쓴다.
 export const C = {
   // TDS처럼 강조색은 한 톤만 (OH 11/07: '버튼·메인색만 귤색인 토스'). 글씨·버튼·배지 모두 이 귤색 하나, 옅은 바탕은 accentSoft
   accent: '#EF920E',
-  brand: '#652D1C', // 소보루 CX 로고 글자 (로고 이미지의 갈색)
+  brand: '#652D1C', // 소보루CX 로고 글자 (로고 이미지의 갈색)
   accentPress: '#DB840A',
   accentSoft: '#FFF4E0',
   accentInk: '#EF920E',
