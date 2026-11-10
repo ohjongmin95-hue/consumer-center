@@ -26,11 +26,14 @@
   </section>
   <section class="sec" id="shop"><h2>가게</h2>
     <div class="tscroll"><table class="tbl"><tr><th>가게</th><th>위생</th><th>가게 화면 주소</th><th></th></tr>
-    {% for h in shops %}<tr class="{{ 'off' if not h.active }}"><td>{{ h.name }}<br><span class="mono">{{ h.phone }}</span></td><td>{{ h.hygiene }}</td><td class="mono">{{ url_for('shop_page', token=h.token, _external=True) }}</td><td>{{ tg('shops', h) }}</td></tr>{% endfor %}</table></div>
-    <form method="post" class="form2" style="margin-top:8px"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="shop">
-      <label class="fld"><span>가게 이름</span><input name="name" required></label><label class="fld"><span>전화</span><input name="phone"></label>
-      <label class="fld full"><span>위생 (선택, 손님 화면에 보여요)</span><input name="hygiene" placeholder="예: 식약처 위생등급 매우 우수"></label>
-      <button class="cta full" style="margin-top:14px">가게 넣기</button></form>
+    {% for h in shops %}<tr class="{{ 'off' if not h.active }}"><td>{{ h.name }}<br><span class="mono">{{ h.phone }}</span></td><td>{{ h.hygiene }}</td><td class="mono">{{ url_for('shop_page', token=h.token, _external=True) }}</td><td><a class="mini" href="{{ url_for('admin_menu', eshop=h.id) }}#shop">고치기</a> {{ tg('shops', h) }}</td></tr>{% endfor %}</table></div>
+    <form method="post" class="form2" style="margin-top:8px"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="kind" value="shop">{% set es = shops|selectattr('id','equalto',eshop)|first if eshop else none %}{% if es %}<input type="hidden" name="id" value="{{ es.id }}">{% endif %}
+      <label class="fld"><span>가게 이름 (상호)</span><input name="name" required value="{{ es.name if es else '' }}"></label><label class="fld"><span>전화</span><input name="phone" value="{{ es.phone if es else '' }}"></label>
+      <label class="fld"><span>대표자</span><input name="owner" value="{{ es.owner if es else '' }}"></label><label class="fld"><span>사업자등록번호</span><input name="biz_no" placeholder="000-00-00000" value="{{ es.biz_no if es else '' }}"></label>
+      <label class="fld full"><span>사업장 주소</span><input name="address" value="{{ es.address if es else '' }}"></label>
+      <label class="fld full"><span>위생 (선택, 손님 화면에 보여요)</span><input name="hygiene" placeholder="예: 식약처 위생등급 매우 우수" value="{{ es.hygiene if es else '' }}"></label>
+      <p class="note full" style="margin:6px 0 0">상호·대표자·사업자번호·주소는 손님 세트 화면에 '판매자 정보'로 보여요. 중개 플랫폼은 꼭 보여야 해요.</p>
+      <button class="cta full" style="margin-top:14px">{{ '가게 고치기' if es else '가게 넣기' }}</button></form>
   </section>
   <section class="sec" id="place"><h2>받는 곳</h2>
     <div class="tscroll"><table class="tbl">{% for p in places %}<tr class="{{ 'off' if not p.active }}"><td>{{ p.name }}</td><td>{{ p.kind }}</td><td>{{ p.note }}</td><td>{{ tg('places', p) }}</td></tr>{% else %}<tr><td style="color:var(--mute)">예: 광교 ○○타워 1층 로비, ○○아파트 정문</td></tr>{% endfor %}</table></div>

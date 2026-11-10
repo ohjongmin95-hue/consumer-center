@@ -18,7 +18,7 @@ def moa(tmp_path, monkeypatch):
     app = moabap.create_app(str(db))
     app.config['TESTING'] = True
     c = sqlite3.connect(db)
-    c.execute("INSERT INTO shops(name,hygiene,token) VALUES('오늘제육','위생등급 우수','tok')")
+    c.execute("INSERT INTO shops(name,hygiene,token,owner,biz_no) VALUES('오늘제육','위생등급 우수','tok','김사장','123-45-67890')")
     c.execute("INSERT INTO sets(shop_id,name,price,orig,supply,cap) VALUES(1,'제육 도시락',5900,9500,4500,3)")
     c.execute("INSERT INTO places(name) VALUES('중앙타워 로비')")
     c.commit()
@@ -46,6 +46,8 @@ def test_home_and_set(moa):
     assert '제육 도시락' in h and '5,900원' in h and '배달비 0원' in h
     s = cl.get('/set/1').get_data(as_text=True)
     assert '매장 가격보다 3,600원 싸요' in s and '중앙타워 로비' in s
+    assert '판매자 정보' in s and '123-45-67890' in s and '통신판매중개자' in s
+    assert '통신판매중개자' in h
     assert cl.get('/set/99').status_code == 404
     assert cl.get('/privacy').status_code == 200
     r = cl.get('/refund').get_data(as_text=True)
@@ -114,6 +116,9 @@ def test_admin_menu_adds(moa):
     cl.post('/admin/login', data={'_csrf': t, 'pw': 'pw'})
     cl.post('/admin/menu', data={'_csrf': t, 'kind': 'place', 'name': '힐스테이트 정문', 'pkind': '아파트'})
     cl.post('/admin/menu', data={'_csrf': t, 'kind': 'set', 'shop_id': '1', 'name': '김치찌개', 'price': '7900', 'cat': '한식'})
+    cl.post('/admin/menu', data={'_csrf': t, 'kind': 'shop', 'id': '1', 'name': '오늘제육', 'owner': '이대표', 'biz_no': '222-33-44444', 'address': '수원시 영통구'})
+    assert '이대표' in cl.get('/admin/menu?eshop=1').get_data(as_text=True)
+    assert '222-33-44444' in cl.get('/set/1').get_data(as_text=True)
     page = cl.get('/admin/menu').get_data(as_text=True)
     assert '힐스테이트 정문' in page and '김치찌개' in page
 

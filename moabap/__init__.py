@@ -75,6 +75,10 @@ def create_app(db_path=None):
     def init():
         with conn() as db:
             db.executescript(SCHEMA)
+            have = {r[1] for r in db.execute('PRAGMA table_info(shops)')}
+            for col in ('owner', 'biz_no', 'address'):  # 통신판매중개: 판매자(가게) 정보 표시
+                if col not in have:
+                    db.execute(f"ALTER TABLE shops ADD COLUMN {col} TEXT DEFAULT ''")
             if not db.execute('SELECT 1 FROM slots').fetchone():  # 처음: 점심·저녁 30분 간격 (운영자가 /admin/menu에서 바꿈)
                 db.executemany('INSERT INTO slots(at,cutoff) VALUES(?,40)', [(t,) for t in ('12:00', '12:30', '13:00', '18:00', '18:30', '19:00')])
     init()
@@ -124,7 +128,7 @@ def create_app(db_path=None):
         return out
 
     def sets_q(db, where='1=1', args=()):
-        return db.execute(f'SELECT s.*,h.name AS shop,h.hygiene FROM sets s JOIN shops h ON h.id=s.shop_id WHERE s.active=1 AND h.active=1 AND {where} ORDER BY s.sort,s.id', args).fetchall()
+        return db.execute(f'SELECT s.*,h.name AS shop,h.hygiene,h.owner,h.biz_no,h.address FROM sets s JOIN shops h ON h.id=s.shop_id WHERE s.active=1 AND h.active=1 AND {where} ORDER BY s.sort,s.id', args).fetchall()
 
     # ── 손님 ─────────────────────────────────────────
     @moa.get('/')
@@ -284,7 +288,11 @@ def create_app(db_path=None):
             if request.method == 'POST':
                 f, kind = request.form, request.form.get('kind')
                 if kind == 'shop':
-                    db.execute('INSERT INTO shops(name,phone,hygiene,token) VALUES(?,?,?,?)', (f['name'].strip(), f.get('phone', ''), f.get('hygiene', ''), secrets.token_urlsafe(12)))
+                    vals = (f['name'].strip(), f.get('phone', ''), f.get('hygiene', ''), f.get('owner', '').strip(), f.get('biz_no', '').strip(), f.get('address', '').strip())
+                    if f.get('id'):
+                        db.execute('UPDATE shops SET name=?,phone=?,hygiene=?,owner=?,biz_no=?,address=? WHERE id=?', vals + (f.get('id', type=int),))
+                    else:
+                        db.execute('INSERT INTO shops(name,phone,hygiene,owner,biz_no,address,token) VALUES(?,?,?,?,?,?,?)', vals + (secrets.token_urlsafe(12),))
                 elif kind == 'set':
                     vals = (f.get('shop_id', type=int), f['name'].strip(), f.get('cat', '한식'), f.get('emoji') or '🍱', f.get('price', type=int) or 0, f.get('orig', type=int) or 0,
                             f.get('supply', type=int) or 0, f.get('cap', type=int) or 50, f.get('cook_min', type=int) or 15, f.get('note', ''))
@@ -301,7 +309,7 @@ def create_app(db_path=None):
                 return redirect(url_for('admin_menu') + '#' + (kind or ''))
             data = {t: db.execute(f'SELECT * FROM {t} ORDER BY {o}').fetchall() for t, o in (('shops', 'id'), ('places', 'kind,name'), ('slots', 'at'))}
             data['sets'] = db.execute('SELECT s.*,h.name AS shop FROM sets s LEFT JOIN shops h ON h.id=s.shop_id ORDER BY s.sort,s.id').fetchall()
-        return render_template('moa_menu.html', edit=request.args.get('edit', type=int), **data)
+        return render_template('moa_menu.html', edit=request.args.get('edit', type=int), eshop=request.args.get('eshop', type=int), **data)
 
     @moa.get('/admin/logout')
     def admin_logout():
