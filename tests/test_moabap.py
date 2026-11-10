@@ -48,6 +48,8 @@ def test_home_and_set(moa):
     assert '매장 가격보다 3,600원 싸요' in s and '중앙타워 로비' in s
     assert cl.get('/set/99').status_code == 404
     assert cl.get('/privacy').status_code == 200
+    r = cl.get('/refund').get_data(as_text=True)
+    assert '취소·환불 정책' in r and '주문 마감 전' in r
 
 
 def test_order_first_coupon_then_full_price(moa):

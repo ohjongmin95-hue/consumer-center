@@ -25,7 +25,7 @@
     <dl class="rows"><div><dt>① 고르기</dt><dd>세트와 도착 시간, 받는 곳을 골라요</dd></div><div><dt>② 마감</dt><dd>도착 40분 전에 주문을 모아 가게에 넘겨요</dd></div><div><dt>③ 한 번에</dt><dd>라이더 한 명이 같은 곳 주문을 한 번에 가져가요</dd></div></dl>
     <p class="note">⏰ 약속한 시간보다 15분 넘게 늦으면 다음 주문에 쓰는 2,000원 할인을 드려요.</p>
   </section>
-  <p class="foot">모아밥{% if biz %} · {{ biz }}{% endif %}{% if contact %} · {{ contact }}{% endif %} · <a href="{{ url_for('privacy') }}" style="text-decoration:underline">개인정보처리방침</a><br>가게가 직접 만들고, 모아밥은 주문을 모아 배달을 연결해요.</p>
+  <p class="foot">모아밥{% if biz %} · {{ biz }}{% endif %}{% if contact %} · {{ contact }}{% endif %} · <a href="{{ url_for('privacy') }}" style="text-decoration:underline">개인정보처리방침</a> · <a href="{{ url_for('refund') }}" style="text-decoration:underline">취소·환불 정책</a><br>가게가 직접 만들고, 모아밥은 주문을 모아 배달을 연결해요.</p>
 </main>
 {% endblock %}
 {% block bar %}{% with tab='home' %}{% include 'moa_tabs.html' %}{% endwith %}{% endblock %}

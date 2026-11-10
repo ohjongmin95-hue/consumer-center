@@ -207,6 +207,10 @@ def create_app(db_path=None):
             rows = db.execute(f"SELECT o.*,s.name AS set_name,s.emoji FROM orders o JOIN sets s ON s.id=o.set_id WHERE o.code IN ({','.join('?' * len(codes))}) ORDER BY o.id DESC", codes).fetchall() if codes else []
         return render_template('moa_orders.html', rows=rows)
 
+    @moa.get('/refund')
+    def refund():
+        return render_template('moa_refund.html')
+
     @moa.get('/privacy')
     def privacy():
         return render_template('moa_privacy.html')
