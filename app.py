@@ -3091,6 +3091,7 @@ import mag_made;mag_made.install(types.SimpleNamespace(**globals()))  # 만든 �
 import mag_maker;mag_maker.install(types.SimpleNamespace(**globals()))  # 카드뉴스·릴스 만들기 (mag_maker.py)
 import auto_content;auto_content.install(types.SimpleNamespace(**globals()))  # 자동 카드뉴스·릴스 (auto_content.py, 2026-11-06)
 import mag_editors;mag_editors.install(types.SimpleNamespace(**globals()))  # 소보루 매거진 에디터 계정·승인·통계 (mag_editors.py)
+import app_screens;app_screens.install(types.SimpleNamespace(**globals()))  # 소보루고발 앱 전용 홈·기업 순위·공동 대응 (app_screens.py, 운영자 2026-11-11)
 company_fix.fix_old_cases(conn,link_company)  # 예전 제보의 큰 기업 이름 오타도 고침 (company_fix.py)
 link_all_cases()  # 큰 기업 미리 등록: 처음 배포할 때 한 번만 (company_mail.py, data/companies_seed.csv)  # 소보루 커뮤니티 예시 글: 처음 배포할 때 한 번만 (soboru_examples.py)
 

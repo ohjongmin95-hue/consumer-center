@@ -139,7 +139,7 @@ def company_grade(db,company_id,today=None):
     waits=sorted(h for h in (hours(r['forwarded_at'],first[r['id']]) for r in answered) if h is not None and h>=0)
     out={'n':len(rows),'scored':len(scored),'silent':len(silent),'answered':len(answered),'told':len(told),'resolved':len(resolved),
          'resolved_year':sum(1 for r in rows if r['outcome']=='resolved' and r['created']>=year),'n_year':sum(1 for r in rows if r['created']>=year),
-         'grade':'','score':None,'parts':[],'word':'','tone':'none','min_n':MIN_N,'days':ANSWER_DAYS,'years':GRADE_YEARS}
+         'grade':'','score':None,'med':None,'parts':[],'word':'','tone':'none','min_n':MIN_N,'days':ANSWER_DAYS,'years':GRADE_YEARS}
     if len(scored)<MIN_N:return out
     a=len(answered)/len(scored)
     # 해결 비율은 결과를 알려 준 제보자가 MIN_N명보다 적으면 알 수 없어 중간값(절반)으로 둠
@@ -148,7 +148,7 @@ def company_grade(db,company_id,today=None):
     sp=next((p for h,p in GRADE_SPEED if med is not None and med<=h),0)
     pa=round(GRADE_PTS['answer']*a);pr=round(GRADE_PTS['resolve']*(r if r is not None else .5));score=pa+pr+sp
     g=grade_of(score)
-    out.update(grade=g,score=score,word=GRADE_WORDS[g[0]],tone=g[0].lower(),resolve_known=r is not None,
+    out.update(grade=g,score=score,med=med,word=GRADE_WORDS[g[0]],tone=g[0].lower(),resolve_known=r is not None,
                parts=[('answer','답변',pa,GRADE_PTS['answer'],f'{round(100*a)}% 답변'),
                       ('resolve','해결',pr,GRADE_PTS['resolve'],f'{round(100*r)}% 해결' if r is not None else '확인 적음 · 절반으로 계산'),
                       ('speed','속도',sp,GRADE_PTS['speed'],f'보통 {fmt_hours(med)}' if med is not None else '답변 없음')])

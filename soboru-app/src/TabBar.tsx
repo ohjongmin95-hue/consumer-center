@@ -1,4 +1,4 @@
-// 아래 탭: 홈·제보 목록·제보하기·알림·내 제보 (소보루고발제보 앱). 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
+// 아래 탭 (소보루고발 앱, 운영자 2026-11-11 헤이마오터우쑤처럼): 홈·기업 순위·고발하기(가운데 큰 버튼)·둘러보기·내 정보. 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,27 +6,27 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 export type Tab = { key: string; label: string; path: string };
 
-export const ORANGE = '#EF7300';
+export const ORANGE = '#EF920E'; // 운영자 2026-11-11: 버튼은 로고 귤색
 const INK = '#1F1A17';
 const MUTE = '#9A918A';
 
 export function tabsFor(member: boolean): Tab[] {
   return [
-    // 소보루제보 앱 (운영자 2026-11-03): 소비자제보센터(consumerjebo.co.kr)를 띄우고, 제보하기는 글쓰기 제보(/report, 위에 대화로 제보하기 칸)
+    // 고발하기는 글쓰기 제보(/report, 위에 대화로 제보하기 칸). 알림은 내 정보 안에서 봐요.
     { key: 'home', label: '홈', path: '/' },
-    { key: 'board', label: '제보 목록', path: '/reports' },
-    { key: 'report', label: '제보하기', path: '/report' },
-    { key: 'life', label: '알림', path: member ? '/me/alerts' : '/login?next=/me/alerts' },
-    member ? { key: 'my', label: '내 제보', path: '/me' } : { key: 'my', label: '내 제보', path: '/lookup' },
+    { key: 'rank', label: '기업 순위', path: '/companies/rank' },
+    { key: 'report', label: '고발하기', path: '/report' },
+    { key: 'explore', label: '둘러보기', path: '/explore' },
+    member ? { key: 'my', label: '내 정보', path: '/me' } : { key: 'my', label: '내 정보', path: '/lookup' },
   ];
 }
 
 /** 지금 화면 주소(/life/12 등)에 맞는 탭 */
 export function activeTab(path: string): string {
-  if (path === '/' || path === '') return 'home';
-  if (path.startsWith('/me/alerts')) return 'life';
-  if (path.startsWith('/report') && !path.startsWith('/reports')) return 'report';
-  if (['/reports', '/companies', '/board'].some((x) => path.startsWith(x))) return 'board';
+  if (path === '/' || path === '' || path.startsWith('/reports')) return 'home';
+  if (path.startsWith('/report')) return 'report';
+  if (path.startsWith('/companies')) return 'rank';
+  if (path.startsWith('/explore')) return 'explore';
   if (path.startsWith('/me') || path.startsWith('/lookup')) return 'my';
   return '';
 }
@@ -36,10 +36,10 @@ function Icon({ name, color }: { name: string; color: string }) {
   return (
     <Svg width={23} height={23} viewBox="0 0 24 24">
       {name === 'home' && <Path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" {...p} />}
-      {name === 'life' && (<><Path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z" {...p} /><Path d="M10 20.5a2 2 0 004 0" {...p} /></>)}
-      {name === 'board' && (<><Path d="M5 4h14v16H5z" {...p} /><Path d="M8.5 9h7M8.5 13h7M8.5 17h4" {...p} /></>)}
+      {name === 'rank' && (<><Path d="M5 20V12M12 20V5M19 20v-6" {...p} strokeWidth={2.4} /><Path d="M3 20.5h18" {...p} /></>)}
+      {name === 'explore' && (<><Circle cx={12} cy={12} r={8.5} {...p} /><Path d="M15.5 8.5l-2 5-5 2 2-5z" {...p} /></>)}
       {name === 'my' && (<><Circle cx={12} cy={8.5} r={4} {...p} /><Path d="M4 21c.9-4 4-6 8-6s7.1 2 8 6" {...p} /></>)}
-      {name === 'report' && <Path d="M12 5v14M5 12h14" {...p} strokeWidth={2.6} />}
+      {name === 'report' && (<><Path d="M12 4.5v9" {...p} strokeWidth={3} /><Circle cx={12} cy={18.5} r={1.4} fill={color} /></>)}
     </Svg>
   );
 }
@@ -76,7 +76,7 @@ export default function TabBar({ tabs, active, onPress }: { tabs: Tab[]; active:
 const s = StyleSheet.create({
   bar: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E8E2DC', paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 3, minHeight: 50 },
-  plus: { width: 38, height: 38, borderRadius: 14, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: -6,
+  plus: { width: 50, height: 50, borderRadius: 25, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: -20, borderWidth: 3, borderColor: '#FFFFFF',
     shadowColor: ORANGE, shadowOpacity: 0.32, shadowRadius: 7, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   label: { fontSize: 11, fontWeight: '600' },
 });

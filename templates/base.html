@@ -44,16 +44,17 @@
   <meta name="apple-mobile-web-app-title" content="소보루"><meta name="mobile-web-app-capable" content="yes">{% endif %}
   <link rel="stylesheet" href="{{ asset('style.css') }}">
   <link rel="stylesheet" href="{{ asset('report-feed.css') }}">
+  {% if app_jebo() %}<link rel="stylesheet" href="{{ asset('app-jebo.css') }}">{% endif %}{# 소보루고발 앱 화면: 토스 TDS (운영자 2026-11-11) #}
   {% if not is_soboru() and request.path.startswith('/tools') %}<link rel="stylesheet" href="{{ asset('tools-jebo.css') }}">{% endif %}{# 계산기·사전·법령 찾기 토스 TDS (운영자 2026-11-03) #}
   {% if not is_soboru() and request.path.startswith('/ask') %}<link rel="stylesheet" href="{{ asset('ask-jebo.css') }}">{% endif %}{# AI 소비자 상담을 제보센터에서도 (운영자 2026-11-03) #}
   {% if is_soboru() %}<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">{# 소보루 글꼴 Pretendard (SIL OFL), 화면에 쓰는 글자만 나눠 받음 #}
   <link rel="stylesheet" href="{{ asset('soboru.css') }}">{% endif %}
 </head>
-<body{% if is_soboru() or app_client() %} class="{{ 'sb' if is_soboru() }}{{ ' lt-alone' if letter_alone() }}{{ ' in-app' if app_client() }}"{% endif %}>
+<body{% if is_soboru() or app_client() %} class="{{ 'sb' if is_soboru() }}{{ ' lt-alone' if letter_alone() }}{{ ' in-app' if app_client() }}{{ ' ap-body' if app_jebo() }}"{% endif %}>
 {# 운영자 2026-11-03: 제보센터 로그인·회원가입은 토스처럼 메뉴 없는 별도 화면 (로고 + 닫기만, 바닥글 없음) #}{% set auth_screen = not is_soboru() and request.endpoint in ('login', 'signup', 'account_help', 'social_join', 'phone_start') %}
 {# 운영자 2026-11-03: 휴대폰에서 제보 쓸 때는 메뉴·바닥글 없이 꽉 찬 화면 (로고 + 닫기만) #}{% set write_screen = not is_soboru() and request.endpoint in ('report', 'report_talk') %}{# 운영자 2026-11-03: 자문단 초대·모집은 메뉴 없는 별도 페이지 (로고 + 닫기, 바닥글은 둠) #}{% set expert_screen = not is_soboru() and request.endpoint in ('expert_join', 'expert_apply', 'expert_done', 'expert_claim') %}{# 운영자 2026-11-06: 기업 1회용 답변 링크는 메뉴·바닥글·닫기 없는 별도 페이지 (로고만) #}{% set company_screen = not is_soboru() and request.endpoint == 'company_access' %}{% set auth_bar %}<header class="auth-top{{ ' write-top' if write_screen }}{{ ' xf-top' if expert_screen }}{{ ' cr-top' if company_screen }}"><a class="brand" href="{{ url_for('home') }}" aria-label="{{ txt('site.name') }} 홈">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% if txt('site.logo_by') %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a>{% if not company_screen %}<a class="auth-x" href="{{ url_for('home') }}" aria-label="{{ ui('common.close', '닫기') }}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>{% endif %}</header>{% endset %}
-{% if letter_alone() %}{% include 'letter_header.html' %}{% elif is_soboru() %}{% include 'soboru_header.html' %}{% elif auth_screen or expert_screen or company_screen %}{{ auth_bar }}{% else %}{% include 'jebo_header.html' %}{% if write_screen %}{{ auth_bar }}{% endif %}{% endif %}
+{% if letter_alone() %}{% include 'letter_header.html' %}{% elif is_soboru() %}{% include 'soboru_header.html' %}{% elif auth_screen or expert_screen or company_screen %}{{ auth_bar }}{% elif app_jebo() %}{% include 'app_header.html' %}{# 소보루고발 앱: 로고 + 업체 검색만 (app_screens.py) #}{% else %}{% include 'jebo_header.html' %}{% if write_screen %}{{ auth_bar }}{% endif %}{% endif %}
 {% with msgs = get_flashed_messages() %}
 {% if msgs %}<div class="flash-wrap{% if auth_screen %} is-auth{% endif %}" role="status">{% for msg in msgs %}<div class="alert">{{ msg }}</div>{% endfor %}</div>{% endif %}
 {% endwith %}
@@ -78,6 +79,7 @@
       {% if txt('operator.notice') %}<p class="ft-notice">{{ txt('operator.notice') }}</p>{% endif %}
       {% if txt('footer.nocopy') %}<p class="ft-notice">{{ txt('footer.nocopy') }}</p>{% endif %}
       <p class="ft-copy">{{ txt('footer.text') }}</p>
+      {% if app_jebo() %}<p class="ft-notice ap-tf">{{ ui('app.tossface', '이 서비스에는 토스페이스가 사용되었습니다.') }}</p>{% endif %}{# 토스페이스 출처 표시 (https://toss.im/tossface/copyright) #}
     </div>
   </div>
   <button type="button" class="to-top" aria-label="맨 위로" hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 14.5l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>

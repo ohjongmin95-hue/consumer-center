@@ -1,0 +1,98 @@
+/* 소보루고발 앱 화면 (app_screens.py, 운영자 2026-11-11): 헤이마오터우쑤 배치 + 토스 TDS 세부. 앱으로 열었을 때만 불러옴.
+   이모지: 토스페이스 (© Viva Republica, https://toss.im/tossface/copyright), 앱 바닥글에 출처 표시. 버튼 #EF920E. */
+@font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2?v=6) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270D,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F333,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F369,U+1F36A,U+1F36F,U+1F370,U+1F371,U+1F373,U+1F381,U+1F382,U+1F389,U+1F393,U+1F3AE,U+1F3AF,U+1F3C6,U+1F3D8,U+1F3DB,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F3EA,U+1F3F7,U+1F431,U+1F436,U+1F437,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F457,U+1F45F,U+1F484,U+1F48A,U+1F490,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4BC,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CA,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DC,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4EE,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CD,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F914,U+1F916,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F95E,U+1F96F,U+1F9C1,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EE,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
+html:has(.ap-body),body.ap-body{background:#F2F4F6!important}
+.ap-body{color:#191F28;word-break:keep-all;-webkit-font-smoothing:antialiased}
+.ap-body .site-footer{background:#F2F4F6;border-top:0;padding:28px 20px 32px}
+.ap-tf{margin-top:8px}
+.tf{font-family:Tossface,sans-serif;font-style:normal}
+/* 머리글 */
+.ap-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;background:#F2F4F6}
+.ap-logo{display:flex;align-items:center;gap:5px;flex:none;text-decoration:none}
+.ap-logo img{height:16px;width:auto;display:block}
+.ap-logo b{background:#652D1C;color:#fff;font-size:12px;font-weight:800;line-height:1;padding:4px 5px;border-radius:5px}
+.ap-search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;background:#fff;border-radius:12px;color:#B0B8C1}
+.ap-search input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:14px;color:#191F28}
+.ap-search input::placeholder{color:#B0B8C1}
+/* 공통 */
+.ap{max-width:640px;margin:0 auto;padding:4px 16px 24px;display:flex;flex-direction:column;gap:12px}
+.ap a{color:inherit;text-decoration:none}
+.ap-card{background:#fff;border-radius:24px;padding:20px 20px 12px}
+.ap-h{display:flex;align-items:center;gap:6px;font-size:20px;line-height:29px;font-weight:700;margin-bottom:6px}
+.ap-h .tf{font-size:22px}
+.ap-more{margin-left:auto;color:#B0B8C1;font-weight:500}
+.ap-row{display:flex;align-items:center;gap:12px;padding:10px 0;font-size:16px;line-height:24px;color:#333D48}
+.ap-t{flex:1;min-width:0}
+.ap-tile{flex:none;width:44px;height:44px;border-radius:14px;background:#F2F4F6;display:flex;align-items:center;justify-content:center;font-size:24px}
+.ap-badge{flex:none;font-style:normal;font-size:13px;font-weight:700;line-height:18px;padding:3px 8px;border-radius:8px;background:#F2F4F6;color:#4E5968}
+.ap-badge.red{background:#FFEEEE;color:#E42939}
+.ap-none{display:flex;flex-direction:column;align-items:center;gap:10px;padding:36px 20px;text-align:center;color:#6B7684;font-size:15px;line-height:22.5px}
+.ap-none .tf{font-size:40px}
+.ap-all{display:block;text-align:center;padding:14px 0 6px;font-size:15px;font-weight:600;color:#4E5968!important}
+/* 홈: 숫자 + 고발하기 */
+.ap-stat{display:flex;align-items:center;background:#fff;border-radius:24px;padding:20px}
+.ap-num{flex:1;display:flex;flex-direction:column;gap:2px;padding-right:12px}
+.ap-num+.ap-num{border-left:1px solid #F2F4F6;padding-left:14px}
+.ap-num small{font-size:13px;color:#8B95A1}
+.ap-num b{font-size:22px;line-height:31px;font-weight:700;font-variant-numeric:tabular-nums}
+.ap-go{flex:none;display:flex;align-items:center;justify-content:center;width:104px;height:56px;border-radius:16px;background:#EF920E;color:#fff!important;font-size:17px;font-weight:700}
+.ap-go:active,.ap-join:active{background:#E07B00}
+/* 홈: 최근 소식 한 줄 (천천히 흘러감) */
+.ap-tick{overflow:hidden;margin:0 -16px;padding:0 16px;-webkit-mask:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 16px),transparent)}
+.ap-tick-in{display:flex;gap:8px;width:max-content;animation:ap-tick 40s linear infinite}
+.ap-tick a{display:flex;align-items:center;gap:6px;white-space:nowrap;background:#fff;border-radius:18px;padding:8px 12px;font-size:13px;color:#4E5968}
+.ap-tick .tf{font-size:15px}
+@keyframes ap-tick{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ap-tick-in{animation:none}}
+/* 홈: 고발 목록 */
+.ap-tabs,.ap-cats{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;font-size:17px;font-weight:700;color:#B0B8C1;white-space:nowrap}
+.ap-tabs::-webkit-scrollbar,.ap-cats::-webkit-scrollbar{display:none}
+.ap-tabs{padding:4px 0 8px}
+.ap-tabs .on,.ap-cats .on{color:#191F28}
+.ap-case{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:14px 0;border-top:1px solid #F2F4F6}
+.ap-tabs+.ap-case{border-top:0}
+.ap-case b{font-size:17px;line-height:25.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ap-case p{grid-column:1;font-size:14px;color:#8B95A1;margin:0}
+.ap-st{grid-column:2;grid-row:1/span 2;align-self:center;font-size:13px;font-weight:600;padding:3px 8px;border-radius:8px;background:#F2F4F6;color:#4E5968;white-space:nowrap}
+.ap-st.s2{background:#E8F3FF;color:#1B64DA}.ap-st.s3{background:#E5F8EE;color:#029359}
+.ap-empty{padding:24px 0;text-align:center;color:#8B95A1;font-size:15px}
+/* 기업 순위 */
+.ap-ban{display:flex;align-items:center;gap:12px;background:#fff;border-radius:20px;padding:16px 18px}
+.ap-ban div{flex:1;display:flex;flex-direction:column;gap:2px}
+.ap-ban b{font-size:17px;font-weight:700}
+.ap-ban small{font-size:13px;color:#6B7684}
+.ap-ban a{flex:none;font-size:13px;font-weight:600;background:#F2F4F6;color:#4E5968;border-radius:8px;padding:6px 10px}
+.ap-cats{padding:6px 2px 0}
+.ap-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.ap-chips a{flex:none;font-size:14px;font-weight:600;padding:8px 14px;border-radius:18px;background:#fff;color:#4E5968}
+.ap-chips .on{background:#191F28;color:#fff}
+.ap-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.ap-grid.one{grid-template-columns:1fr}
+.ap-gb{background:#fff;border-radius:20px;padding:14px;min-width:0}
+.ap-gh{display:flex;justify-content:space-between;font-size:16px;font-weight:700;margin-bottom:6px}
+.ap-gh span{color:#B0B8C1;font-weight:500}
+.ap-r{display:flex;align-items:center;gap:6px;padding:6px 0;font-size:14px;color:#333D48;white-space:nowrap}
+.ap-r i{width:14px;flex:none;font-style:normal;font-weight:700;color:#EF920E}
+.ap-r s{flex:1;min-width:0;text-decoration:none;overflow:hidden;text-overflow:ellipsis}
+.ap-r em{flex:none;font-style:normal;font-size:12px;font-weight:700;color:#029359}
+.ap-r em.bad{color:#E42939}
+.ap-grid.one .ap-r{font-size:16px;padding:9px 0;gap:10px}.ap-grid.one .ap-r em{font-size:14px}
+.ap-lg{flex:none;width:20px;height:20px;border-radius:6px;object-fit:contain;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+span.ap-lg.c0{background:#3182F6}span.ap-lg.c1{background:#F04452}span.ap-lg.c2{background:#03B26C}span.ap-lg.c3{background:#FFB331}span.ap-lg.c4{background:#8B5CF6}span.ap-lg.c5{background:#18A5A7}
+.ap-how{font-size:13px;line-height:19.5px;color:#8B95A1;padding:0 4px}
+/* 공동 대응 */
+.ap-seg{display:flex;background:#fff;border-radius:16px;margin:0 -16px;border-radius:0;padding:0 16px}
+.ap-seg a{flex:1;text-align:center;padding:12px 0;font-size:16px;font-weight:600;color:#8B95A1}
+.ap-seg .on{color:#191F28;box-shadow:inset 0 -2px 0 #191F28}
+.ap-gc{display:flex;flex-direction:column;gap:12px;padding:24px}
+.ap-gc.is-closed{opacity:.7}
+.ap-co{display:flex;align-items:center;gap:10px;font-size:16px}
+.ap-co .ap-lg{width:32px;height:32px;border-radius:10px;font-size:14px}
+.ap-co .ap-badge{margin-left:auto}
+.ap-nums{display:flex;background:#F9FAFB;border-radius:14px;padding:12px 16px}
+.ap-nums span{flex:1;display:flex;flex-direction:column;gap:2px;font-size:13px;color:#8B95A1}
+.ap-nums b{font-size:17px;font-weight:700;color:#191F28}
+.ap-gc h2{font-size:17px;line-height:25.5px;font-weight:700;margin:0}
+.ap-gc p{font-size:15px;line-height:22.5px;color:#6B7684;margin:0}
+.ap-join{display:flex;align-items:center;justify-content:center;height:52px;border-radius:16px;background:#EF920E;color:#fff!important;font-size:16px;font-weight:700}
+.ap-link{font-size:15px;font-weight:600;color:#4E5968!important}
