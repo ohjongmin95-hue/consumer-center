@@ -437,7 +437,7 @@ def install(S):
             body = ' '.join((text['body'] or '').split())
             cat = jebo.cat_label(r['category'])
             out.append({'kind': 'report', 'id': r['id'], 'url': url_for('public_case', case_id=r['id']), 'title': text['subject'],
-                        'summary': body[:110] + ('…' if len(body) > 110 else ''), 'label': cat, 'company': S.mask_personal(r['company']),
+                        'summary': body[:110] + ('…' if len(body) > 110 else ''), 'label': cat, 'company': S.pub_company(r) if hasattr(S, 'pub_company') else S.mask_personal(r['company']),
                         'status': r['status'], 'answered': bool(r['answered']), 'stamp': r['created'],
                         'emoji': report_look(cat)[0], 'tone': report_look(cat)[1], 'art': report_art(r['industry'], arts)})
         return out
