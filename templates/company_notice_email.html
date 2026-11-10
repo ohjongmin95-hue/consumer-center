@@ -11,7 +11,7 @@
   <tr><td style="padding:18px 28px 0;{{ F }}">
     <span style="display:inline-block;background:#fff4e5;color:#b35c00;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;">{{ '답변을 기다리고 있어요' if nudge else ('소비자 제보 재안내' if remind else '소비자 제보 안내') }}</span>
     <h1 style="margin:14px 0 10px;font-size:23px;line-height:1.42;font-weight:800;color:#191f28;letter-spacing:-0.6px;">{{ company }} 관련<br>소비자 제보가 접수됐어요</h1>
-    <p style="margin:0;font-size:15px;line-height:1.75;color:#4e5968;">{{ company }} 고객 담당자님, 안녕하세요. {{ site }}에 귀사와 관련된 소비자의 이야기가 올라왔어요. 아래 버튼을 누르면 로그인 없이 제보 내용을 보고 공식 답변을 남길 수 있어요.</p>
+    <p style="margin:0;font-size:15px;line-height:1.75;color:#4e5968;">{{ company }} 고객 담당자님, 안녕하세요. {{ intro or site }}입니다. 귀사와 관련된 소비자의 이야기가 올라왔어요. 아래 버튼을 누르면 로그인 없이 제보 내용을 보고 공식 답변을 남길 수 있어요.</p>
   </td></tr>
   {% if nudge %}<tr><td style="padding:16px 28px 0;{{ F }}"><p style="margin:0;background:#fff8f0;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.65;color:#8a4b00;">제보자가 아직 답변을 받지 못해 기다리고 있다고 알려 왔어요.</p></td></tr>{% endif %}
   <tr><td style="padding:20px 28px 0;{{ F }}">

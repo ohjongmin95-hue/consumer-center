@@ -24,10 +24,11 @@ SYSTEM=('너는 소비자고발제보센터의 기업 입장 요청서 초안을
         '원칙: 확인되지 않은 사실을 단정하지 않는다. "제보자에 따르면", "제보자는 ~라고 주장했습니다"처럼 중립적으로 쓴다. '
         '제보에 없는 사실·날짜·금액·이름을 지어내지 않는다. 없는 항목은 "확인 필요"로 쓴다. 개인정보(이름·연락처·주소·계좌·주문번호 등)는 쓰지 않는다. '
         '기업을 비난하거나 압박·위협하는 표현, 법 위반으로 단정하는 표현을 쓰지 않는다. 존댓말(합니다체)로 쓴다.\n'
+        '문체(운영자 2026-11-10): 기자가 취재 요청할 때처럼 짧고 핵심만. 언제·무엇을·어떻게·지금 무엇을 요구하는지가 한눈에 들어오게. 꾸밈말·반복·감정 표현 없이 한 문장에 한 사실.\n'
         'JSON 키: company(기업명), product(제품·서비스), purchase_date(구매일), damage_date(피해 발생일), '
-        'paragraphs(주요 제보 내용 2~4문단 배열, 각 문단은 "제보자에 따르면"처럼 시작하거나 주장임을 드러냄), '
+        'paragraphs(주요 제보 내용 1~2문단 배열, 문단마다 2~3문장, 첫 문단은 "제보자에 따르면"으로 시작해 경위를, 둘째 문단은 기업의 기존 대응과 제보자 요구를), '
         'claims(피해 주장 요약), company_response(기업의 기존 대응, 제보자 주장 기준), demands(소비자 요구사항), '
-        'questions(기업에 확인할 질문 3~5개 배열, 사실관계 확인용 중립 질문).')
+        'questions(기업에 확인할 질문 2~3개 배열. 잘게 나누지 말고 핵심을 묶어 포괄: ①제보 내용이 사실인지(경위 확인) ②귀사의 공식 입장과 처리 기준 ③해결·재발 방지 계획. 한 문장씩, 중립적으로).')
 NAME_SAFE=re.compile(r'[\w가-힣]')
 PERSONAL=[re.compile(r'(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}'),re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+'),
           re.compile(r'\d{6}\s?-\s?[1-4]\d{6}'),re.compile(r'\d{2,6}-\d{2,6}-\d{2,8}'),re.compile(r'\d+\s?동\s?\d+\s?호')]
@@ -118,16 +119,16 @@ def ask_ai(case):
     return clean_facts(facts,case),res.get('model') or ai_model()
 
 def clean_facts(facts,case):
-    """AI 결과 다듬기: 빈칸은 '확인 필요', 개인정보 다시 지움, 문단 2~4개·질문 3~5개."""
+    """AI 결과 다듬기: 빈칸은 '확인 필요', 개인정보 다시 지움, 문단 1~2개·질문 2~3개 (운영자 2026-11-10: 짧고 핵심만)."""
     if not isinstance(facts,dict):raise RuntimeError('AI 응답 형식이 달라요')
     names=[case['reporter_name']] if 'reporter_name' in case.keys() else []
     s=lambda v:scrub(str(v).strip(),names) if v not in (None,'') else NEED
     out={k:s(facts.get(k)) for k in ('company','product','purchase_date','damage_date','claims','company_response','demands')}
-    paras=[scrub(str(p).strip(),names) for p in (facts.get('paragraphs') or []) if str(p).strip()][:4]
-    qs=[scrub(str(q).strip(),names) for q in (facts.get('questions') or []) if str(q).strip()][:5]
+    paras=[scrub(str(p).strip(),names) for p in (facts.get('paragraphs') or []) if str(p).strip()][:2]
+    qs=[scrub(str(q).strip(),names) for q in (facts.get('questions') or []) if str(q).strip()][:3]
     if len(paras)<1 or len(qs)<1:raise RuntimeError('AI가 요청서 내용을 채우지 못했어요')
-    while len(qs)<3:qs.append('위 내용에 대한 귀사의 사실관계 확인과 공식 입장을 부탁드립니다.' if len(qs)==1 else '향후 재발 방지나 소비자 안내 계획이 있다면 알려 주시기 바랍니다.')
-    out['paragraphs']=paras;out['questions']=qs[:5]
+    if len(qs)<2:qs.append('제보 내용에 대한 귀사의 공식 입장과 향후 해결 계획을 알려 주시기 바랍니다.')
+    out['paragraphs']=paras;out['questions']=qs[:3]
     return out
 
 def _branded(text):
@@ -139,16 +140,16 @@ def compose(facts,case_company,public_url):
     """요청서 양식(운영자가 정한 문구)에 내용을 채워 (제목, 본문)."""
     name=facts.get('company') if facts.get('company') and facts.get('company')!=NEED else case_company
     title=f'[소비자고발제보센터] {name} 관련 사실관계 확인 및 공식 입장 요청'
-    parts=['안녕하세요. 소비자고발제보센터입니다.',
+    parts=['안녕하세요. 소비자고발제보센터(소비자를위한신문)입니다.',
            '본 센터에 귀사와 관련한 소비자 피해 제보가 접수돼 사실관계 확인 및 공식 입장을 요청드립니다.','',
            '■ 주요 제보 내용','\n\n'.join(facts['paragraphs']),'',
            '■ 확인 요청 사항','\n'.join(f'{i}. {q}' for i,q in enumerate(facts['questions'],1))]
     if public_url:parts+=['','■ 제보 내용 확인',public_url]
     parts+=['',CLOSING]
-    return _branded(title),_branded('\n'.join(parts))
+    return title,_branded('\n'.join(parts))  # 제목·첫 인사는 늘 '소비자고발제보센터' (운영자 2026-11-10)
 
 def blank_facts(case):
-    return {'company':case['company'],'paragraphs':['제보자에 따르면 (주요 제보 내용을 2~4문단으로 적어 주세요.)'],
+    return {'company':case['company'],'paragraphs':['제보자에 따르면 (주요 제보 내용을 1~2문단으로 짧게 적어 주세요.)'],
             'questions':['(확인할 내용 1)','(확인할 내용 2)','(확인할 내용 3)']}
 
 def install(S):
