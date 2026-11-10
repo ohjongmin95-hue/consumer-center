@@ -14,6 +14,7 @@ import lawask
 import soboru_writer
 import lawrag
 import notify
+import indexnow
 import jebo
 import soboru
 import members
@@ -688,6 +689,12 @@ def favicon_ico():
     if letter_host(request.host.split(':')[0].lower()):return app.send_static_file('mag-favicon.ico')  # 소보루 매거진
     return app.send_static_file('jebo-favicon.ico' if request.host.split(':')[0].lower() in JEBO_HOSTS else 'favicon.ico')
 
+@app.route('/<string:name>.txt')
+def indexnow_key(name):
+    # IndexNow 키 확인 파일 (indexnow.py). 키와 같은 이름일 때만 보여 줌
+    k=indexnow.key()
+    if not k or name!=k:abort(404)
+    return app.response_class(k,mimetype='text/plain')
 @app.route('/robots.txt')
 def robots_txt():
     # AI 학습용 수집 봇은 막음(운영자 요청, 2026-10-17). 검색 노출용 봇은 그대로
@@ -736,7 +743,7 @@ def rss_xml():
     with conn() as db:
         for r in db.execute('SELECT * FROM cases WHERE public_consent=1 AND published=1 ORDER BY id DESC LIMIT 30'):
             text=jebo.pub(r,mask_personal)
-            items.append((r['created'],text['subject'],url_for('public_case',case_id=r['id'],_external=True),text['body']))
+            co_name=mask_personal(r['company']);items.append((r['created'],text['subject']+(f' - {co_name} 소비자 제보' if co_name and co_name not in text['subject'] else ''),url_for('public_case',case_id=r['id'],_external=True),text['body']))
         for r in db.execute('SELECT id,title,body,created FROM posts WHERE hidden=0 ORDER BY id DESC LIMIT 30'):
             items.append((r['created'],r['title'],url_for('board_post',post_id=r['id'],_external=True),r['body']))
         if 'life_article' in app.view_functions:  # 소보루 생활정보 기사도 본문까지
@@ -2170,7 +2177,7 @@ def report_detail(case_id):
                 if (fields['public_subject'],fields['public_body'],fields['public_request'])!=(case['public_subject'],case['public_body'],case['public_request']):log_case(db,case_id,'공개용 글 수정')
                 if decision=='approve':
                     if case['review'] in jebo.NOT_VALID:flash('중복·제외로 처리한 제보는 게시할 수 없어요. 검토 결과를 먼저 바꿔 주세요.');return redirect(url_for(ep['case'],case_id=case_id)+'#publish_review')
-                    db.execute('UPDATE cases SET published=1 WHERE id=?',(case_id,));art_later(case_id)
+                    db.execute('UPDATE cases SET published=1 WHERE id=?',(case_id,));art_later(case_id);indexnow.ping([canonical_url(url_for('public_case',case_id=case_id))])
                     if not case['published']:log_case(db,case_id,'다시 게시')
                     flash('저장했어요. 목록과 기업 페이지에 보여요.' if case['published'] else '다시 게시했어요. 목록과 기업 페이지에 보여요.')
                 elif decision=='hold':

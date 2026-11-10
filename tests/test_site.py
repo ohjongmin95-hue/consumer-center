@@ -1763,6 +1763,21 @@ class SiteTest(unittest.TestCase):
         finally:
             notify.ASYNC = True
 
+    def test_indexnow_and_case_title(self):
+        # 운영자 2026-11-10: 제보 글이 기업 이름 검색에 걸리게 제목에 기업 이름, 게시 때 IndexNow로 네이버·빙에 알림
+        indexnow = self.site.indexnow
+        k = indexnow.key()
+        self.assertTrue(k)
+        self.assertEqual(self.client.get('/%s.txt' % k).get_data(as_text=True), k)
+        self.assertEqual(self.client.get('/0000.txt').status_code, 404)
+        sent = []
+        with patch.object(indexnow, 'post', side_effect=lambda url, payload: sent.append((url, payload)) or 200):
+            self.assertEqual(indexnow.ping(['http://localhost/reports/1'], background=False), [])
+            out = indexnow.ping(['https://consumerjebo.co.kr/reports/1'], background=False)
+        self.assertEqual([u for u, _ in sent], list(indexnow.ENDPOINTS))
+        self.assertEqual(sent[0][1]['keyLocation'], 'https://consumerjebo.co.kr/%s.txt' % k)
+        self.assertEqual(len(out), 2)
+
     def test_aligo_vendor(self):
         # MSG_VENDOR=aligo: 알리고에서 승인된 템플릿 문구를 받아 변수를 채워 보냄. 솔라피 값은 그대로 둬도 안 씀
         notify, bizmsg = self.site.notify, self.site.notify.bizmsg
@@ -2164,8 +2179,9 @@ class SiteTest(unittest.TestCase):
         self.assertIn('<meta name="description" content="소비자 피해 제보부터 제품·업체 리뷰와 추천', home)
         self.assertNotIn('naver-site-verification', home)
         detail = self.client.get('/reports/%d' % public_id).get_data(as_text=True)
-        self.assertIn('<meta name="description" content="공개 본문 내용입니다">', detail)
-        self.assertIn('<meta property="og:title" content="공개 제목 | 소보루">', detail)
+        self.assertIn('<meta name="description" content="업체 기타 소비자 제보. 공개 본문 내용입니다">', detail)
+        self.assertIn("<title>공개 제목 - 업체 소비자 제보 | ", detail)  # 기업 이름 검색에 걸리게 (2026-11-10)
+        self.assertIn('<meta property="og:title" content="공개 제목 - 업체 소비자 제보 | 소보루">', detail)
         admin = self.login_admin()
         admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'seo',
             'seo.naver_verification': '<meta name="naver-site-verification" content="abc123naver" />',
