@@ -14,7 +14,7 @@
   </div></div>{% endif %}
 
   {% if guides %}<section class="ap-card">
-    <a class="ap-h" href="{{ url_for('check_list') }}"><i class="tf" aria-hidden="true">🛡️</i>{{ ui('app.check', '사기 전에 확인해 보세요') }}<span class="ap-more" aria-hidden="true">›</span></a>
+    <a class="ap-h" href="{{ url_for('check_list') }}"><i class="tf" aria-hidden="true">🔍</i>{{ ui('app.check', '사기 전에 확인해 보세요') }}<span class="ap-more" aria-hidden="true">›</span></a>
     {% for g_ in guides %}<a class="ap-row" href="{{ url_for('check_page', gid=g_.id) }}"><span class="ap-tile tf" aria-hidden="true">{{ g_.emo }}</span><span class="ap-t">{{ g_.title }}</span>{% if g_.new %}<em class="ap-badge red">NEW</em>{% endif %}</a>{% endfor %}
   </section>{% endif %}
 
