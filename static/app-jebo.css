@@ -36,7 +36,9 @@ html:has(.ap-body),body.ap-body{background:#F2F4F6!important}
 .ap-num small{font-size:13px;color:#8B95A1}
 .ap-num b{font-size:22px;line-height:31px;font-weight:700;font-variant-numeric:tabular-nums}
 .ap-go{flex:none;display:flex;align-items:center;justify-content:center;width:104px;height:56px;border-radius:16px;background:#EF920E;color:#fff!important;font-size:17px;font-weight:700}
-.ap-go:active,.ap-join:active{background:#E07B00}
+.ap-go,.ap-join{background:linear-gradient(135deg,#FFAE45 0%,#F5850C 100%)!important;box-shadow:0 6px 14px rgba(239,146,14,.28)}
+.ap-go:active,.ap-join:active{background:linear-gradient(135deg,#F59E33,#E07B00)!important}
+/* 운영자 2026-11-11: 헤이마오 띠처럼 '어딘가에는' 귤색 그라데이션 → 고발하기 버튼·기업 순위 띠 (맨 위 바탕은 토스 회색 그대로) */
 /* 홈: 최근 소식 한 줄 (천천히 흘러감) */
 .ap-tick{overflow:hidden;margin:0 -16px;padding:0 16px;-webkit-mask:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 16px),transparent)}
 .ap-tick-in{display:flex;gap:8px;width:max-content;animation:ap-tick 40s linear infinite}
@@ -57,11 +59,11 @@ html:has(.ap-body),body.ap-body{background:#F2F4F6!important}
 .ap-st.s2{background:#E8F3FF;color:#1B64DA}.ap-st.s3{background:#E5F8EE;color:#029359}
 .ap-empty{padding:24px 0;text-align:center;color:#8B95A1;font-size:15px}
 /* 기업 순위 */
-.ap-ban{display:flex;align-items:center;gap:12px;background:#fff;border-radius:20px;padding:16px 18px}
+.ap-ban{display:flex;align-items:center;gap:12px;background:linear-gradient(120deg,#FFE3B8 0%,#FFF4E3 100%);border-radius:20px;padding:16px 18px}
 .ap-ban div{flex:1;display:flex;flex-direction:column;gap:2px}
 .ap-ban b{font-size:17px;font-weight:700}
-.ap-ban small{font-size:13px;color:#6B7684}
-.ap-ban a{flex:none;font-size:13px;font-weight:600;background:#F2F4F6;color:#4E5968;border-radius:8px;padding:6px 10px}
+.ap-ban small{font-size:13px;color:#8A5A1E}
+.ap-ban a{flex:none;font-size:13px;font-weight:600;background:rgba(255,255,255,.75);color:#B05F00;border-radius:8px;padding:6px 10px}
 .ap-cats{padding:6px 2px 0}
 .ap-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
 .ap-chips a{flex:none;font-size:14px;font-weight:600;padding:8px 14px;border-radius:18px;background:#fff;color:#4E5968}
