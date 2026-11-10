@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS slots(id INTEGER PRIMARY KEY, at TEXT NOT NULL, cutof
 CREATE TABLE IF NOT EXISTS orders(id INTEGER PRIMARY KEY, code TEXT UNIQUE, day TEXT, slot TEXT, place_id INTEGER, detail TEXT DEFAULT '',
   set_id INTEGER, qty INTEGER DEFAULT 1, unit INTEGER, discount INTEGER DEFAULT 0, amount INTEGER, name TEXT, phone TEXT, memo TEXT DEFAULT '',
   status TEXT DEFAULT 'wait', created TEXT, paid_at TEXT DEFAULT '', done_at TEXT DEFAULT '');
+CREATE TABLE IF NOT EXISTS conf(k TEXT PRIMARY KEY, v TEXT DEFAULT '');
+CREATE TABLE IF NOT EXISTS applies(id INTEGER PRIMARY KEY, shop TEXT, name TEXT, phone TEXT, addr TEXT, menu TEXT, created TEXT, done INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS orders_day ON orders(day, slot);
 CREATE INDEX IF NOT EXISTS orders_phone ON orders(phone);
 """
@@ -61,6 +63,15 @@ def create_app(db_path=None):
     DB = Path(db_path or os.getenv('MOABAP_DB', str(BASE.parent / 'moabap.sqlite3')))
     FIRST_COUPON = int(os.getenv('MOABAP_FIRST_COUPON', '2000'))
     AREA = os.getenv('MOABAP_AREA', '광교중앙역 주변')
+    # 같은 건물·같은 시간에 모인 사람 수별 할인 (다음 주문에서 빼 줌). '5:1000,10:2000' = 5명 넘으면 1,000원, 10명 넘으면 2,000원
+    TIERS = sorted((int(a), int(b)) for a, b in (x.split(':') for x in os.getenv('MOABAP_TIERS', '5:1000,10:2000').split(',') if ':' in x))
+    REF_BONUS = int(os.getenv('MOABAP_REF_BONUS', '1000'))  # 같이 시키기 링크로 들어온 사람이 처음 시키면 공유한 사람에게
+
+    def tier(n):
+        return max([b for a, b in TIERS if n >= a] or [0])
+
+    def next_tier(n):
+        return next(((a, b) for a, b in TIERS if n < a), None)
 
     @contextlib.contextmanager
     def conn():
@@ -75,6 +86,13 @@ def create_app(db_path=None):
     def init():
         with conn() as db:
             db.executescript(SCHEMA)
+            for t, col in (('places', "slug TEXT DEFAULT ''"), ('orders', "ref TEXT DEFAULT ''"), ('orders', 'credit INTEGER DEFAULT 0')):
+                if col.split()[0] not in [r[1] for r in db.execute(f'PRAGMA table_info({t})')]:
+                    db.execute(f'ALTER TABLE {t} ADD COLUMN {col}')
+            have = {r[1] for r in db.execute('PRAGMA table_info(shops)')}
+            for col in ('owner', 'biz_no', 'address'):  # 통신판매중개: 판매자(가게) 정보 표시
+                if col not in have:
+                    db.execute(f"ALTER TABLE shops ADD COLUMN {col} TEXT DEFAULT ''")
             if not db.execute('SELECT 1 FROM slots').fetchone():  # 처음: 점심·저녁 30분 간격 (운영자가 /admin/menu에서 바꿈)
                 db.executemany('INSERT INTO slots(at,cutoff) VALUES(?,40)', [(t,) for t in ('12:00', '12:30', '13:00', '18:00', '18:30', '19:00')])
     init()
@@ -91,10 +109,19 @@ def create_app(db_path=None):
         if request.method == 'POST' and not (session.get('_csrf') and hmac.compare_digest(request.form.get('_csrf', ''), session['_csrf'])):
             abort(400, '화면을 새로고침한 뒤 다시 해 주세요.')
 
+    # 하단 사업자 정보 (토스페이먼츠·통신판매 표시): /etc/soboru.env 의 MOABAP_CO_* 값
+    CO_KEYS = ('name', 'owner', 'bizno', 'mailorder', 'addr', 'tel')
+
+    def company():
+        """운영자 화면에서 넣은 값이 먼저, 없으면 MOABAP_CO_* 환경 변수."""
+        with conn() as db:
+            saved = {r['k'][3:]: r['v'] for r in db.execute("SELECT k,v FROM conf WHERE k LIKE 'co_%'")}
+        return {k: saved.get(k) or os.getenv('MOABAP_CO_' + k.upper(), '') for k in CO_KEYS}
+
     @moa.context_processor
     def ctx():
         return dict(csrf=csrf, won=won, area=AREA, step_names=STEP_NAMES, bank=os.getenv('MOABAP_BANK', ''),
-                    biz=os.getenv('MOABAP_BIZ', ''), contact=os.getenv('MOABAP_CONTACT', ''), first_coupon=FIRST_COUPON, cats=CATS)
+                    biz=os.getenv('MOABAP_BIZ', ''), co=company(), contact=os.getenv('MOABAP_CONTACT', ''), first_coupon=FIRST_COUPON, cats=CATS, gnb_b=session.get('place_name', ''))
 
     def slot_dt(day, at):
         h, m = map(int, at.split(':'))
@@ -123,10 +150,45 @@ def create_app(db_path=None):
                 out[r['set_id']] = round(100 * r['a'] / r['n'])
         return out
 
+    def group_n(db, day, slot, place_id):
+        return db.execute("SELECT COUNT(DISTINCT phone) FROM orders WHERE day=? AND slot=? AND place_id=? AND status!='cancel'", (day, slot, place_id)).fetchone()[0]
+
+    def credit_of(db, phone):
+        """쓸 수 있는 적립금: 건물에 많이 모였던 주문(입금 확인된 것) 할인 + 같이 시키기 보상 - 이미 쓴 것."""
+        got = 0
+        for o in db.execute("SELECT day,slot,place_id FROM orders WHERE phone=? AND status NOT IN ('wait','cancel')", (phone,)).fetchall():
+            got += tier(group_n(db, o['day'], o['slot'], o['place_id']))
+        got += REF_BONUS * db.execute("""SELECT COUNT(DISTINCT b.phone) FROM orders a JOIN orders b ON b.ref=a.code
+            WHERE a.phone=? AND b.phone!=a.phone AND b.status NOT IN ('wait','cancel')""", (phone,)).fetchone()[0]
+        used = db.execute("SELECT COALESCE(SUM(credit),0) FROM orders WHERE phone=? AND status!='cancel'", (phone,)).fetchone()[0]
+        return max(0, got - used)
+
+    def building(db):
+        pid = session.get('place')
+        return db.execute('SELECT * FROM places WHERE id=? AND active=1', (pid,)).fetchone() if pid else None
+
     def sets_q(db, where='1=1', args=()):
-        return db.execute(f'SELECT s.*,h.name AS shop,h.hygiene FROM sets s JOIN shops h ON h.id=s.shop_id WHERE s.active=1 AND h.active=1 AND {where} ORDER BY s.sort,s.id', args).fetchall()
+        return db.execute(f'SELECT s.*,h.name AS shop,h.hygiene,h.owner,h.biz_no,h.address FROM sets s JOIN shops h ON h.id=s.shop_id WHERE s.active=1 AND h.active=1 AND {where} ORDER BY s.sort,s.id', args).fetchall()
 
     # ── 손님 ─────────────────────────────────────────
+    @moa.get('/b/<key>')
+    def building_page(key):
+        """건물 전용 주소: 이 건물로 받는 화면. ?r=주문번호 는 같이 시키기 링크."""
+        with conn() as db:
+            p = db.execute('SELECT * FROM places WHERE active=1 AND (slug=? OR CAST(id AS TEXT)=?)', (key, key)).fetchone()
+        if not p:
+            abort(404)
+        session['place'], session['place_name'] = p['id'], p['name']
+        if request.args.get('r'):
+            session['ref'] = request.args['r'][:20]
+        return redirect(url_for('home'))
+
+    @moa.get('/pick')
+    def pick():
+        session.pop('place', None)
+        session.pop('place_name', None)
+        return redirect(url_for('home') + '#pick')
+
     @moa.get('/')
     def home():
         cat, price = request.args.get('cat', ''), request.args.get('p', type=int)
@@ -135,9 +197,14 @@ def create_app(db_path=None):
             day = slots[0]['day'] if slots else now().date().isoformat()
             allsets = sets_q(db)
             items = [s for s in allsets if (not cat or s['cat'] == cat) and (not price or s['price'] == price)]
-            data = dict(sets=items, joined=joined(db, day), again=again_rate(db), next_slot=slots[0] if slots else None,
+            b = building(db)
+            bn = {x['at']: group_n(db, day, x['at'], b['id']) for x in slots if x['day'] == day} if b else {}
+            if request.args.get('r'):
+                session['ref'] = request.args['r'][:20]
+            data = dict(sets=items, joined=joined(db, day), again=again_rate(db), next_slot=slots[0] if slots else None, b=b, bn=bn,
+                        places=db.execute("SELECT * FROM places WHERE active=1 ORDER BY kind='오피스' DESC,name").fetchall(),
                         cats_on=[c for c in CATS if any(s['cat'] == c[0] for s in allsets)], prices=[p for p in PRICES if any(s['price'] == p for s in allsets)])
-        return render_template('moa_home.html', cat=cat, price=price, **data)
+        return render_template('moa_home.html', cat=cat, price=price, tier=tier, next_tier=next_tier, tiers=TIERS, **data)
 
     @moa.get('/set/<int:sid>')
     def set_page(sid):
@@ -148,12 +215,16 @@ def create_app(db_path=None):
             s = rows[0]
             slots = open_slots(db)
             day = slots[0]['day'] if slots else ''
-            counts = {r[0]: r[1] for r in db.execute("SELECT slot,COUNT(*) FROM orders WHERE day=? AND status!='cancel' GROUP BY slot", (day,))}
+            b = building(db)
+            if b:
+                counts = {r[0]: r[1] for r in db.execute("SELECT slot,COUNT(DISTINCT phone) FROM orders WHERE day=? AND place_id=? AND status!='cancel' GROUP BY slot", (day, b['id']))}
+            else:
+                counts = {r[0]: r[1] for r in db.execute("SELECT slot,COUNT(*) FROM orders WHERE day=? AND status!='cancel' GROUP BY slot", (day,))}
             left = {r[0]: s['cap'] - r[1] for r in db.execute("SELECT slot,COALESCE(SUM(qty),0) FROM orders WHERE day=? AND set_id=? AND status!='cancel' GROUP BY slot", (day, sid))}
             places = db.execute('SELECT * FROM places WHERE active=1 ORDER BY kind,name').fetchall()
             j = joined(db, day).get(sid, 0)
             again = again_rate(db).get(sid)
-        return render_template('moa_set.html', tomorrow=bool(slots) and slots[0]['day'] != now().date().isoformat(), s=s, slots=slots, counts=counts, left=left, places=places, joined=j, again=again)
+        return render_template('moa_set.html', tomorrow=bool(slots) and slots[0]['day'] != now().date().isoformat(), s=s, slots=slots, counts=counts, left=left, places=places, joined=j, again=again, b=b, tier=tier, next_tier=next_tier)
 
     @moa.post('/order')
     def order():
@@ -181,10 +252,16 @@ def create_app(db_path=None):
                 return redirect(back)
             first = not db.execute("SELECT 1 FROM orders WHERE phone=? AND status!='cancel'", (phone,)).fetchone()
             disc = FIRST_COUPON if first else 0
+            total = s['price'] * qty
+            cred = min(credit_of(db, phone), max(0, total - disc))
+            ref = session.get('ref', '')
+            if ref and not db.execute('SELECT 1 FROM orders WHERE code=? AND phone!=?', (ref, phone)).fetchone():
+                ref = ''
             code = secrets.token_urlsafe(6).replace('-', 'x').replace('_', 'y')
-            db.execute('INSERT INTO orders(code,day,slot,place_id,detail,set_id,qty,unit,discount,amount,name,phone,memo,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                       (code, slot['day'], slot['at'], place['id'], detail, sid, qty, s['price'], disc, max(0, s['price'] * qty - disc), name, phone,
-                        (f.get('memo') or '').strip()[:100], now().isoformat(timespec='seconds')))
+            db.execute('INSERT INTO orders(code,day,slot,place_id,detail,set_id,qty,unit,discount,amount,name,phone,memo,created,ref,credit) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                       (code, slot['day'], slot['at'], place['id'], detail, sid, qty, s['price'], disc, max(0, total - disc - cred), name, phone,
+                        (f.get('memo') or '').strip()[:100], now().isoformat(timespec='seconds'), ref if first else '', cred))
+            session['place'], session['place_name'] = place['id'], place['name']
         mine = session.get('orders', [])
         session['orders'] = ([code] + [c for c in mine if c != code])[:20]
         return redirect(url_for('order_page', code=code))
@@ -192,13 +269,15 @@ def create_app(db_path=None):
     @moa.get('/o/<code>')
     def order_page(code):
         with conn() as db:
-            o = db.execute('SELECT o.*,s.name AS set_name,s.emoji,h.name AS shop,p.name AS place FROM orders o JOIN sets s ON s.id=o.set_id JOIN shops h ON h.id=s.shop_id JOIN places p ON p.id=o.place_id WHERE o.code=?', (code,)).fetchone()
+            o = db.execute('SELECT o.*,s.name AS set_name,s.emoji,h.name AS shop,p.name AS place,p.slug FROM orders o JOIN sets s ON s.id=o.set_id JOIN shops h ON h.id=s.shop_id JOIN places p ON p.id=o.place_id WHERE o.code=?', (code,)).fetchone()
             if not o:
                 abort(404)
-            together = db.execute("SELECT COUNT(*) FROM orders WHERE day=? AND slot=? AND place_id=? AND status!='cancel'", (o['day'], o['slot'], o['place_id'])).fetchone()[0]
+            together = group_n(db, o['day'], o['slot'], o['place_id'])
             cutoff = db.execute('SELECT cutoff FROM slots WHERE at=?', (o['slot'],)).fetchone()
         close = slot_dt(datetime.date.fromisoformat(o['day']), o['slot']) - datetime.timedelta(minutes=cutoff[0] if cutoff else 40)
-        return render_template('moa_order.html', o=o, together=together, close=close, closed=now() >= close)
+        share = url_for('building_page', key=o['slug'] or o['place_id'], r=o['code'], _external=True)
+        return render_template('moa_order.html', o=o, together=together, close=close, closed=now() >= close, share=share,
+                               tier=tier, next_tier=next_tier, ref_bonus=REF_BONUS)
 
     @moa.get('/orders')
     def my_orders():
@@ -206,6 +285,29 @@ def create_app(db_path=None):
         with conn() as db:
             rows = db.execute(f"SELECT o.*,s.name AS set_name,s.emoji FROM orders o JOIN sets s ON s.id=o.set_id WHERE o.code IN ({','.join('?' * len(codes))}) ORDER BY o.id DESC", codes).fetchall() if codes else []
         return render_template('moa_orders.html', rows=rows)
+
+    @moa.route('/join', methods=['GET', 'POST'])
+    def join():
+        """사장님 함께하기 신청: 운영자가 /admin/menu 에서 보고 연락."""
+        if request.method == 'POST':
+            f = request.form
+            shop, phone = (f.get('shop') or '').strip()[:40], phone_norm(f.get('phone')) or re.sub(r'[^\d-]', '', f.get('phone') or '')[:15]
+            if not (shop and len(re.sub(r'\D', '', phone)) >= 9 and f.get('agree')):
+                flash('가게 이름, 연락처, 동의를 확인해 주세요.')
+                return redirect(url_for('join'))
+            with conn() as db:
+                db.execute('INSERT INTO applies(shop,name,phone,addr,menu,created) VALUES(?,?,?,?,?,?)',
+                           (shop, (f.get('name') or '').strip()[:20], phone, (f.get('addr') or '').strip()[:80], (f.get('menu') or '').strip()[:300], now().isoformat(timespec='seconds')))
+            return render_template('moa_msg.html', title='신청을 받았어요', body='하루 안에 담당자가 전화드릴게요. 고맙습니다.')
+        return render_template('moa_join.html')
+
+    @moa.get('/about')
+    def about():
+        return render_template('moa_about.html')
+
+    @moa.get('/refund')
+    def refund():
+        return render_template('moa_refund.html')
 
     @moa.get('/privacy')
     def privacy():
@@ -280,7 +382,11 @@ def create_app(db_path=None):
             if request.method == 'POST':
                 f, kind = request.form, request.form.get('kind')
                 if kind == 'shop':
-                    db.execute('INSERT INTO shops(name,phone,hygiene,token) VALUES(?,?,?,?)', (f['name'].strip(), f.get('phone', ''), f.get('hygiene', ''), secrets.token_urlsafe(12)))
+                    vals = (f['name'].strip(), f.get('phone', ''), f.get('hygiene', ''), f.get('owner', '').strip(), f.get('biz_no', '').strip(), f.get('address', '').strip())
+                    if f.get('id'):
+                        db.execute('UPDATE shops SET name=?,phone=?,hygiene=?,owner=?,biz_no=?,address=? WHERE id=?', vals + (f.get('id', type=int),))
+                    else:
+                        db.execute('INSERT INTO shops(name,phone,hygiene,owner,biz_no,address,token) VALUES(?,?,?,?,?,?,?)', vals + (secrets.token_urlsafe(12),))
                 elif kind == 'set':
                     vals = (f.get('shop_id', type=int), f['name'].strip(), f.get('cat', '한식'), f.get('emoji') or '🍱', f.get('price', type=int) or 0, f.get('orig', type=int) or 0,
                             f.get('supply', type=int) or 0, f.get('cap', type=int) or 50, f.get('cook_min', type=int) or 15, f.get('note', ''))
@@ -289,15 +395,21 @@ def create_app(db_path=None):
                     else:
                         db.execute('INSERT INTO sets(shop_id,name,cat,emoji,price,orig,supply,cap,cook_min,note) VALUES(?,?,?,?,?,?,?,?,?,?)', vals)
                 elif kind == 'place':
-                    db.execute('INSERT INTO places(name,kind,note) VALUES(?,?,?)', (f['name'].strip(), f.get('pkind', '오피스'), f.get('note', '')))
+                    slug = re.sub(r'[^0-9A-Za-z가-힣-]', '', (f.get('slug') or f['name']).replace(' ', '-'))[:30]
+                    db.execute('INSERT INTO places(name,kind,note,slug) VALUES(?,?,?,?)', (f['name'].strip(), f.get('pkind', '오피스'), f.get('note', ''), slug))
                 elif kind == 'slot' and re.fullmatch(r'\d\d:\d\d', f.get('at', '')):
                     db.execute('INSERT INTO slots(at,cutoff) VALUES(?,?)', (f['at'], f.get('cutoff', type=int) or 40))
+                elif kind == 'applied':
+                    db.execute('UPDATE applies SET done=1-done WHERE id=?', (f.get('id', type=int),))
+                elif kind == 'company':
+                    db.executemany('INSERT OR REPLACE INTO conf(k,v) VALUES(?,?)', [('co_' + k, (f.get(k) or '').strip()[:120]) for k in CO_KEYS])
                 elif kind == 'toggle' and f.get('table') in ('shops', 'sets', 'places', 'slots'):
                     db.execute(f"UPDATE {f['table']} SET active=1-active WHERE id=?", (f.get('id', type=int),))
                 return redirect(url_for('admin_menu') + '#' + (kind or ''))
             data = {t: db.execute(f'SELECT * FROM {t} ORDER BY {o}').fetchall() for t, o in (('shops', 'id'), ('places', 'kind,name'), ('slots', 'at'))}
+            data['applies'] = db.execute('SELECT * FROM applies ORDER BY done,id DESC LIMIT 100').fetchall()
             data['sets'] = db.execute('SELECT s.*,h.name AS shop FROM sets s LEFT JOIN shops h ON h.id=s.shop_id ORDER BY s.sort,s.id').fetchall()
-        return render_template('moa_menu.html', edit=request.args.get('edit', type=int), **data)
+        return render_template('moa_menu.html', edit=request.args.get('edit', type=int), eshop=request.args.get('eshop', type=int), **data)
 
     @moa.get('/admin/logout')
     def admin_logout():
@@ -321,7 +433,12 @@ def mount(main_wsgi):
     preview = os.getenv('MOABAP_PREVIEW') == '1'
     if not hosts and not preview:
         return main_wsgi
-    moa = create_app()
+    try:
+        moa = create_app()
+    except Exception as e:  # 모아밥이 못 떠도(예: DB 폴더 권한) 소보루 사이트는 그대로 돌게
+        import sys
+        print(f'[moabap] 시작 실패, 꺼 둠: {e!r}', file=sys.stderr, flush=True)
+        return main_wsgi
     moa_wsgi = moa.wsgi_app
     if os.getenv('TRUST_PROXY') == '1':
         from werkzeug.middleware.proxy_fix import ProxyFix

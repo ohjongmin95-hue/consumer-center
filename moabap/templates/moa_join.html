@@ -1,0 +1,20 @@
+{% extends 'moa_base.html' %}
+{% block title %}우리 가게도 함께하기 | 모아밥{% endblock %}
+{% block body %}
+<a class="back" href="{{ url_for('home') }}">‹ 홈</a>
+<main class="wrap">
+  <section class="sec"><h2>사장님, 모아밥과 함께해요</h2>
+    <dl class="rows"><div><dt>미리 확정</dt><dd>마감 뒤 확정된 개수만 만들어요. 남는 재료가 없어요</dd></div><div><dt>한가한 시간</dt><dd>점심 전, 저녁 전에 한꺼번에 만들어요</dd></div><div><dt>수수료·광고비</dt><dd>입점비와 광고비가 없어요. 정한 공급가를 그대로 드려요</dd></div><div><dt>배달</dt><dd>모아밥이 라이더를 불러요. 가게는 만들기만 하면 돼요</dd></div></dl>
+  </section>
+  <form class="sec" method="post"><h2>신청하기</h2><p class="lead">남겨 주시면 하루 안에 전화드려요.</p>
+    <input type="hidden" name="_csrf" value="{{ csrf() }}">
+    <label class="fld"><span>가게 이름</span><input name="shop" maxlength="40" required></label>
+    <label class="fld"><span>사장님 성함 (선택)</span><input name="name" maxlength="20" autocomplete="name"></label>
+    <label class="fld"><span>연락처</span><input name="phone" inputmode="tel" autocomplete="tel" placeholder="010-1234-5678 또는 가게 번호" required></label>
+    <label class="fld"><span>가게 위치</span><input name="addr" maxlength="80" placeholder="예: 광교중앙역 3번 출구 앞"></label>
+    <label class="fld"><span>내고 싶은 메뉴 (선택)</span><textarea name="menu" maxlength="300" placeholder="예: 제육 도시락, 하루 30개까지 가능"></textarea></label>
+    <label class="agree"><input type="checkbox" name="agree" value="1" required>연락을 위해 성함과 연락처를 모으고, 상담이 끝나고 1년 뒤 지워요. 이에 동의해요.</label>
+    <button class="cta" style="margin-top:16px">신청하기</button>
+  </form>
+</main>
+{% endblock %}

@@ -13,11 +13,19 @@
 </head>
 <body>
 {% macro mark(w) %}<svg width="{{ w }}" height="{{ w }}" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lg{{ w }}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF7EB3"/><stop offset=".55" stop-color="#C77DFF"/><stop offset="1" stop-color="#9B8CFF"/></linearGradient></defs><circle cx="30" cy="26" r="10" fill="#FF7EB3"/><circle cx="50" cy="17" r="10" fill="#FFD45C"/><circle cx="70" cy="26" r="10" fill="#9B8CFF"/><path d="M10 46h80c0 23-18 40-40 40S10 69 10 46z" fill="url(#lg{{ w }})"/></svg>{% endmacro %}
+<div class="stage">
+{% block gnb %}<header class="gnb"><div class="gnb-in">
+  <a class="logo" href="{{ url_for('home') }}" aria-label="모아밥 홈">{{ mark(30) }}모아밥</a>
+  <a class="where-pill" href="{{ url_for('pick') }}">{% if gnb_b %}🏢 {{ gnb_b }}{% else %}📍 {{ area }}{% endif %} ▾</a>
+  <nav><a href="{{ url_for('home') }}"{% if request.endpoint == 'home' %} class="on"{% endif %}>오늘의 세트</a><a href="{{ url_for('my_orders') }}"{% if request.endpoint in ('my_orders', 'order_page') %} class="on"{% endif %}>주문 내역</a><a href="{{ url_for('about') }}"{% if request.endpoint == 'about' %} class="on"{% endif %}>모아밥 소개</a><a class="biz" href="{{ url_for('join') }}">사장님 함께하기</a></nav>
+</div></header>{% endblock %}
 <div class="app {% block appclass %}{% endblock %}">
 {% with msgs = get_flashed_messages() %}{% if msgs %}<div class="wrap" style="padding-top:12px">{% for m in msgs %}<div class="flash" role="status">{{ m }}</div>{% endfor %}</div>{% endif %}{% endwith %}
 {% block body %}{% endblock %}
-</div>
+{% block foot %}{% include 'moa_foot.html' %}{% endblock %}
 {% block bar %}{% endblock %}
+</div>
+</div>
 {% block script %}{% endblock %}
 </body>
 </html>

@@ -1,4 +1,5 @@
 {% extends 'moa_base.html' %}
+{% block gnb %}{% endblock %}
 {% block title %}운영 | 모아밥{% endblock %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block appclass %}adm{% endblock %}
@@ -25,3 +26,4 @@ document.querySelectorAll('.batch').forEach(function(f){var h=f.querySelector('h
 h.addEventListener('click',function(){var bs=f.querySelectorAll('input[name=id]:not(:disabled)'),on=[].some.call(bs,function(b){return !b.checked});bs.forEach(function(b){b.checked=on})})});
 document.addEventListener('submit',function(e){var f=e.target;if(f.classList.contains('batch')&&!f.querySelector('input[name=id]:checked')){e.preventDefault();alert('주문을 먼저 골라 주세요. 장소 이름을 누르면 모두 골라져요.')}});
 </script>{% endblock %}
+{% block foot %}{% endblock %}

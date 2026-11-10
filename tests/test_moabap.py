@@ -18,7 +18,7 @@ def moa(tmp_path, monkeypatch):
     app = moabap.create_app(str(db))
     app.config['TESTING'] = True
     c = sqlite3.connect(db)
-    c.execute("INSERT INTO shops(name,hygiene,token) VALUES('오늘제육','위생등급 우수','tok')")
+    c.execute("INSERT INTO shops(name,hygiene,token,owner,biz_no) VALUES('오늘제육','위생등급 우수','tok','김사장','123-45-67890')")
     c.execute("INSERT INTO sets(shop_id,name,price,orig,supply,cap) VALUES(1,'제육 도시락',5900,9500,4500,3)")
     c.execute("INSERT INTO places(name) VALUES('중앙타워 로비')")
     c.commit()
@@ -46,8 +46,12 @@ def test_home_and_set(moa):
     assert '제육 도시락' in h and '5,900원' in h and '배달비 0원' in h
     s = cl.get('/set/1').get_data(as_text=True)
     assert '매장 가격보다 3,600원 싸요' in s and '중앙타워 로비' in s
+    assert '판매자 정보' in s and '123-45-67890' in s and '통신판매중개자' in s
+    assert '통신판매중개자' in h
     assert cl.get('/set/99').status_code == 404
     assert cl.get('/privacy').status_code == 200
+    r = cl.get('/refund').get_data(as_text=True)
+    assert '취소·환불 정책' in r and '주문 마감 전' in r
 
 
 def test_order_first_coupon_then_full_price(moa):
@@ -112,6 +116,12 @@ def test_admin_menu_adds(moa):
     cl.post('/admin/login', data={'_csrf': t, 'pw': 'pw'})
     cl.post('/admin/menu', data={'_csrf': t, 'kind': 'place', 'name': '힐스테이트 정문', 'pkind': '아파트'})
     cl.post('/admin/menu', data={'_csrf': t, 'kind': 'set', 'shop_id': '1', 'name': '김치찌개', 'price': '7900', 'cat': '한식'})
+    cl.post('/admin/menu', data={'_csrf': t, 'kind': 'shop', 'id': '1', 'name': '오늘제육', 'owner': '이대표', 'biz_no': '222-33-44444', 'address': '수원시 영통구'})
+    assert '이대표' in cl.get('/admin/menu?eshop=1').get_data(as_text=True)
+    assert '222-33-44444' in cl.get('/set/1').get_data(as_text=True)
+    cl.post('/admin/menu', data={'_csrf': t, 'kind': 'company', 'name': '소비자를위한신문', 'owner': '오종민', 'bizno': '111-22-33333', 'mailorder': '제2026-서울강남-0001호', 'addr': '서울시 강남구', 'tel': '02-000-0000'})
+    foot = cl.get('/').get_data(as_text=True)
+    assert '111-22-33333' in foot and '제2026-서울강남-0001호' in foot and '02-000-0000' in foot
     page = cl.get('/admin/menu').get_data(as_text=True)
     assert '힐스테이트 정문' in page and '김치찌개' in page
 
@@ -136,3 +146,49 @@ def test_mount_host_and_preview(monkeypatch, tmp_path):
     assert '모아밥' in c.get('/', headers={'Host': 'www.moabap.com'}).get_data(as_text=True)
     r = c.get('/moabap/set/1?src=app')
     assert r.status_code == 302 and r.headers['Location'] == 'https://moabap.com/set/1?src=app'
+
+
+def test_join_apply_shows_in_admin(moa):
+    cl = moa.test_client()
+    t = csrf(cl, '/join')
+    r = cl.post('/join', data={'_csrf': t, 'shop': '광교김밥', 'phone': '031-123-4567', 'agree': '1', 'menu': '참치김밥'})
+    assert '신청을 받았어요' in r.get_data(as_text=True)
+    cl.post('/admin/login', data={'_csrf': t, 'pw': 'pw'})
+    assert '광교김밥' in cl.get('/admin/menu').get_data(as_text=True)
+
+
+def test_home_without_sets_has_no_price_promise(tmp_path):
+    app = moabap.create_app(str(tmp_path / 'e.sqlite3'))
+    h = app.test_client().get('/').get_data(as_text=True)
+    assert '첫 세트를 준비하고 있어요' in h and '5,900원부터' not in h and 'class="timer"' not in h
+
+
+def test_building_link_group_discount_and_referral(moa):
+    with moa.conn() as db:
+        db.execute("UPDATE places SET slug='tower' WHERE id=1")
+    a = moa.test_client()
+    a.get('/b/tower')
+    assert '중앙타워 로비' in a.get('/').get_data(as_text=True)
+    r = order(a, phone='01011110000')
+    page = a.get(r.location).get_data(as_text=True)
+    assert '같이 시키기 링크' in page and '/b/tower?r=' in page
+    code = r.location.rsplit('/', 1)[1]
+    # 동료가 링크로 들어와 처음 시킴 → 입금 확인되면 공유한 사람에게 보상
+    b = moa.test_client()
+    b.get(f'/b/tower?r={code}')
+    with moa.conn() as db:
+        db.execute("UPDATE sets SET cap=50")
+    order(b, phone='01022220000')
+    with moa.conn() as db:
+        assert db.execute("SELECT ref FROM orders WHERE phone='01022220000'").fetchone()[0] == code
+        db.execute("UPDATE orders SET status='paid'")
+    # 5명 모이면 1,000원 + 추천 1,000원이 다음 주문에서 빠짐
+    for i in range(3):
+        order(moa.test_client(), phone=f'0103333000{i}')
+    with moa.conn() as db:
+        db.execute("UPDATE orders SET status='paid'")
+    r3 = order(a, phone='01011110000')
+    with moa.conn() as db:
+        o = db.execute('SELECT credit,amount FROM orders WHERE code=?', (r3.location.rsplit('/', 1)[1],)).fetchone()
+    assert o['credit'] == 2000 and o['amount'] == 3900
+    assert '모아 할인 적립금' in a.get(r3.location).get_data(as_text=True)
