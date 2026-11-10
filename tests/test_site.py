@@ -2861,6 +2861,8 @@ class SiteTest(unittest.TestCase):
         _, named = companydesk.compose({'paragraphs': ['내용'], 'questions': ['질문']}, '고양이몰', '', '이지우 기자')
         self.assertIn('안녕하세요. 소비자고발제보센터(소비자를위한신문) 이지우 기자입니다.', named)
         self.assertIn('소비자고발제보센터 이지우 기자 드림', named)
+        self.assertEqual(companydesk.polite('셋탑박스를 교체했다. 문제가 발생했다고 한다. 복구를 원한다. 비용은 추가다. 이미 확인했습니다.'),
+                         '셋탑박스를 교체했습니다. 문제가 발생했다고 합니다. 복구를 원합니다. 비용은 추가입니다. 이미 확인했습니다.')
         self.assertNotIn('■ 제보 내용 확인', secret_req['body'])  # 비밀글은 링크 없이
         cid = ids['환불이 안 돼요']
         admin = self.login_admin()

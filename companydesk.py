@@ -24,7 +24,7 @@ SYSTEM=('너는 소비자고발제보센터의 기업 입장 요청서 초안을
         '원칙: 확인되지 않은 사실을 단정하지 않는다. "제보자에 따르면", "제보자는 ~라고 주장했습니다"처럼 중립적으로 쓴다. '
         '제보에 없는 사실·날짜·금액·이름을 지어내지 않는다. 없는 항목은 "확인 필요"로 쓴다. 개인정보(이름·연락처·주소·계좌·주문번호 등)는 쓰지 않는다. '
         '기업을 비난하거나 압박·위협하는 표현, 법 위반으로 단정하는 표현을 쓰지 않는다. 존댓말(합니다체)로 쓴다.\n'
-        '문체(운영자 2026-11-10): 기자가 취재 요청할 때처럼 짧고 핵심만. 언제·무엇을·어떻게·지금 무엇을 요구하는지가 한눈에 들어오게. 꾸밈말·반복·감정 표현 없이 한 문장에 한 사실.\n'
+        '문체(운영자 2026-11-10): 기업에 보내는 공문이라 모든 문장을 경어(합니다체)로 끝낸다: ~했습니다, ~라고 합니다, ~주장했습니다, ~요청하고 있습니다. 기사체(~했다, ~한다, ~이다)는 절대 쓰지 않는다. 내용은 기자가 취재 요청할 때처럼 짧고 핵심만. 언제·무엇을·어떻게·지금 무엇을 요구하는지가 한눈에 들어오게. 꾸밈말·반복·감정 표현 없이 한 문장에 한 사실.\n'
         'JSON 키: company(기업명), product(제품·서비스), purchase_date(구매일), damage_date(피해 발생일), '
         'paragraphs(주요 제보 내용 1~2문단 배열, 문단마다 2~3문장, 첫 문단은 "제보자에 따르면"으로 시작해 경위를, 둘째 문단은 기업의 기존 대응과 제보자 요구를), '
         'claims(피해 주장 요약), company_response(기업의 기존 대응, 제보자 주장 기준), demands(소비자 요구사항), '
@@ -118,14 +118,29 @@ def ask_ai(case):
     except (KeyError,IndexError,TypeError,ValueError):raise RuntimeError('AI 응답을 읽지 못했어요')
     return clean_facts(facts,case),res.get('model') or ai_model()
 
+_DA=re.compile(r'([가-힣]+)다(?=[.!]?(\s|$))')
+def polite(text):
+    """AI가 기사체(~했다, ~한다, ~이다)로 끝낸 문장을 합니다체로 (운영자 2026-11-10: 기업에 보내는 글은 경어)."""
+    def fix(m):
+        w=m.group(1)
+        if w.endswith(('니','습니','합니','입니')) or w.endswith('하'):return m.group(0)  # 이미 ~니다, '~하다' 같은 기본형은 그대로
+        if w.endswith('는') and len(w)>1:return w[:-1]+'습니다'  # 받는다 → 받습니다
+        c=ord(w[-1])-0xAC00
+        if not 0<=c<11172:return m.group(0)
+        jong=c%28
+        if jong==4:return w[:-1]+chr(0xAC00+c-4+17)+'니다'  # ㄴ다 → ㅂ니다 (한다 → 합니다)
+        if jong==0:return (w[:-1]+'입니다') if w.endswith('이') else w+'입니다'  # 이다 → 입니다, 추가다 → 추가입니다
+        return w+'습니다'  # 했다·있다·없다 → 했습니다·있습니다·없습니다
+    return _DA.sub(fix,text)
+
 def clean_facts(facts,case):
     """AI 결과 다듬기: 빈칸은 '확인 필요', 개인정보 다시 지움, 문단 1~2개·질문 2~3개 (운영자 2026-11-10: 짧고 핵심만)."""
     if not isinstance(facts,dict):raise RuntimeError('AI 응답 형식이 달라요')
     names=[case['reporter_name']] if 'reporter_name' in case.keys() else []
     s=lambda v:scrub(str(v).strip(),names) if v not in (None,'') else NEED
     out={k:s(facts.get(k)) for k in ('company','product','purchase_date','damage_date','claims','company_response','demands')}
-    paras=[scrub(str(p).strip(),names) for p in (facts.get('paragraphs') or []) if str(p).strip()][:2]
-    qs=[scrub(str(q).strip(),names) for q in (facts.get('questions') or []) if str(q).strip()][:3]
+    paras=[polite(scrub(str(p).strip(),names)) for p in (facts.get('paragraphs') or []) if str(p).strip()][:2]
+    qs=[polite(scrub(str(q).strip(),names)) for q in (facts.get('questions') or []) if str(q).strip()][:3]
     if len(paras)<1 or len(qs)<1:raise RuntimeError('AI가 요청서 내용을 채우지 못했어요')
     if len(qs)<2:qs.append('제보 내용에 대한 귀사의 공식 입장과 향후 해결 계획을 알려 주시기 바랍니다.')
     out['paragraphs']=paras;out['questions']=qs[:3]
