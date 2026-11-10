@@ -64,6 +64,8 @@ with conn() as db:
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
     if 'rating' not in cols: db.execute('ALTER TABLE cases ADD COLUMN rating INTEGER')  # 제보자가 처리 결과를 확인하며 남긴 만족도 1~5
     if 'title_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN title_hidden INTEGER NOT NULL DEFAULT 0')  # 비밀글 제목·업체명을 목록에서 숨김(운영자)
+    for col in ('article_url','article_title','article_sent_at'):  # 제보가 기사로 나가면 기사 주소·제목 (운영자 2026-11-10: 제보자에게 알림톡으로 기사 보내기)
+        if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,channel TEXT NOT NULL,event TEXT NOT NULL,target TEXT NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT \'\',created TEXT NOT NULL)')
     for col in ('reporter_name','phone','region_sido','region_sigungu','region_detail','gender','age_group','ip_hash','industry','pw_hash'):
         if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
@@ -2235,6 +2237,17 @@ def report_detail(case_id):
                 log_case(db,case_id,f'이메일로 받은 기업 답변 등록 (보낸 사람 {sender}, 받은 날 {got})')
                 answer_arrived(db,case);notify_later(case_id,'company')
                 flash('이메일 답변을 등록했어요. 제보자에게 보여요. 사이트 공개는 아래에서 따로 정해요.')
+            elif form=='article':
+                # 운영자 2026-11-10: 제보가 기사로 나가면 기사 주소를 넣고 제보자에게 알림톡(없으면 문자)·메일로 기사 링크를 보냄
+                url=request.form.get('article_url','').strip()[:500];title=' '.join(request.form.get('article_title','').split())[:120]
+                if not re.fullmatch(r'https?://[^\s<>"]+\.[^\s<>"]+',url):
+                    flash('기사 주소를 https:// 로 시작하게 넣어 주세요.');return redirect(url_for(ep['case'],case_id=case_id)+'#article')
+                db.execute('UPDATE cases SET article_url=?,article_title=? WHERE id=?',(url,title,case_id))
+                log_case(db,case_id,f"기사 주소 등록: {title or url}")
+                if request.form.get('send')=='1':
+                    db.execute('UPDATE cases SET article_sent_at=? WHERE id=?',(now(),case_id));notify_later(case_id,'article')
+                    log_case(db,case_id,'제보자에게 기사 알림 보냄');flash('기사 주소를 저장하고 제보자에게 알렸어요. 아래 알림 기록에서 결과를 볼 수 있어요.')
+                else:flash('기사 주소를 저장했어요. 제보자 화면에 기사 링크가 보여요.')
             elif form=='lookup_pw':
                 pw=request.form.get('lookup_pw','')
                 if not LOOKUP_PW_MIN<=len(pw)<=30:flash('조회 비밀번호는 4~30자로 정해 주세요.');return redirect(url_for(ep['case'],case_id=case_id))

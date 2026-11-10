@@ -26,7 +26,7 @@ def branded(text):
     return text.replace('소비자고발제보센터', name).replace('소비자제보센터', name)  # 예전 이름 '소비자제보센터'도
 EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변', 'company': '기업 답변', 'supplement': '보완 요청', 'seen': '기업 전달 확인',
           'admin_answer': '운영자: 기업 답변', 'admin_request': '운영자: 정정·삭제·이의', 'admin_risk': '운영자: 개인정보 위험',
-          'company_notice': '기업 공식 안내', 'company_new': '기업: 새 제보', 'company_opinion': '기업: 제보자 추가 의견', 'company_files': '기업: 추가 자료', 'company_nudge': '기업: 제보자 독촉'}
+          'company_notice': '기업 공식 안내', 'company_new': '기업: 새 제보', 'company_opinion': '기업: 제보자 추가 의견', 'company_files': '기업: 추가 자료', 'company_nudge': '기업: 제보자 독촉', 'article': '기사 보도'}
 
 # 이메일 본문. 카카오 템플릿과 같은 내용 + 조회 주소
 EMAIL_TEXT = {
@@ -45,18 +45,22 @@ EMAIL_TEXT = {
     'supplement': ('[{site}] 제보 내용 보완을 요청드립니다',
                    '{name}님의 제보를 확인하려면 내용이나 자료 보완이 필요합니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
                    "요청 내용은 '내 제보 조회'에서 확인하고, 그 화면에서 설명이나 자료를 더해 주세요.\n{link}"),
+    'article': ('[{site}] 제보하신 내용이 기사로 보도됐습니다',
+                '{name}님의 제보가 소비자를위한신문 기사로 나갔습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n■ 기사: {article_title}\n\n'
+                '기사 보기: {article_url}\n\n제보해 주셔서 감사합니다. 진행 상황은 \'내 제보 조회\'에서 계속 볼 수 있어요.\n{link}'),
     'seen': ('[{site}] 업체가 제보를 확인했습니다',
              '{name}님의 제보를 업체 담당자가 열어 확인했습니다.\n\n■ 접수번호: {receipt}\n■ 제목: {subject}\n\n'
              "업체가 답변하면 다시 알려 드립니다. 답변 여부와 내용은 업체가 정합니다.\n{link}"),
 }
 KAKAO_TEMPLATE_ENV = {'received': 'KAKAO_TPL_RECEIVED', 'status': 'KAKAO_TPL_STATUS', 'message': 'KAKAO_TPL_MESSAGE', 'company': 'KAKAO_TPL_COMPANY',
-                      'supplement': 'KAKAO_TPL_SUPPLEMENT', 'seen': 'KAKAO_TPL_SEEN'}
+                      'supplement': 'KAKAO_TPL_SUPPLEMENT', 'seen': 'KAKAO_TPL_SEEN', 'article': 'KAKAO_TPL_ARTICLE'}
 
 
 # 알림톡을 못 쓸 때 제보자에게 보내는 문자 (접수·단계 변경만)
 SMS_TEXT = {
     'received': "[{site}] {name}님, 제보가 접수됐어요.\n접수번호 {receipt}\n{subject}\n진행 상황: {link}",
     'status': "[{site}] {name}님 제보가 '{status}' 단계가 됐어요.\n접수번호 {receipt}\n{subject}\n자세히 보기: {link}",
+    'article': "[{site}] {name}님, 제보하신 내용이 기사로 나갔어요.\n{article_title}\n기사 보기: {article_url}\n제보해 주셔서 감사합니다.",
 }
 
 
@@ -125,7 +129,9 @@ def http_post(url, payload, headers):
 
 def send_kakao(phone, event, values):
     bizmsg.alimtalk(phone, bizmsg.template(KAKAO_TEMPLATE_ENV[event]),
-                    {'#{이름}': values['name'], '#{접수번호}': values['receipt'], '#{제목}': values['subject'], '#{단계}': values['status']})
+                    {'#{이름}': values['name'], '#{접수번호}': values['receipt'], '#{제목}': values['subject'], '#{단계}': values['status'],
+                     '#{기사제목}': values.get('article_title', ''), '#{기사주소}': values.get('article_url', '')},
+                    fallback=event == 'article')  # 기사 알림은 템플릿 심사 전·실패면 같은 내용을 문자로
 
 
 def send_sms(phone, text):
@@ -184,6 +190,10 @@ def plan(case, event, link):
     """보낼 알림 목록을 만듦: [(채널, 받는 곳, 보내는 함수)]. 요청 안에서 부름(DB·주소 정보가 필요)."""
     values = {'name': short(case['reporter_name'] or '제보자', 20), 'receipt': case['receipt'], 'subject': short(case['subject']),
               'status': case['status'], 'link': link}
+    if event == 'article':
+        keys = case.keys() if hasattr(case, 'keys') else case
+        values['article_url'] = case['article_url'] if 'article_url' in keys else ''
+        values['article_title'] = short((case['article_title'] if 'article_title' in keys else '') or case['subject'], 40)
     jobs = []
     phone = digits(case['phone'])
     if phone.startswith('01') and kakao_ready(event):

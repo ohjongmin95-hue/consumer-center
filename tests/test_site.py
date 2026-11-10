@@ -1728,6 +1728,41 @@ class SiteTest(unittest.TestCase):
                                                    ('kakao', 'message', 'sent'), ('email', 'message', 'sent'), ('kakao', 'message', 'failed'), ('email', 'message', 'sent')])
         notify.ASYNC = True
 
+    def test_article_notice(self):
+        # 운영자 2026-11-10: 제보가 기사로 나가면 기사 주소를 넣고 제보자에게 알림톡(템플릿 없으면 문자)으로 기사 링크를 보냄
+        notify = self.site.notify
+        notify.ASYNC = False
+        sent, mails = [], []
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': 'A', 'subject': '기사화 알림 제보', 'description': 'C', 'reporter_name': '김소비',
+                'phone': '010-2222-4444', 'contact': 'me@example.com', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'secret'}
+        keys = {'SOLAPI_API_KEY': 'k', 'SOLAPI_API_SECRET': 's', 'SOLAPI_PFID': 'pf', 'SOLAPI_SENDER': '0212345678', 'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}
+        try:
+            with patch.dict(os.environ, keys), patch.object(notify.bizmsg, 'http_post', side_effect=lambda *a, **k: sent.append(a) or {'statusCode': '2000'}), \
+                 patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)):
+                self.post_form(self.client, '/report', base)
+                with self.site.conn() as db:
+                    case_id = db.execute("SELECT id FROM cases WHERE subject='기사화 알림 제보'").fetchone()['id']
+                admin = self.login_admin()
+                self.assertIn('제보자에게 기사 알림 보내기', admin.get('/admin/reports/%d' % case_id).get_data(as_text=True))
+                bad = self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'article', 'article_url': 'javascript:alert(1)', 'send': '1'})
+                self.assertEqual(bad.status_code, 302)
+                sent.clear(); mails.clear()
+                self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'article', 'article_url': 'https://www.soboru.co.kr/news/123', 'article_title': '쿠팡 환불 지연', 'send': '1'})
+            self.assertTrue(sent)
+            body = json.dumps(sent[-1][1], ensure_ascii=False)
+            self.assertIn('https://www.soboru.co.kr/news/123', body)
+            self.assertIn('쿠팡 환불 지연', body)
+            self.assertIn('기사로 보도', mails[-1][1] if len(mails[-1]) > 1 else '')
+            with self.site.conn() as db:
+                row = db.execute('SELECT article_url,article_sent_at FROM cases WHERE id=?', (case_id,)).fetchone()
+                ev = [r['event'] for r in db.execute('SELECT event FROM notifications WHERE case_id=?', (case_id,))]
+            self.assertEqual(row['article_url'], 'https://www.soboru.co.kr/news/123')
+            self.assertTrue(row['article_sent_at'])
+            self.assertIn('article', ev)
+        finally:
+            notify.ASYNC = True
+
     def test_aligo_vendor(self):
         # MSG_VENDOR=aligo: 알리고에서 승인된 템플릿 문구를 받아 변수를 채워 보냄. 솔라피 값은 그대로 둬도 안 씀
         notify, bizmsg = self.site.notify, self.site.notify.bizmsg
