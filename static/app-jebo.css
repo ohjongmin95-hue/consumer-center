@@ -36,8 +36,8 @@ html:has(.ap-body),body.ap-body{background:#F2F4F6!important}
 .ap-num small{font-size:13px;color:#8B95A1}
 .ap-num b{font-size:22px;line-height:31px;font-weight:700;font-variant-numeric:tabular-nums}
 .ap-go{flex:none;display:flex;align-items:center;justify-content:center;width:104px;height:56px;border-radius:16px;background:#EF920E;color:#fff!important;font-size:17px;font-weight:700}
-.ap-go,.ap-join{background:linear-gradient(135deg,#FFAE45 0%,#F5850C 100%)!important;box-shadow:0 6px 14px rgba(239,146,14,.28)}
-.ap-go:active,.ap-join:active{background:linear-gradient(135deg,#F59E33,#E07B00)!important}
+.ap-go,.ap-join{background:linear-gradient(135deg,#FFAE45 0%,#EF920E 100%)!important;box-shadow:0 6px 14px rgba(239,146,14,.28)}
+.ap-go:active,.ap-join:active{background:linear-gradient(135deg,#F7A23A,#E58A0C)!important}
 /* 운영자 2026-11-11: 헤이마오 띠처럼 '어딘가에는' 귤색 그라데이션 → 고발하기 버튼·기업 순위 띠 (맨 위 바탕은 토스 회색 그대로) */
 /* 홈: 최근 소식 한 줄 (천천히 흘러감) */
 .ap-tick{overflow:hidden;margin:0 -16px;padding:0 16px;-webkit-mask:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 16px),transparent)}
