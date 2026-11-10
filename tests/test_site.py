@@ -1797,6 +1797,23 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('숨김테스트몰', self.client.get('/reports').get_data(as_text=True))
         self.assertNotIn('숨김테스트몰', self.client.get('/rss.xml').get_data(as_text=True))
 
+    def test_answer_done_label(self):
+        # 운영자 2026-11-10: 기업이 공식 답변한 제보는 공개 목록에서 '기업 답변 완료'
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '답변몰', 'subject': '답변 표시 제보', 'description': '본문', 'reporter_name': '김소비',
+                'phone': '010-2222-6666', 'request_text': 'D', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'share_company': 'on', 'use_consent': 'on', 'truth': 'on', 'visibility': 'public'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db:
+            case_id = db.execute("SELECT id FROM cases WHERE subject='답변 표시 제보'").fetchone()['id']
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'publish_review', 'decision': 'approve'})
+        self.assertNotIn('기업 답변 완료</span>', self.client.get('/reports').get_data(as_text=True))
+        with self.site.conn() as db:
+            db.execute("INSERT INTO messages(case_id,author,body,created,public) VALUES(?,'기업 답변','확인해 볼게요.',?,1)", (case_id, datetime.datetime.now().isoformat(timespec='seconds')))
+        page = self.client.get('/reports').get_data(as_text=True)
+        self.assertIn('vcs-ans', page)
+        self.assertIn('기업 답변 완료', self.client.get('/reports?st=answer').get_data(as_text=True))
+
     def test_aligo_vendor(self):
         # MSG_VENDOR=aligo: 알리고에서 승인된 템플릿 문구를 받아 변수를 채워 보냄. 솔라피 값은 그대로 둬도 안 씀
         notify, bizmsg = self.site.notify, self.site.notify.bizmsg
@@ -2840,6 +2857,10 @@ class SiteTest(unittest.TestCase):
                      f"/reports/{ids['환불이 안 돼요']}", '소비자고발제보센터 드림\nhttps://consumerjebo.co.kr', '향후 추가 취재 및 보도가 진행될 수 있음'):
             self.assertIn(text, req['body'])
         self.assertNotIn('010-9999-8888', req['body'])  # AI가 돌려준 개인정보도 지움
+        import companydesk
+        _, named = companydesk.compose({'paragraphs': ['내용'], 'questions': ['질문']}, '고양이몰', '', '이지우 기자')
+        self.assertIn('안녕하세요. 소비자고발제보센터(소비자를위한신문) 이지우 기자입니다.', named)
+        self.assertIn('소비자고발제보센터 이지우 기자 드림', named)
         self.assertNotIn('■ 제보 내용 확인', secret_req['body'])  # 비밀글은 링크 없이
         cid = ids['환불이 안 돼요']
         admin = self.login_admin()

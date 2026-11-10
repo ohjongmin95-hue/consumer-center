@@ -136,7 +136,7 @@ def _branded(text):
     import notify
     return notify.branded(text)
 
-def compose(facts,case_company,public_url):
+def compose(facts,case_company,public_url,reporter=''):
     """요청서 양식(운영자가 정한 문구)에 내용을 채워 (제목, 본문)."""
     name=facts.get('company') if facts.get('company') and facts.get('company')!=NEED else case_company
     title=f'[소비자고발제보센터] {name} 관련 사실관계 확인 및 공식 입장 요청'
@@ -146,7 +146,18 @@ def compose(facts,case_company,public_url):
            '■ 확인 요청 사항','\n'.join(f'{i}. {q}' for i,q in enumerate(facts['questions'],1))]
     if public_url:parts+=['','■ 제보 내용 확인',public_url]
     parts+=['',CLOSING]
-    return title,_branded('\n'.join(parts))  # 제목·첫 인사는 늘 '소비자고발제보센터' (운영자 2026-11-10)
+    body=_branded('\n'.join(parts))  # 제목·첫 인사는 늘 '소비자고발제보센터' (운영자 2026-11-10)
+    r=reporter_name(reporter)
+    if r:  # 담당 기자를 정해 두면 첫 인사와 서명에 이름을 넣음 (운영자 2026-11-10)
+        import notify
+        body=body.replace(notify.INTRO+'입니다.',f'{notify.INTRO} {r} 기자입니다.',1).replace(notify.SIGN,f'{notify.CENTER} {r} 기자 드림',1)
+    return title,body
+
+def reporter_name(name):
+    n=(name or '').strip()
+    for tail in ('기자님','기자'):
+        if n.endswith(tail):n=n[:-len(tail)].strip()
+    return n[:20]
 
 def blank_facts(case):
     return {'company':case['company'],'paragraphs':['제보자에 따르면 (주요 제보 내용을 1~2문단으로 짧게 적어 주세요.)'],
@@ -187,7 +198,7 @@ def install(S):
             return False
         with conn() as db:
             case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
-            title,body=compose(facts,case['company'],public_url(case,link))
+            title,body=compose(facts,case['company'],public_url(case,link),case['assignee'] if 'assignee' in case.keys() else '')
             v=add_version(db,case_id,title,body,'ai',facts,model,actor=actor)
             S.log_case(db,case_id,f'AI 입장 요청서 {v}판 생성')
         return True
@@ -279,7 +290,7 @@ def install(S):
                 ok=generate(cid,who)
                 flash('AI가 새 판을 만들었어요. 이전 판은 이력에 남아 있어요.' if ok else 'AI가 요청서를 만들지 못했어요. 잠시 뒤 다시 누르거나 직접 써 주세요.');return
         if form=='req_manual':
-            title,body=compose(blank_facts(case),case['company'],public_url(case))
+            title,body=compose(blank_facts(case),case['company'],public_url(case),case['assignee'] if 'assignee' in case.keys() else '')
             v=add_version(db,cid,title,body,'manual',actor=who);S.log_case(db,cid,f'입장 요청서 {v}판 직접 작성 시작');flash('양식을 채워 두었어요. 내용을 고쳐 저장해 주세요.')
         elif form=='req_save':
             title=request.form.get('title','').strip()[:200];body=request.form.get('body','').strip()[:12000]
