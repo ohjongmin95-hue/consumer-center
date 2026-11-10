@@ -139,13 +139,13 @@ def compose(facts,case_company,public_url):
     """요청서 양식(운영자가 정한 문구)에 내용을 채워 (제목, 본문)."""
     name=facts.get('company') if facts.get('company') and facts.get('company')!=NEED else case_company
     title=f'[소비자고발제보센터] {name} 관련 사실관계 확인 및 공식 입장 요청'
-    parts=['안녕하세요. 소비자고발제보센터입니다.',
+    parts=['안녕하세요. 소비자고발제보센터(소비자를위한신문)입니다.',
            '본 센터에 귀사와 관련한 소비자 피해 제보가 접수돼 사실관계 확인 및 공식 입장을 요청드립니다.','',
            '■ 주요 제보 내용','\n\n'.join(facts['paragraphs']),'',
            '■ 확인 요청 사항','\n'.join(f'{i}. {q}' for i,q in enumerate(facts['questions'],1))]
     if public_url:parts+=['','■ 제보 내용 확인',public_url]
     parts+=['',CLOSING]
-    return _branded(title),_branded('\n'.join(parts))
+    return title,_branded('\n'.join(parts))  # 제목·첫 인사는 늘 '소비자고발제보센터' (운영자 2026-11-10)
 
 def blank_facts(case):
     return {'company':case['company'],'paragraphs':['제보자에 따르면 (주요 제보 내용을 2~4문단으로 적어 주세요.)'],

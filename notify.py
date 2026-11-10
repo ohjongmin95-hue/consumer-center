@@ -20,10 +20,22 @@ def site_name():
     return '소비자고발제보센터'
 
 
+# 기업·제보자에게 보내는 글의 첫 문장과 서명은 사이트 이름 설정과 상관없이 늘 이 이름 (운영자 2026-11-10: '소보루입니다' 말고)
+CENTER = '소비자고발제보센터'
+INTRO = CENTER + '(소비자를위한신문)'
+SIGN = CENTER + ' 드림'
+
+
 def branded(text):
-    """기본 문구 속 '소비자고발제보센터'를 지금 사이트 이름으로 바꿈."""
+    """기본 문구 속 '소비자고발제보센터'를 지금 사이트 이름으로 바꿈. 첫 인사(INTRO)·서명(SIGN)은 그대로 둠."""
     name = site_name()
-    return text.replace('소비자고발제보센터', name).replace('소비자제보센터', name)  # 예전 이름 '소비자제보센터'도
+    keep = {'\x00': INTRO, '\x01': SIGN}
+    for k, v in keep.items():
+        text = text.replace(v, k)
+    text = text.replace('소비자고발제보센터', name).replace('소비자제보센터', name)  # 예전 이름 '소비자제보센터'도
+    for k, v in keep.items():
+        text = text.replace(k, v)
+    return text
 EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변', 'company': '기업 답변', 'supplement': '보완 요청', 'seen': '기업 전달 확인',
           'admin_answer': '운영자: 기업 답변', 'admin_request': '운영자: 정정·삭제·이의', 'admin_risk': '운영자: 개인정보 위험',
           'company_notice': '기업 공식 안내', 'company_new': '기업: 새 제보', 'company_opinion': '기업: 제보자 추가 의견', 'company_files': '기업: 추가 자료', 'company_nudge': '기업: 제보자 독촉', 'article': '기사 보도'}

@@ -2816,9 +2816,9 @@ class SiteTest(unittest.TestCase):
             secret_req = db.execute('SELECT * FROM company_requests WHERE case_id=?', (ids['비밀 제보'],)).fetchone()
             self.assertIsNone(db.execute('SELECT 1 FROM company_requests WHERE case_id=?', (ids['전달 미동의'],)).fetchone())
         self.assertEqual((req['version'], req['origin'], req['status'], req['model']), (1, 'ai', 'draft', 'gpt-test'))
-        self.assertEqual(req['title'], '[소보루] 고양이몰 관련 사실관계 확인 및 공식 입장 요청')
-        for text in ('안녕하세요. 소보루입니다.', '■ 주요 제보 내용', '■ 확인 요청 사항', '1. 반품 접수 여부', '3. ', '■ 제보 내용 확인',
-                     f"/reports/{ids['환불이 안 돼요']}", '소보루 드림\nhttps://consumerjebo.co.kr', '향후 추가 취재 및 보도가 진행될 수 있음'):
+        self.assertEqual(req['title'], '[소비자고발제보센터] 고양이몰 관련 사실관계 확인 및 공식 입장 요청')
+        for text in ('안녕하세요. 소비자고발제보센터(소비자를위한신문)입니다.', '■ 주요 제보 내용', '■ 확인 요청 사항', '1. 반품 접수 여부', '3. ', '■ 제보 내용 확인',
+                     f"/reports/{ids['환불이 안 돼요']}", '소비자고발제보센터 드림\nhttps://consumerjebo.co.kr', '향후 추가 취재 및 보도가 진행될 수 있음'):
             self.assertIn(text, req['body'])
         self.assertNotIn('010-9999-8888', req['body'])  # AI가 돌려준 개인정보도 지움
         self.assertNotIn('■ 제보 내용 확인', secret_req['body'])  # 비밀글은 링크 없이

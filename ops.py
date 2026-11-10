@@ -197,8 +197,8 @@ def install(S):
         db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created) VALUES(?,?,?,?)', (cid, hashlib.sha256(token.encode()).hexdigest(), company['name'], now()))
         link = url_for('company_access', case_id=cid, token=token, _external=True); optout = optout_url(db, company)
         kind = 'remind' if db.execute("SELECT 1 FROM company_notices WHERE case_id=? AND kind IN ('first','remind') AND status='보냄'", (cid,)).fetchone() else 'first'
-        subject = f"[{notify.site_name()}] {company['name']} 관련 소비자 제보 안내 ({case['receipt']})" + (' - 재안내' if kind == 'remind' else '')
-        body = (f"{company['name']} 고객 담당자님께,\n\n{notify.site_name()}에 {company['name']}와(과) 관련된 소비자 제보가 접수돼 안내드립니다.\n\n"
+        subject = f"[{notify.CENTER}] {company['name']} 관련 소비자 제보 안내 ({case['receipt']})" + (' - 재안내' if kind == 'remind' else '')
+        body = (f"{company['name']} 고객 담당자님께,\n\n안녕하세요. {notify.INTRO}입니다.\n{company['name']}와(과) 관련된 소비자 제보가 접수돼 안내드립니다.\n\n"
                 f"■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n■ 접수일: {case['created'][:10]}\n\n"
                 + ("제보자가 아직 답변을 받지 못해 답변을 기다리고 있다고 알려 왔습니다.\n\n" if nudge else '') +
                 f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남길 수 있습니다. 답변 등록은 무료이며, 링크는 이 제보 하나만 볼 수 있습니다.\n{link}\n\n"
@@ -206,9 +206,9 @@ def install(S):
                 "답변을 남기시면 귀사의 입장도 함께 전달되며, 해결되지 않은 제보는 한국소비자원(1372)·공정거래위원회 등 관계 기관의 피해구제 절차로 안내합니다.\n\n"
                 "이 메일에 바로 답장하셔도 담당자가 받아 봅니다.\n\n"
                 "제보는 소비자 개인의 경험과 주장이며, 센터가 사실관계를 확인한 내용이 아닙니다. 답변 여부와 내용은 귀사가 정합니다.\n"
-                f"{notify.site_name()}는 공공기관이 아닌 민간 플랫폼입니다.\n\n"
+                f"{notify.CENTER}는 공공기관이 아닌 민간 플랫폼입니다.\n\n"
                 f"이런 안내 메일을 그만 받으려면: {optout}")
-        html = render_template('company_notice_email.html', subject=subject, company=company['name'], site=notify.site_name(), receipt=case['receipt'],
+        html = render_template('company_notice_email.html', subject=subject, company=company['name'], site=notify.CENTER, intro=notify.INTRO, receipt=case['receipt'],
                                category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind')
         try:
             notify.send_email(to, subject, body, html=html); status, memo = '보냄', ''
