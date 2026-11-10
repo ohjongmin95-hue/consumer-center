@@ -110,3 +110,57 @@ span.ap-lg.c0{background:#3182F6}span.ap-lg.c1{background:#F04452}span.ap-lg.c2{
 .ap-body .ap,.ap-body .site-footer{word-break:keep-all;overflow-wrap:anywhere}
 .ap-h,.ap-case b,.ap-gc h2,.ap-ban b,.ap-t{text-wrap:balance}
 .ap-gc p,.ap-case p,.ap-how,.ap-none p{text-wrap:pretty}
+/* ── 운영자 2026-11-11 (2): 헤이마오처럼 빈 곳 채우기 ── */
+/* 검색 버튼 */
+.ap-sbtn{flex:none;border:0;background:none;font:inherit;font-size:15px;font-weight:700;color:#EF920E;padding:0 0 0 4px;cursor:pointer}
+/* 소식 줄: 얼굴 + 말풍선 */
+.ap-tav{flex:none;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:#3182F6}
+.ap-tick a.k-done .ap-tav{background:#03B26C}
+.ap-tick a{border-radius:18px 18px 18px 4px}
+/* 고발 목록: 글쓴이·상태·사진 (헤이마오 목록 카드) */
+.ap-case{display:flex;flex-direction:column;gap:10px;padding:16px 0}
+.ap-who{display:flex;align-items:center;gap:10px}
+.ap-who>span:not(.ap-av){flex:1;min-width:0;display:flex;flex-direction:column}
+.ap-who b{font-size:15px;font-weight:600;color:#333D48;-webkit-line-clamp:unset;display:block}
+.ap-who small{font-size:12px;color:#8B95A1}
+.ap-av{flex:none;width:36px;height:36px;border-radius:50%;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;background:#B0B8C1}
+span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{background:#03B26C}span.ap-av.c3{background:#FFB331}span.ap-av.c4{background:#8B5CF6}span.ap-av.c5{background:#18A5A7}
+.ap-who .ap-st{grid-column:auto;grid-row:auto;font-style:normal}
+.ap-cb{display:flex;gap:12px;align-items:flex-start}
+.ap-ct{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.ap-ct b{font-size:17px;line-height:25.5px;font-weight:700;color:#191F28;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ap-co-t{color:#E07B00}
+.ap-ct p{font-size:13px;color:#8B95A1;margin:0}
+.ap-pic{flex:none;width:76px;height:76px;border-radius:12px;object-fit:cover;background:#F2F4F6}
+/* 공동 대응: 처리율·태그·공감 */
+.ap-nums b.hl{color:#E07B00}
+.ap-tags{display:flex;flex-direction:column;gap:8px}
+.ap-tags div{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.ap-tags small{font-size:13px;color:#8B95A1;margin-right:2px}
+.ap-tags i{font-style:normal;font-size:13px;font-weight:600;padding:4px 10px;border-radius:8px;background:#F2F4F6;color:#4E5968}
+.ap-act{display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid #F2F4F6;font-size:14px;color:#6B7684}
+.ap-act span,.ap-share{display:flex;align-items:center;gap:4px}
+.ap-act .tf{font-size:16px}
+.ap-share{border:0;background:none;font:inherit;font-size:14px;color:#6B7684;padding:0;cursor:pointer}
+/* 고발 상세: 크게, 고발 정보 표 (헤이마오 상세) */
+.ap-body .pf .pf-title{font-size:24px;line-height:34px;font-weight:700;letter-spacing:0;text-wrap:balance}
+.ap-body .pf .pc-body{font-size:17px;line-height:28px;color:#333D48}
+.ap-body .pf .pc-sec h2{font-size:20px;line-height:29px}
+.ap-body .pf .pc-back{font-size:15px}
+.ap-body .pf{background:#fff}
+.ap-info{margin:16px 0 8px;background:#F9FAFB;border-radius:16px;padding:6px 18px}
+.ap-info div{display:flex;gap:16px;padding:12px 0;border-top:1px solid #F2F4F6;font-size:16px;line-height:24px}
+.ap-info div:first-child{border-top:0}
+.ap-info dt{flex:none;width:72px;color:#8B95A1;font-weight:500}
+.ap-info dd{margin:0;flex:1;min-width:0;color:#191F28;font-weight:600}
+.ap-info dd.hl,.ap-info dd.hl a{color:#E07B00}
+.ap-info dd.st{color:#1B64DA}
+.ap-body .pf .pf-co{display:none}  /* 고발 대상은 위 고발 정보 표에 있음 */
+/* 운영자 2026-11-11: 커뮤니티라 본문이 잘 보이게. 목록 미리보기 = 공동 대응 카드 글과 같은 크기, 상세 본문 = 제목 바로 아래 크게 */
+.ap-ct p.ap-cx{font-size:16px;line-height:25px;color:#333D48;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:keep-all;text-wrap:pretty}
+.ap-body .pf .ap-body-t{margin:20px 0 4px;font-size:18px;line-height:30px;color:#191F28;white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere;text-wrap:pretty}
+.ap-body .pf .ap-want-only .pc-want{margin-top:0}
+.ap-feed{background:#fff;border-radius:24px;padding:4px 20px}
+.ap-feed .ap-case:first-child{border-top:0}
+.ap-body .ap-case .ap-ct p:not(.ap-cx){color:#8B95A1;font-size:13px}
+.ap-body .ap-feed{border-radius:24px;overflow:hidden}

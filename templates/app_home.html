@@ -10,7 +10,7 @@
   </section>
 
   {% if tick %}<div class="ap-tick" aria-label="{{ ui('app.tick', '최근 소식') }}"><div class="ap-tick-in">
-    {% for dup in (0, 1) %}{% for at, emo, text, cid, kind in tick %}<a class="k-{{ kind }}" href="{{ url_for('public_case', case_id=cid) }}"{% if dup %} aria-hidden="true" tabindex="-1"{% endif %}><i class="tf">{{ emo }}</i>{{ text }}</a>{% endfor %}{% endfor %}
+    {% for dup in (0, 1) %}{% for at, emo, text, cid, kind in tick %}<a class="k-{{ kind }}" href="{{ url_for('public_case', case_id=cid) }}"{% if dup %} aria-hidden="true" tabindex="-1"{% endif %}><span class="ap-tav" aria-hidden="true">{{ emo }}</span>{{ text }}</a>{% endfor %}{% endfor %}
   </div></div>{% endif %}
 
   {% if guides %}<section class="ap-card">
@@ -25,13 +25,7 @@
 
   <section class="ap-card ap-list">
     <nav class="ap-tabs" aria-label="{{ ui('app.list', '고발 목록') }}">{% for k, label in tabs.items() %}<a href="{{ url_for('home', t=k) }}"{% if k == tab %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</nav>
-    {% for c in cases %}{% set open = c.title and not c.secret %}
-    {% if open %}<a class="ap-case" href="{{ url_for('public_case', case_id=c.no) }}">{% else %}<div class="ap-case">{% endif %}
-      <b>{% if c.title %}{{ c.title }}{% else %}{{ ui('app.secret', '비공개 고발이에요') }}{% endif %}</b>
-      <p>{% if c.company %}{{ c.company }} · {% endif %}{{ c.cat }} · {{ c.when }}</p>
-      <span class="ap-st s{{ c.step }}">{{ c.status }}</span>
-    {% if open %}</a>{% else %}</div>{% endif %}
-    {% else %}<p class="ap-empty">{{ ui('app.list_empty', '아직 여기에 올라온 고발이 없어요.') }}</p>{% endfor %}
+    {% with cases = cases %}{% include 'app_feed.html' %}{% endwith %}
     <a class="ap-all" href="{{ url_for('reports', sort='hot' if tab == 'hot' else None, st=tab if tab in ('answer', 'done') else None) }}">{{ ui('app.all', '전체 고발 보기') }}</a>
   </section>
 </main>
