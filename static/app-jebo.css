@@ -9,8 +9,7 @@ html:has(.ap-body),body.ap-body{font-family:'Pretendard Variable',Pretendard,Tos
 /* 머리글 */
 .ap-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;background:#F2F4F6}
 .ap-logo{display:flex;align-items:center;gap:5px;flex:none;text-decoration:none}
-.ap-logo img{height:16px;width:auto;display:block}
-.ap-logo b{background:#652D1C;color:#fff;font-size:12px;font-weight:800;line-height:1;padding:4px 5px;border-radius:5px}
+.ap-logo img{height:24px;width:auto;display:block}  /* 소보루고발 가로 로고 (로고체 + 갈색 고발 상자, 운영자 2026-11-11) */
 .ap-search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;background:#fff;border-radius:12px;color:#B0B8C1}
 .ap-search input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:14px;color:#191F28}
 .ap-search input::placeholder{color:#B0B8C1}
