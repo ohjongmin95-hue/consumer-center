@@ -1803,6 +1803,11 @@ IP_ATTEMPT_LIMIT=20       # 같은 접속지에서 10분 동안 실패 허용 �
 app.config['PERMANENT_SESSION_LIFETIME']=datetime.timedelta(days=14)
 LOGIN_ID_RE=re.compile(r'^[a-z0-9_]{4,20}$')
 MEMBER_EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+def notice_phone_in():
+    # 관리자 기업 화면의 '안내 받을 휴대폰' 칸: 빈칸이면 '', 휴대폰 번호면 숫자만, 아니면 None (운영자 2026-11-10)
+    p=re.sub(r'\D','',request.form.get('notice_phone',''))
+    if not p:return ''
+    return p if re.fullmatch(r'01[016789]\d{7,8}',p) else None
 with conn() as db:
     db.execute('''CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,login_id TEXT NOT NULL UNIQUE COLLATE NOCASE,pw_hash TEXT NOT NULL,nickname TEXT NOT NULL UNIQUE COLLATE NOCASE,email TEXT NOT NULL DEFAULT '',terms_version TEXT NOT NULL,agreed_at TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active',session_ver INTEGER NOT NULL DEFAULT 1,failed INTEGER NOT NULL DEFAULT 0,locked_until TEXT NOT NULL DEFAULT '',last_login TEXT NOT NULL DEFAULT '',ip_hash TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)''')
     db.execute('CREATE TABLE IF NOT EXISTS login_attempts(kind TEXT NOT NULL,ip_hash TEXT NOT NULL,created TEXT NOT NULL)')
@@ -2787,8 +2792,10 @@ def admin_companies():
                 if digits and not biz_no_ok(digits):flash('사업자등록번호를 확인해 주세요.');return redirect(url_for('admin_companies'))
                 email=request.form.get('official_email','').strip()[:150]
                 if email and not MEMBER_EMAIL_RE.match(email):flash('이메일 주소를 확인해 주세요.');return redirect(url_for('admin_companies'))
-                db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created,brand,biz_name,official_email) VALUES(?,?,'listed','','','',?,?,?,?)",
-                           (name,digits,now(),request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email))
+                phone=notice_phone_in()
+                if phone is None:flash('휴대폰 번호를 확인해 주세요. 010으로 시작하는 번호만 카카오톡으로 받을 수 있어요.');return redirect(url_for('admin_companies'))
+                db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created,brand,biz_name,official_email,notice_phone) VALUES(?,?,'listed','','','',?,?,?,?,?)",
+                           (name,digits,now(),request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email,phone))
                 flash(f'{name}을(를) 등록했어요. 공개 제보가 생기면 기업 페이지가 열려요.');return redirect(url_for('admin_companies'))
             company=db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
             if not company:abort(404)
@@ -2796,7 +2803,10 @@ def admin_companies():
                 email=request.form.get('official_email','').strip()[:150]
                 if email and not MEMBER_EMAIL_RE.match(email):flash('이메일 주소를 확인해 주세요.');return redirect(url_for('admin_companies'))
                 name=request.form.get('name','').strip()[:120] or company['name']
+                phone=notice_phone_in()
+                if phone is None:flash('휴대폰 번호를 확인해 주세요. 010으로 시작하는 번호만 카카오톡으로 받을 수 있어요.');return redirect(url_for('admin_companies'))
                 db.execute('UPDATE companies SET name=?,brand=?,biz_name=?,official_email=? WHERE id=?',(name,request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email,cid))
+                if 'notice_phone' in request.form:db.execute('UPDATE companies SET notice_phone=? WHERE id=?',(phone,cid))
                 if email!=company['official_email']:db.execute("UPDATE companies SET email_source='' WHERE id=?",(cid,))
                 if 'domain' in request.form:company_set_domain(db,cid,request.form.get('domain',''))  # 홈페이지 주소 → 로고 자동  # 직접 고친 메일은 '자동 찾음' 표시를 뗌
                 flash(f'{name} 정보를 저장했어요.');return redirect(url_for('admin_companies'))

@@ -14,7 +14,7 @@ from flask import request, redirect, url_for, flash, abort, render_template, ses
 
 REQUEST_KINDS = {'correct': '정정 요청', 'delete': '삭제 요청', 'objection': '기업 이의 신청'}
 REQUEST_STATUSES = ('접수', '처리 완료', '반려')
-NOTICE_KINDS = {'first': '첫 안내 메일', 'remind': '재안내 메일', 'manual': '직접 연락 기록'}
+NOTICE_KINDS = {'first': '첫 안내', 'remind': '재안내', 'manual': '직접 연락 기록'}
 NOTICE_GAP_HOURS = 72          # 같은 제보로 기업에 다시 메일을 보내려면 이만큼 지나야 함
 NOTICE_MAX_PER_CASE = 3        # 제보 하나로 기업에 보내는 안내 메일 최대 횟수
 NOTICE_MAX_PER_COMPANY_DAY = 20  # 기업 한 곳에 하루에 보내는 안내 메일 최대 횟수
@@ -45,7 +45,7 @@ def migrate(db):
     db.execute('CREATE INDEX IF NOT EXISTS company_notices_case ON company_notices(case_id)')
     db.execute('CREATE INDEX IF NOT EXISTS case_requests_case ON case_requests(case_id)')
     cols = {r['name'] for r in db.execute('PRAGMA table_info(companies)')}
-    for c in ('notice_optout', 'optout_token', 'email_source'):
+    for c in ('notice_optout', 'optout_token', 'email_source', 'notice_phone'):  # notice_phone: 안내를 카카오톡(알림톡·문자)으로 받을 휴대폰 (운영자 2026-11-10)
         if c not in cols: db.execute(f"ALTER TABLE companies ADD COLUMN {c} TEXT NOT NULL DEFAULT ''")
     cols = {r['name'] for r in db.execute('PRAGMA table_info(cases)')}
     if 'supplement_at' not in cols: db.execute("ALTER TABLE cases ADD COLUMN supplement_at TEXT NOT NULL DEFAULT ''")
@@ -140,12 +140,23 @@ def install(S):
         return dict(risks=risks(case['subject'], case['description'], case['request_text']),
                     public_risks=risks(case['public_subject'], case['public_body'], case['public_request']) if case['public_consent'] else [],
                     dups=dups[:8], company=company, notices=notices, requests=reqs, notice_block=notice_block(db, case, company),
-                    notice_to=notice_target(company), files=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?', (case['id'],)).fetchone()[0])
+                    notice_to=notice_target(company), notice_phone=notify.mask(notice_phone(company)) if notice_phone(company) else '', files=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?', (case['id'],)).fetchone()[0])
     S.ops_context = context
 
     def notice_target(company):
         if not company: return ''
         return company['official_email'] or (company['contact_email'] if company['status'] == 'active' else '')
+
+    def notice_phone(company):
+        # 기업 안내를 카카오톡 채널(알림톡, 안 되면 문자)로 받을 휴대폰. 010 같은 휴대폰 번호만
+        p = notify.digits(company['notice_phone'] if company and 'notice_phone' in company.keys() else '')
+        return p if re.fullmatch(r'01[016789]\d{7,8}', p) else ''
+
+    def notice_ways(company):
+        # 지금 보낼 수 있는 길: (이메일, 휴대폰). 발송 설정이 없는 길은 빈칸
+        email = notice_target(company) if notify.email_ready() else ''
+        phone = notice_phone(company) if notify.sms_ready() or notify.kakao_ready('company_notice') else ''
+        return email, phone
 
     def notice_block(db, case, company):
         """기업 안내 메일을 지금 보낼 수 없는 이유. 보낼 수 있으면 ''."""
@@ -153,13 +164,13 @@ def install(S):
         if case['review'] in jebo.NOT_VALID: return '반려·중복 처리된 제보예요.'
         if not company: return '먼저 이 제보를 기업에 연결해 주세요.'
         if company['notice_optout']: return f"{company['name']}이(가) 안내 메일 수신을 거부했어요 ({company['notice_optout'][:10]})."
-        if not notice_target(company): return '기업 공식 이메일이 없어요. 기업 화면에서 공식 이메일을 넣어 주세요.'
+        if not notice_target(company) and not notice_phone(company): return '기업 공식 이메일이나 휴대폰 번호가 없어요. 기업 화면에서 넣어 주세요.'
         sent = db.execute("SELECT created FROM company_notices WHERE case_id=? AND kind IN ('first','remind') AND status='보냄' ORDER BY id DESC", (case['id'],)).fetchall()
         if len(sent) >= NOTICE_MAX_PER_CASE: return f'이 제보로는 안내 메일을 {NOTICE_MAX_PER_CASE}번까지 보낼 수 있어요.'
         if sent and sent[0]['created'] > ago(hours=NOTICE_GAP_HOURS): return f'마지막 안내 메일 뒤 {NOTICE_GAP_HOURS}시간이 지나야 다시 보낼 수 있어요.'
         if db.execute("SELECT COUNT(*) FROM company_notices WHERE company_id=? AND kind IN ('first','remind') AND status='보냄' AND created>=?", (company['id'], ago(days=1))).fetchone()[0] >= NOTICE_MAX_PER_COMPANY_DAY:
             return f'이 기업에는 하루에 {NOTICE_MAX_PER_COMPANY_DAY}통까지만 보내요.'
-        if not notify.email_ready(): return '메일 발송 설정(SMTP)이 없어 보낼 수 없어요. 직접 연락했다면 아래에 기록해 주세요.'
+        if not any(notice_ways(company)): return '메일·문자 발송 설정이 없어 보낼 수 없어요. 직접 연락했다면 아래에 기록해 주세요.'
         return ''
 
     # ---- 운영자 제보 화면의 양식 (report_detail에서 부름) ------------------------------
@@ -192,7 +203,7 @@ def install(S):
     def send_notice(db, case, company, quiet=False, actor=None, nudge=False):
         """기업 공식 이메일로 답변 링크를 보냄 (운영자 버튼, 승인 시 자동 전달, 제보자 독촉). 보냈으면 True.
         메일을 보냈다고 '기업이 확인했다'고 표시하지 않음(열어 봐야 확인)."""
-        cid = case['id']; to = notice_target(company)
+        cid = case['id']; to, phone = notice_ways(company)
         token = secrets.token_urlsafe(32)
         db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created) VALUES(?,?,?,?)', (cid, hashlib.sha256(token.encode()).hexdigest(), company['name'], now()))
         link = url_for('company_access', case_id=cid, token=token, _external=True); optout = optout_url(db, company)
@@ -210,21 +221,39 @@ def install(S):
                 f"이런 안내 메일을 그만 받으려면: {optout}")
         html = render_template('company_notice_email.html', subject=subject, company=company['name'], site=notify.CENTER, intro=notify.INTRO, receipt=case['receipt'],
                                category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind')
-        try:
-            # 운영 메일함(OPS_EMAIL, 하이웍스)에 사본을 남겨 보낸 기록을 볼 수 있게 (운영자 2026-11-10)
-            notify.send_email(to, subject, body, html=html, from_name=notify.CENTER, bcc=[os.getenv('OPS_EMAIL', '').strip()]); status, memo = '보냄', ''
-        except Exception as e:
-            status, memo = '실패', str(e)[:200]
+        sent, fails = [], []
+        if to:
+            try:
+                # 운영 메일함(OPS_EMAIL, 하이웍스)에 사본을 남겨 보낸 기록을 볼 수 있게 (운영자 2026-11-10)
+                notify.send_email(to, subject, body, html=html, from_name=notify.CENTER, bcc=[os.getenv('OPS_EMAIL', '').strip()]); sent.append(notify.mask(to))
+            except Exception as e:
+                fails.append('메일: ' + str(e)[:150])
+        if phone:  # 휴대폰을 넣어 두면 카카오톡 채널로도 (알림톡 템플릿 심사 전이면 문자) (운영자 2026-11-10)
+            text = (f"[{notify.CENTER}] {company['name']} 관련 소비자 제보 안내\n\n안녕하세요. {notify.INTRO}입니다.\n"
+                    f"{company['name']}와(과) 관련된 소비자 제보가 접수돼 안내드립니다.\n\n■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n\n"
+                    + ("제보자가 아직 답변을 받지 못해 답변을 기다리고 있습니다.\n\n" if nudge else '') +
+                    f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남길 수 있습니다.\n{link}\n\n안내를 그만 받으려면: {optout}")
+            try:
+                if notify.kakao_ready('company_notice'):
+                    notify.bizmsg.alimtalk(phone, notify.bizmsg.template(notify.KAKAO_TEMPLATE_ENV['company_notice']),
+                                           {'#{업체}': company['name'], '#{접수번호}': case['receipt'], '#{분야}': case['category'], '#{링크}': link, '#{수신거부}': optout}, fallback=True)
+                else:
+                    notify.send_sms(phone, text)
+                sent.append(notify.mask(phone))
+            except Exception as e:
+                fails.append('카카오톡·문자: ' + str(e)[:150])
+        status, memo = ('보냄' if sent else '실패'), ' / '.join(fails)
+        to = ', '.join(sent) or notify.mask(to or phone)
         db.execute('INSERT INTO company_notices(case_id,company_id,kind,target,status,memo,actor,created) VALUES(?,?,?,?,?,?,?,?)',
-                   (cid, company['id'], kind, notify.mask(to), status, memo, actor or S.actor_name(), now()))
+                   (cid, company['id'], kind, to, status, memo, actor or S.actor_name(), now()))
         if status == '보냄':
             jebo.mark(db, cid, 'forwarded_at')
-            S.log_case(db, cid, f"기업 {NOTICE_KINDS[kind]} 보냄 ({notify.mask(to)})")
+            S.log_case(db, cid, f"기업 {NOTICE_KINDS[kind]} 보냄 ({to})")
             if not quiet: flash(f"{company['name']}에 {NOTICE_KINDS[kind]}을 보냈어요. 기업이 링크를 열어야 '기업 전달 확인'으로 바뀌어요.")
             to_wait(db, cid)
             return True
-        S.log_case(db, cid, f'기업 안내 메일 실패: {memo[:60]}')
-        if not quiet: flash('메일을 보내지 못했어요: ' + memo)
+        S.log_case(db, cid, f'기업 안내 실패: {memo[:60]}')
+        if not quiet: flash('기업 안내를 보내지 못했어요: ' + memo)
         return False
 
     def to_wait(db, cid):
@@ -258,7 +287,7 @@ def install(S):
         block = notice_block(db, case, company)
         if block:
             S.log_case(db, cid, '기업 자동 전달 못 함: ' + block); return '기업 자동 전달은 못 했어요. ' + block
-        if send_notice(db, case, company, quiet=True, actor='자동 전달'): return f"{company['name']}에 안내 메일을 자동으로 보냈어요."
+        if send_notice(db, case, company, quiet=True, actor='자동 전달'): return f"{company['name']}에 안내를 자동으로 보냈어요."
         return '기업 안내 메일을 보내지 못했어요. 처리 기록을 확인해 주세요.'
     S.ops_auto_forward = auto_forward
 

@@ -65,7 +65,8 @@ EMAIL_TEXT = {
              "업체가 답변하면 다시 알려 드립니다. 답변 여부와 내용은 업체가 정합니다.\n{link}"),
 }
 KAKAO_TEMPLATE_ENV = {'received': 'KAKAO_TPL_RECEIVED', 'status': 'KAKAO_TPL_STATUS', 'message': 'KAKAO_TPL_MESSAGE', 'company': 'KAKAO_TPL_COMPANY',
-                      'supplement': 'KAKAO_TPL_SUPPLEMENT', 'seen': 'KAKAO_TPL_SEEN', 'article': 'KAKAO_TPL_ARTICLE'}
+                      'supplement': 'KAKAO_TPL_SUPPLEMENT', 'seen': 'KAKAO_TPL_SEEN', 'article': 'KAKAO_TPL_ARTICLE',
+                      'company_notice': 'KAKAO_TPL_COMPANY_NOTICE'}  # 기업 안내 (기업 휴대폰으로, 운영자 2026-11-10)
 
 
 # 알림톡을 못 쓸 때 제보자에게 보내는 문자 (접수·단계 변경만)
