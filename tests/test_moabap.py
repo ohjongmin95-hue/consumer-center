@@ -144,8 +144,13 @@ def test_admin_menu_adds(moa):
     assert 'Disallow: /admin' in cl.get('/robots.txt').get_data(as_text=True)
     sm = cl.get('/sitemap.xml').get_data(as_text=True)
     assert '/set/1</loc>' in sm and '/about</loc>' in sm
+    assert '힐스테이트 정문' in cl.get('/admin/menu?tab=place').get_data(as_text=True)
     page = cl.get('/admin/menu').get_data(as_text=True)
-    assert '힐스테이트 정문' in page and '김치찌개' in page
+    assert '김치찌개' in page and 'role="switch"' in page
+    for tab in ('set', 'shop', 'place', 'slot', 'applied', 'company', 'seo', 'nope'):
+        assert cl.get(f'/admin/menu?tab={tab}').status_code == 200
+    r = cl.post('/admin/menu', data={'_csrf': t, 'kind': 'toggle', 'table': 'places', 'id': '1'})
+    assert r.location.endswith('tab=place')
 
 
 def test_mount_host_and_preview(monkeypatch, tmp_path):
@@ -176,7 +181,8 @@ def test_join_apply_shows_in_admin(moa):
     r = cl.post('/join', data={'_csrf': t, 'shop': '광교김밥', 'phone': '031-123-4567', 'agree': '1', 'menu': '참치김밥'})
     assert '신청을 받았어요' in r.get_data(as_text=True)
     cl.post('/admin/login', data={'_csrf': t, 'pw': 'pw'})
-    assert '광교김밥' in cl.get('/admin/menu').get_data(as_text=True)
+    assert '광교김밥' in cl.get('/admin/menu?tab=applied').get_data(as_text=True)
+    assert '<em>1</em>' in cl.get('/admin').get_data(as_text=True)  # 메뉴에 새 신청 수
 
 
 def test_home_without_sets_has_no_price_promise(tmp_path):

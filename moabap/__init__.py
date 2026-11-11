@@ -24,6 +24,9 @@ from flask import Flask, abort, flash, redirect, render_template, request, send_
 BASE = Path(__file__).parent
 STEPS = ('wait', 'paid', 'ready', 'picked', 'done')  # 입금 대기 → 주문 확정 → 조리 완료 → 픽업 → 도착
 STEP_NAMES = {'wait': '입금 확인 중', 'paid': '주문 확정', 'ready': '조리 완료', 'picked': '배달 중', 'done': '도착', 'cancel': '취소'}
+ADMIN_TABS = ('set', 'shop', 'place', 'slot', 'applied', 'company', 'seo')  # 운영 화면 /admin/menu?tab=
+TAB_OF = {'set': 'set', 'sets': 'set', 'shop': 'shop', 'shops': 'shop', 'place': 'place', 'coord': 'place', 'places': 'place',
+          'slot': 'slot', 'slots': 'slot', 'applied': 'applied', 'company': 'company', 'seo': 'seo'}
 CATS = [('한식', '🍱'), ('분식', '🌶️'), ('면', '🍜'), ('덮밥', '🍚'), ('버거', '🍔'), ('중식', '🥡'), ('샐러드', '🥗'), ('치킨', '🍗'), ('카페', '🧋')]
 PRICES = (5900, 7900, 9900)
 SCHEMA = """
@@ -440,6 +443,7 @@ def create_app(db_path=None):
                 elif ids and act == 'cancel':
                     db.execute(f"UPDATE orders SET status='cancel' WHERE id IN ({q})", ids)
                 return redirect(url_for('admin', day=day))
+            napply = db.execute('SELECT COUNT(*) FROM applies WHERE done=0').fetchone()[0]
             rows = db.execute("""SELECT o.*,s.name AS set_name,h.name AS shop,p.name AS place,p.kind FROM orders o JOIN sets s ON s.id=o.set_id JOIN shops h ON h.id=s.shop_id
                 JOIN places p ON p.id=o.place_id WHERE o.day=? ORDER BY o.slot,p.name,o.id""", (day,)).fetchall()
         slots = {}
@@ -448,7 +452,7 @@ def create_app(db_path=None):
         live = [r for r in rows if r['status'] != 'cancel']
         stat = dict(n=len(live), paid=sum(r['status'] != 'wait' for r in live), amount=sum(r['amount'] for r in live if r['status'] != 'wait'),
                     batches=len({(r['slot'], r['place']) for r in live}))
-        return render_template('moa_admin.html', day=day, slots=slots, stat=stat)
+        return render_template('moa_admin.html', day=day, slots=slots, stat=stat, napply=napply)
 
     @moa.route('/admin/menu', methods=['GET', 'POST'])
     def admin_menu():
@@ -495,11 +499,16 @@ def create_app(db_path=None):
                     db.executemany('INSERT OR REPLACE INTO conf(k,v) VALUES(?,?)', [('co_' + k, (f.get(k) or '').strip()[:120]) for k in CO_KEYS])
                 elif kind == 'toggle' and f.get('table') in ('shops', 'sets', 'places', 'slots'):
                     db.execute(f"UPDATE {f['table']} SET active=1-active WHERE id=?", (f.get('id', type=int),))
-                return redirect(url_for('admin_menu') + '#' + (kind or ''))
+                tab = TAB_OF.get(f.get('table') if kind == 'toggle' else kind, 'set')
+                return redirect(url_for('admin_menu', tab=tab))
             data = {t: db.execute(f'SELECT * FROM {t} ORDER BY {o}').fetchall() for t, o in (('shops', 'id'), ('places', 'kind,name'), ('slots', 'at'))}
             data['applies'] = db.execute('SELECT * FROM applies ORDER BY done,id DESC LIMIT 100').fetchall()
             data['sets'] = db.execute('SELECT s.*,h.name AS shop FROM sets s LEFT JOIN shops h ON h.id=s.shop_id ORDER BY s.sort,s.id').fetchall()
-        return render_template('moa_menu.html', edit=request.args.get('edit', type=int), eshop=request.args.get('eshop', type=int), **data)
+        edit, eshop = request.args.get('edit', type=int), request.args.get('eshop', type=int)
+        tab = 'set' if edit else 'shop' if eshop else request.args.get('tab', 'set')
+        if tab not in ADMIN_TABS:
+            tab = 'set'
+        return render_template('moa_menu.html', edit=edit, eshop=eshop, tab=tab, napply=sum(not a['done'] for a in data['applies']), **data)
 
     @moa.get('/admin/logout')
     def admin_logout():

@@ -1,29 +1,55 @@
-{% extends 'moa_base.html' %}
-{% block gnb %}{% endblock %}
-{% block title %}운영 | 모아밥{% endblock %}
-{% block head %}<meta name="robots" content="noindex">{% endblock %}
-{% block appclass %}adm{% endblock %}
-{% block body %}
-<header class="top"><span class="logo">{{ mark(26) }}모아밥</span><nav><a class="on" href="{{ url_for('admin') }}">주문 묶음</a><a href="{{ url_for('admin_menu') }}">가게·세트</a><a href="{{ url_for('admin_logout') }}">나가기</a></nav></header>
-<main class="wrap">
-  <form class="daybar" method="get"><input type="date" name="day" value="{{ day }}" onchange="this.form.submit()" aria-label="날짜"></form>
-  <div class="stats"><div><small>주문</small><b>{{ stat.n }}건</b></div><div><small>입금 확인</small><b>{{ stat.paid }}건</b></div><div><small>묶음</small><b>{{ stat.batches }}개</b></div><div><small>매출</small><b>{{ won(stat.amount) }}</b></div></div>
-  {% for slot, places in slots.items() %}<section class="sec"><h2>{{ slot }} 도착</h2>
-    {% for place, rows in places.items() %}{% set live = rows|rejectattr('status', 'equalto', 'cancel')|list %}<form class="batch" method="post">
-      <input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="day" value="{{ day }}">
-      <h3>📍 {{ place }} <span class="badge">{{ live|length }}건 · {{ live|sum(attribute='qty') }}개</span></h3>
-      <div class="tscroll"><table class="tbl"><tr><th></th><th>상태</th><th>받는 분</th><th>세트</th><th>금액</th><th>요청</th></tr>
-      {% for r in rows %}<tr class="{{ 'off' if r.status == 'cancel' }}"><td><input type="checkbox" name="id" value="{{ r.id }}" aria-label="{{ r.name }} 고르기"{% if r.status == 'cancel' %} disabled{% endif %}></td>
-        <td><span class="badge {{ r.status }}">{{ step_names[r.status] }}</span></td><td>{{ r.name }}<br><span class="mono">{{ r.phone }}</span></td>
-        <td>{{ r.set_name }} × {{ r.qty }}<br><small style="color:var(--mute)">{{ r.shop }}</small></td><td>{{ won(r.amount) }}{% if r.discount %}<br><small style="color:var(--mute)">할인 {{ won(r.discount) }}</small>{% endif %}</td><td>{{ r.detail }} {{ r.memo }}</td></tr>{% endfor %}</table></div>
-      <div class="acts"><button name="act" value="paid" class="go">입금 확인</button><button name="act" value="ready">조리 완료</button><button name="act" value="picked">픽업</button><button name="act" value="done">도착</button><button name="act" value="cancel" class="no">취소</button></div>
-    </form>{% endfor %}
-  </section>{% else %}<section class="sec"><p class="lead" style="padding:16px 0;text-align:center">이날 주문이 없어요.</p></section>{% endfor %}
-</main>
+{% extends 'moa_adm.html' %}
+{% block title %}오늘 주문 | 모아밥 운영{% endblock %}
+{% block main %}
+<div class="ad-head">
+  <div><h1>오늘 주문</h1><p>입금을 확인하고, 묶음마다 상태를 바꿔 주세요.</p></div>
+  <form method="get" class="ad-day"><input type="date" name="day" value="{{ day }}" onchange="this.form.submit()" aria-label="날짜 고르기"></form>
+</div>
+<div class="ad-stats">
+  <div><small>주문</small><b>{{ stat.n }}<span>건</span></b></div>
+  <div><small>입금 확인</small><b>{{ stat.paid }}<span>건</span></b>{% if stat.n - stat.paid > 0 %}<em>{{ stat.n - stat.paid }}건 기다리는 중</em>{% endif %}</div>
+  <div><small>묶음</small><b>{{ stat.batches }}<span>개</span></b></div>
+  <div><small>매출 (입금 기준)</small><b>{{ won(stat.amount) }}</b></div>
+</div>
+{% for slot, places in slots.items() %}
+<section class="ad-slot"><h2><span class="ad-time">{{ slot }}</span> 도착</h2>
+  {% for place, rows in places.items() %}{% set live = rows|rejectattr('status', 'equalto', 'cancel')|list %}{% set st = live|map(attribute='status')|list %}
+  {% set nxt = 'paid' if 'wait' in st else 'ready' if 'paid' in st else 'picked' if 'ready' in st else 'done' %}
+  <form class="ad-card batch" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="day" value="{{ day }}">
+    <div class="ad-card-h"><h3>📍 {{ place }}</h3><span class="ad-pill">{{ live|length }}건 · {{ live|sum(attribute='qty') }}개</span></div>
+    <ul class="ad-orders">
+      <li class="ad-orders-h"><label><input type="checkbox" class="all" aria-label="모두 고르기"> 모두 고르기</label></li>
+      {% for r in rows %}<li class="{{ 'off' if r.status == 'cancel' }}">
+        <label class="ad-ck"><input type="checkbox" name="id" value="{{ r.id }}" aria-label="{{ r.name }} 고르기"{% if r.status == 'cancel' %} disabled{% endif %}></label>
+        <div class="ad-o">
+          <p class="ad-o1"><b>{{ r.name }}</b><span class="mono">{{ r.phone }}</span><span class="badge {{ r.status }}">{{ step_names[r.status] }}</span></p>
+          <p class="ad-o2">{{ r.set_name }} × {{ r.qty }} · {{ r.shop }}{% if r.detail or r.memo %} · <span class="ad-memo">{{ r.detail }} {{ r.memo }}</span>{% endif %}</p>
+        </div>
+        <p class="ad-amt">{{ won(r.amount) }}{% if r.discount %}<small>할인 {{ won(r.discount) }}</small>{% endif %}</p>
+      </li>{% endfor %}
+    </ul>
+    <div class="ad-act">
+      <label class="ad-sel"><span class="sr">고른 주문을</span><select name="act" aria-label="바꿀 상태">
+        <option value="paid"{% if nxt == 'paid' %} selected{% endif %}>입금 확인 (주문 확정)</option>
+        <option value="ready"{% if nxt == 'ready' %} selected{% endif %}>조리 완료</option>
+        <option value="picked"{% if nxt == 'picked' %} selected{% endif %}>픽업 (배달 중)</option>
+        <option value="done"{% if nxt == 'done' %} selected{% endif %}>도착</option>
+        <option value="cancel">취소</option>
+      </select></label>
+      <button class="ad-btn">고른 주문 바꾸기</button>
+    </div>
+  </form>{% endfor %}
+</section>
+{% else %}
+<div class="ad-card ad-empty"><p class="ic">🍱</p><h3>이날 주문이 없어요</h3><p>세트와 받는 곳을 넣고 건물 링크를 나눠 보세요.</p><a class="ad-link" href="{{ url_for('admin_menu', tab='place') }}">건물 링크 보기 ›</a></div>
+{% endfor %}
 {% endblock %}
 {% block script %}<script>
-document.querySelectorAll('.batch').forEach(function(f){var h=f.querySelector('h3');h.style.cursor='pointer';h.title='눌러서 모두 고르기';
-h.addEventListener('click',function(){var bs=f.querySelectorAll('input[name=id]:not(:disabled)'),on=[].some.call(bs,function(b){return !b.checked});bs.forEach(function(b){b.checked=on})})});
-document.addEventListener('submit',function(e){var f=e.target;if(f.classList.contains('batch')&&!f.querySelector('input[name=id]:checked')){e.preventDefault();alert('주문을 먼저 골라 주세요. 장소 이름을 누르면 모두 골라져요.')}});
+document.querySelectorAll('.batch').forEach(function(f){var all=f.querySelector('.all'),bs=f.querySelectorAll('input[name=id]:not(:disabled)');
+all.addEventListener('change',function(){bs.forEach(function(b){b.checked=all.checked})});
+bs.forEach(function(b){b.addEventListener('change',function(){all.checked=[].every.call(bs,function(x){return x.checked})})})});
+document.addEventListener('submit',function(e){var f=e.target;if(!f.classList.contains('batch'))return;var n=f.querySelectorAll('input[name=id]:checked').length,a=f.querySelector('select[name=act]');
+if(!n){e.preventDefault();var m=f.querySelector('.ad-warn')||f.querySelector('.ad-act').appendChild(Object.assign(document.createElement('p'),{className:'ad-warn'}));m.setAttribute('role','status');m.textContent='주문을 먼저 골라 주세요. 위의 ‘모두 고르기’를 누르면 한 번에 골라져요.';return}
+if(a.value==='cancel'&&!f.dataset.ok){e.preventDefault();f.dataset.ok=1;var w=f.querySelector('.ad-warn')||f.querySelector('.ad-act').appendChild(Object.assign(document.createElement('p'),{className:'ad-warn'}));w.textContent=n+'건을 취소해요. 맞으면 한 번 더 눌러 주세요.'}});
 </script>{% endblock %}
-{% block foot %}{% endblock %}
