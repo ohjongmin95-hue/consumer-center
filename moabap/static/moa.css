@@ -126,7 +126,7 @@ button{border:0;background:none;cursor:pointer}
 .form2 .full{grid-column:1/-1}
 .mini{padding:6px 10px;border-radius:8px;background:#F2F4F6;font-size:13px;font-weight:700}
 .off{opacity:.45}
-.mono{font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all}
+.mono{font-variant-numeric:tabular-nums;font-size:13px;word-break:break-all}
 @media (max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.form2{grid-template-columns:1fr}}
 article.sec h3{font-size:16px;margin:18px 0 4px}article.sec p{margin:0;color:var(--sub)}
 .qty label{position:relative}
