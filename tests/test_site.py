@@ -568,14 +568,14 @@ class SiteTest(unittest.TestCase):
     def test_explore_hub(self):
         # 운영자 2026-11-03: 메뉴 '전문가' 대신 '둘러보기' 허브 (기업 순위·사기 전에 확인·소보루 자문단·공감 많은 제보)
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
-        page = self.client.get('/explore', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
+        page = self.client.get('/explore', base_url='https://consumerjebo.co.kr', follow_redirects=True).get_data(as_text=True)
         for text in ('xh-title', '기업 응대 순위', '사기 전에 확인', '소보루 자문단'):
             self.assertIn(text, page)
         self.assertIn('/explore/tricks', page); self.assertIn('/explore/contact-tips', page)  # 소비자 안내서 주제 카드
         for path, text in (('/explore/tricks', '네거티브 옵션'), ('/explore/contact-tips', '담당자 찾기')):
             body = self.client.get(path).get_data(as_text=True); self.assertIn(text, body); self.assertIn('한국소비자원', body)
         home = self.client.get('/', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
-        self.assertIn('href="/explore"', home); self.assertNotIn('>전문가<', home)
+        self.assertIn('href="/doumi"', home); self.assertNotIn('>둘러보기<', home); self.assertNotIn('>전문가<', home)
 
     def test_expert_mail_builder(self):
         # 운영자 2026-11-03 (밤): 관리자에서 자문단 섭외 메일을 화면에서 바로 고쳐 저장, 법인 이름은 화면에서 넣음
@@ -864,7 +864,7 @@ class SiteTest(unittest.TestCase):
         self.site.JEBO_HOSTS.add('localhost')
         try:
             with self.site.conn() as db: db.execute("DELETE FROM experts")
-            page = self.client.get('/explore').get_data(as_text=True)
+            page = self.client.get('/explore', follow_redirects=True).get_data(as_text=True)
         finally: self.site.JEBO_HOSTS.discard('localhost')
         self.assertEqual(page.count('class="xs-sample"'), 4); self.assertIn('김서연', page)
 
