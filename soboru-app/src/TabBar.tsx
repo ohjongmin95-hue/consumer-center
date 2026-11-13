@@ -1,4 +1,4 @@
-// 아래 탭 (소보루고발 앱, 운영자 2026-11-11 헤이마오터우쑤처럼): 가운데 고발하기는 📢 이모지(운영자 2026-11-13). 홈·기업 순위·고발하기(가운데 큰 버튼)·둘러보기·내 정보. 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
+// 아래 탭 (소보루고발 앱, 운영자 2026-11-11 헤이마오터우쑤처럼): 가운데 고발하기는 흰 연필 선 아이콘(운영자 2026-11-13: 📢은 토스답지 않음). 홈·기업 순위·고발하기(가운데 큰 버튼)·둘러보기·내 정보. 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +39,7 @@ function Icon({ name, color }: { name: string; color: string }) {
       {name === 'rank' && (<><Path d="M5 20V12M12 20V5M19 20v-6" {...p} strokeWidth={2.4} /><Path d="M3 20.5h18" {...p} /></>)}
       {name === 'explore' && (<><Circle cx={12} cy={12} r={8.5} {...p} /><Path d="M15.5 8.5l-2 5-5 2 2-5z" {...p} /></>)}
       {name === 'my' && (<><Circle cx={12} cy={8.5} r={4} {...p} /><Path d="M4 21c.9-4 4-6 8-6s7.1 2 8 6" {...p} /></>)}
+      {name === 'write' && (<><Path d="M4.5 19.5l1-4.2L15.8 5a2 2 0 012.8 0l.4.4a2 2 0 010 2.8L8.7 18.5z" {...p} strokeWidth={2.2} /><Path d="M13.5 7.3l3.2 3.2" {...p} strokeWidth={2.2} /></>)}
       {name === 'report' && (<><Path d="M12 4.5v9" {...p} strokeWidth={3} /><Circle cx={12} cy={18.5} r={1.4} fill={color} /></>)}
     </Svg>
   );
@@ -61,7 +62,7 @@ export default function TabBar({ tabs, active, onPress }: { tabs: Tab[]; active:
             onPress={() => { Haptics.selectionAsync().catch(() => {}); onPress(t); }}
           >
             {plus ? (
-              <View style={s.plus}><Text style={s.emoji} allowFontScaling={false}>📢</Text></View>
+              <View style={s.plus}><Icon name="write" color="#FFFFFF" /></View>
             ) : (
               <Icon name={t.key} color={on ? INK : MUTE} />
             )}
@@ -76,8 +77,6 @@ export default function TabBar({ tabs, active, onPress }: { tabs: Tab[]; active:
 const s = StyleSheet.create({
   bar: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E8E2DC', paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 3, minHeight: 50 },
-  emoji: { fontSize: 24, lineHeight: 30 },
-  plus: { width: 50, height: 50, borderRadius: 25, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: -20, borderWidth: 3, borderColor: '#FFFFFF',
-    shadowColor: ORANGE, shadowOpacity: 0.32, shadowRadius: 7, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  plus: { width: 50, height: 50, borderRadius: 25, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: -20, borderWidth: 3, borderColor: '#FFFFFF' },
   label: { fontSize: 11, fontWeight: '600' },
 });
