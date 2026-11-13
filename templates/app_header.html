@@ -1,4 +1,10 @@
 {# 소보루고발 앱 머리글 (앱으로 consumerjebo.co.kr을 열었을 때, app_screens.py). 로고 + 업체 검색. 메뉴는 앱 아래 탭이 맡음 #}
+{% if request.endpoint == 'public_case' and case is defined %}{# 운영자 2026-11-13: 고발 글은 헤이마오 投诉编号 머리글처럼 뒤로·번호·공유 #}
+<header class="ap-top ap-cbar">
+  <a class="ap-cb-i" href="{{ url_for('reports') }}" onclick="if(history.length>1){history.back();return false}" aria-label="뒤로"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+  <b>{{ ui('app.case_no', '고발 번호') }} {{ case['id'] }}</b>
+  <button type="button" class="ap-cb-i" data-share data-title="{{ subject }}" data-done="✓" aria-label="{{ ui('case.share', '공유하기') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg></button>
+</header>{% else %}
 <header class="ap-top">
   <a class="ap-logo" href="{{ url_for('home') }}" aria-label="소보루고발 홈"><img src="{{ asset('img/soboru-gobal-logo.png') }}" alt="SOBORU 고발" width="133" height="24"></a>
   <form class="ap-search" action="{{ url_for('companies') }}" method="get" role="search">
@@ -6,4 +12,4 @@
     <input type="search" name="q" value="{{ request.args.get('q', '') if request.endpoint == 'companies' else '' }}" placeholder="{{ ui('app.search2', '업체 이름 찾기') }}" aria-label="{{ ui('app.search2', '업체 이름 찾기') }}" enterkeyhint="search">
     <button type="submit" class="ap-sbtn">{{ ui('app.search_btn', '검색') }}</button>
   </form>
-</header>
+</header>{% endif %}

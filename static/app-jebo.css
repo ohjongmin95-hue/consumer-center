@@ -164,3 +164,138 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-feed .ap-case:first-child{border-top:0}
 .ap-body .ap-case .ap-ct p:not(.ap-cx){color:#8B95A1;font-size:13px}
 .ap-body .ap-feed{border-radius:24px;overflow:hidden}
+
+/* 앱 홈 소보루 기사 (운영자 2026-11-13) */
+.ap-news{align-items:flex-start;padding:12px 0}  /* 헤이마오처럼 사진 없이 글만 (운영자 2026-11-13) */
+.ap-news .ap-t b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:600;font-size:16px;line-height:24px;color:#191F28;word-break:keep-all}
+.ap-news .ap-t small{display:block;margin-top:4px;font-size:13px;color:#8B95A1}
+
+/* 첫 화면 소보루 기사: 헤이마오 '瞄一眼'처럼 작게 (운영자 2026-11-13) */
+.ap-mini{padding:18px 20px 10px;background:linear-gradient(180deg,#FFF4E0 0,#fff 72px)}
+.ap-mh{display:flex;align-items:center;gap:8px;min-width:0}
+.ap-mh .tf{font-size:22px;line-height:1}
+.ap-mh b{flex:none;font-size:19px;font-weight:800;color:#E07B00}
+.ap-mh small{flex:1;min-width:0;font-size:13px;color:#8B95A1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap-mini ul{list-style:none;margin:8px 0 0;padding:0}
+.ap-mini li a{display:flex;align-items:center;gap:8px;padding:7px 0;color:#191F28;text-decoration:none}
+.ap-mini li span{flex:1;min-width:0;font-size:16px;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap-tagn{flex:none;font-style:normal;font-size:11px;font-weight:700;line-height:18px;padding:0 5px;border-radius:5px}
+.ap-tagn.new{background:#FFF0D6;color:#E07B00}.ap-tagn.hot{background:#FFE5E7;color:#F04452}
+
+/* 첫 화면 공동 대응: 헤이마오 集体投诉 칸처럼 (운영자 2026-11-13) */
+.ap-grp{display:flex;align-items:center;gap:16px;padding:18px 20px}
+.ap-grp-h{flex:none;display:flex;flex-direction:column;font-size:21px;line-height:26px;font-weight:800;color:#191F28;text-decoration:none}
+.ap-grp-h em{font-style:normal;color:#E07B00}
+.ap-grp ul{flex:1;min-width:0;list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.ap-grp li a{display:flex;align-items:center;gap:8px;color:#191F28;text-decoration:none}
+.ap-grp-n{flex:none;display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:8px;background:#FFE5E7;color:#F04452;font-size:13px;font-weight:700}
+.ap-grp-n .tf{font-size:13px}
+.ap-grp-t{flex:1;min-width:0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* 고발 목록 한 줄: 헤이마오 첫 화면 목록 배치 (운영자 2026-11-13) */
+.ap-hm{display:flex;flex-direction:column;gap:10px;padding:18px 0;color:inherit;text-decoration:none}
+.ap-hb{display:flex;flex-direction:column;gap:8px;padding-left:46px}
+.ap-ht{font-size:17px;line-height:25px;font-weight:700;color:#191F28;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ap-ht .ap-tagn{vertical-align:2px}
+.ap-hx{margin:0;font-size:15px;line-height:23px;color:#4E5968;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ap-hd{margin:0;display:flex;flex-direction:column;gap:4px}
+.ap-hd div{display:flex;gap:10px;font-size:14px}
+.ap-hd dt{flex:none;color:#8B95A1}.ap-hd dd{margin:0;color:#333D48;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ap-hd dd.co{color:#E07B00;font-weight:600}
+.ap-hc{display:flex;gap:16px;margin:0;font-size:13px;color:#8B95A1}.ap-hc span{display:flex;align-items:center;gap:4px}.ap-hc .tf{font-size:14px}
+
+/* 둘러보기: 헤이마오 发现 배치 (운영자 2026-11-13) */
+.ap-ai{position:relative;display:flex;flex-direction:column;gap:14px;padding:22px 20px 18px;background:linear-gradient(135deg,#FFF4E0 0,#FFFBF3 60%,#fff 100%)}
+.ap-ai-h{display:flex;flex-direction:column;gap:4px;padding-right:72px;color:#191F28;text-decoration:none}
+.ap-ai-h b{font-size:19px;line-height:27px;font-weight:800}
+.ap-ai-h small{font-size:14px;color:#C9760A}
+.ap-ai-pic{position:absolute;right:18px;top:14px;font-size:56px;line-height:1}
+.ap-ai-q{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(0,27,55,.06);color:#333D48;text-decoration:none;font-size:15px}
+.ap-ai-q span{flex:1;min-width:0}.ap-ai-q b{color:#EF920E;font-size:20px}
+.ap-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ap-tile2{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px;min-height:92px;padding:18px 16px;border-radius:20px;color:#fff;text-decoration:none}
+.ap-tile2.t1{background:linear-gradient(135deg,#FFB547,#EF920E)}.ap-tile2.t2{background:linear-gradient(135deg,#FF8A6B,#F0623E)}
+.ap-tile2 b{font-size:19px;font-weight:800}.ap-tile2 small{font-size:13px;opacity:.9;word-break:keep-all}
+.ap-tile2 .tf{position:absolute;right:-6px;bottom:-10px;font-size:52px;opacity:.28}
+.ap-xt .ap-tabs button{border:0;background:none;padding:0;font:inherit;cursor:pointer}
+.ap-art{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-top:1px solid #F2F4F6;color:inherit;text-decoration:none}
+.ap-tabs+div .ap-art:first-child{border-top:0}
+.ap-art span{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.ap-art b{font-size:16px;line-height:24px;font-weight:600;color:#191F28;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:keep-all}
+.ap-art small{font-size:13px;color:#8B95A1}
+.ap-art img{flex:none;width:112px;height:76px;border-radius:12px;object-fit:cover;background:#F2F4F6}
+.ap-tile2,.ap-tile2:visited{color:#fff!important}
+.ap-xt .ap-tabs button{color:#B0B8C1}.ap-xt .ap-tabs button.on{color:#191F28}
+.ap-ai-h small{white-space:nowrap}
+
+/* 기업 순위: 헤이마오 红黑榜처럼 칩 줄 오른쪽에 기간 (운영자 2026-11-13) */
+.ap-chrow{display:flex;align-items:center;gap:10px}.ap-chrow .ap-chips{flex:1;min-width:0}
+.ap-per{flex:none;appearance:none;-webkit-appearance:none;border:0;border-radius:999px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%23333D48' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center;padding:8px 32px 8px 14px;font:inherit;font-size:15px;font-weight:600;color:#333D48}
+.ap-r s{font-size:16px}
+
+/* 앱 로그인: 헤이마오 账号登录 배치 (운영자 2026-11-13) */
+.auth-page-login:has(.al) .auth-title-out,.auth-page-login:has(.al) .auth-lead-out{display:none}
+.auth-page-login:has(.al){max-width:440px;margin:0 auto;padding:40px 24px 60px}
+.al{display:flex;flex-direction:column}
+.al-t{margin:0;font-size:28px;line-height:38px;font-weight:800;color:#191F28;letter-spacing:-.4px}
+.al-s{margin:6px 0 32px;font-size:15px;color:#6B7684}
+.al-f{display:flex;flex-direction:column;gap:12px}
+.al-row{display:flex;align-items:center;gap:10px;height:58px;padding:0 16px;border-radius:14px;background:#fff;border:1.5px solid #E5E8EB}
+.al-row:focus-within{border-color:#EF920E}
+.al-row input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:17px;color:#191F28}
+.al-cc{font-size:17px;font-weight:600;color:#333D48}
+.al-get{flex:none;border:0;border-radius:10px;background:#FFF0D6;color:#E07B00;font:inherit;font-size:14px;font-weight:700;padding:9px 12px}
+.al-get:disabled{background:#F2F4F6;color:#8B95A1}
+.al-msg{margin:0;font-size:14px;color:#3182F6}.al-msg.bad{color:#F04452}
+.al-go{margin-top:8px;height:56px;border:0;border-radius:16px;background:#EF920E;color:#fff;font:inherit;font-size:17px;font-weight:700}
+.al-go:disabled{background:#FFD8A3;color:#fff;opacity:1;cursor:default}
+.al-other{display:flex;align-items:center;gap:12px;margin:44px 0 20px;color:#8B95A1;font-size:14px}
+.al-other::before,.al-other::after{content:"";flex:1;height:1px;background:#E5E8EB}
+.al-sns{display:flex;justify-content:center;gap:28px}
+.al-sn{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;font-weight:800}
+.al-sn svg{width:24px;height:24px}
+.al-sn.sn-kakao{background:#FEE500;color:#191600}.al-sn.sn-naver{background:#03C75A;color:#fff}.al-sn.sn-apple{background:#191F28;color:#fff}.al-sn.sn-google{background:#fff;border:1px solid #E5E8EB;color:#333}
+.al-agree{display:flex;align-items:flex-start;justify-content:center;gap:8px;margin:28px 0 0;font-size:13px;line-height:20px;color:#6B7684}
+.al-agree input{margin-top:3px;accent-color:#EF920E;width:16px;height:16px}
+.al-agree a{color:#E07B00}
+.al-agree.need{color:#F04452}
+.al-id{margin:18px 0 0;text-align:center;font-size:13px}.al-id a{color:#8B95A1}
+
+/* 고발 글 (app_case.html, 운영자 2026-11-13: 헤이마오 고발 상세 배치, 토스식) */
+.ap-cbar{justify-content:space-between;gap:8px;padding:6px 8px;background:#F2F4F6}
+.ap-cbar b{flex:1;min-width:0;text-align:center;font-size:17px;font-weight:700;color:#191F28;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ap-cb-i{width:40px;height:40px;display:grid;place-items:center;border:0;background:none;border-radius:12px;color:#191F28;padding:0}
+.ap-cb-i svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ap-body:has(.ac){background:#F2F4F6}
+.ac{display:grid;gap:10px;padding:4px 12px 110px;max-width:640px;margin:0 auto}
+.ac-card{background:#fff;border-radius:20px;padding:20px}
+.ac-co-h{display:flex;align-items:center;gap:12px;text-decoration:none}
+.ac-co-lg{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#FFF1DC;color:#EF920E;display:grid;place-items:center;font-weight:800;font-size:20px;flex:none;border:1px solid #F2F4F6}
+.ac-co-h b{font-size:19px;font-weight:700;color:#E07B00}
+.ac-kv{margin:14px 0 0;display:grid;gap:10px}
+.ac-kv div{display:flex;align-items:flex-start;gap:12px}
+.ac-kv dt{flex:none;width:72px;white-space:nowrap;padding-top:5px;font-size:15px;color:#8B95A1}
+.ac-kv dd{margin:0;display:flex;flex-wrap:wrap;gap:6px;font-size:15px;line-height:32px;color:#191F28}
+.ac-chip{display:inline-block;background:#F2F4F6;border-radius:999px;padding:0 12px;font-size:14px;line-height:30px;color:#333D4B;font-weight:500}
+.ac-grp{display:table;margin:14px 0 0 auto;border:1.5px solid #EF920E;color:#E07B00;border-radius:999px;padding:7px 16px;font-size:14px;font-weight:600;text-decoration:none}
+.ac-t{margin:0;font-size:20px;line-height:1.45;font-weight:700;color:#191F28;word-break:keep-all;text-wrap:pretty}
+.ac-st{display:inline-block;vertical-align:3px;margin-right:6px;border:1px solid #F7C37A;background:#FFF6E6;color:#E07B00;border-radius:6px;padding:0 6px;font-size:13px;line-height:22px;font-style:normal;font-weight:600}
+.ac-st.s7{border-color:#B9E3C6;background:#EEF9F1;color:#1A9E4B}
+.ac-who{display:flex;align-items:center;gap:10px;margin:14px 0 0}
+.ac-av{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none}
+.ac-who span{display:grid;min-width:0}.ac-who b{font-size:16px;color:#191F28}.ac-who small{font-size:13px;color:#8B95A1}
+.ac-body{margin:14px 0 0;font-size:18px;line-height:30px;color:#191F28;white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere}
+.ac-ph{display:flex;gap:8px;margin:14px 0 0}
+.ac-ph span{width:92px;height:92px;border-radius:14px;display:grid;place-items:center;font-size:12px;color:#fff;background:linear-gradient(135deg,#8B6B57,#4E3B30);text-align:center;padding:6px}
+.ac-meta{margin:14px 0 0;padding-top:12px;border-top:1px solid #F2F4F6;font-size:13px;color:#8B95A1}
+.ac-h{margin:0 0 12px;font-size:17px;font-weight:700;color:#191F28}
+.ac-talk .case-talk{margin:0;padding:0;border:0;box-shadow:none;background:none}
+.ac-bar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;align-items:center;gap:4px;background:#fff;border-top:1px solid #F2F4F6;padding:8px max(12px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+.ac-bar form{margin:0}
+.ac-ic{display:grid;justify-items:center;gap:0;min-width:48px;border:0;background:none;padding:2px 4px;color:#4E5968;text-decoration:none;font:inherit}
+.ac-ic i{font-size:22px;line-height:26px;font-style:normal}.ac-ic small{font-size:11px;line-height:14px}
+.ac-ic.on small{color:#E07B00;font-weight:700}
+.ac-go{flex:1;margin-left:6px;display:block;text-align:center;border-radius:16px;padding:14px 0;font-size:17px;font-weight:700;color:#fff;text-decoration:none;background:linear-gradient(135deg,#F5A623,#EF920E)}
+.ap-body:has(.ac) .site-footer{padding-bottom:90px}
+.ac-talk #talk-heading{font-size:17px;margin:0 0 12px}
+.ac-talk .primary,.ac-talk button[type=submit].primary{background:#EF920E}
+.ap-body:has(.ac) .to-top{bottom:calc(84px + env(safe-area-inset-bottom,0px))}

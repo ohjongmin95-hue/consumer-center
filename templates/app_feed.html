@@ -1,12 +1,18 @@
-{# 소보루고발 앱 고발 목록 한 줄씩 (홈·고발 목록 같이 씀). 헤이마오처럼 글쓴이·제목·본문 미리보기·공감/댓글. app_feed()가 닉네임·본문을 붙임 #}
+{# 소보루고발 앱 고발 목록 (홈·고발 목록 같이 씀). 운영자 2026-11-13: 헤이마오 첫 화면 목록 배치 그대로, 디자인은 토스식.
+   글쓴이 얼굴·닉네임 → 날짜 '소보루고발에서 고발' → (공감 많으면 HOT) 제목 → 본문 두 줄 → 고발 대상·요구 → 공감·댓글. app_feed()가 닉네임·본문·요구를 붙임 #}
 {% set cases = app_feed(cases) %}
     {% set tc = talk_counts(cases|map(attribute='no')|list) %}
-    {% for c in cases %}{% set open = c.title and not c.secret and not c.pending %}{% set pic = og_photo(c.no) if open else '' %}{% set src = avatar_url(c.uid) if c.uid and avatar_url is defined else '' %}
-    {% if open %}<a class="ap-case" href="{{ url_for('public_case', case_id=c.no) }}">{% else %}<div class="ap-case">{% endif %}
-      <div class="ap-who">{% if src %}<img class="ap-av" src="{{ src }}" alt="">{% else %}<span class="ap-av c{{ c.no % 6 }}" aria-hidden="true">{{ (c.nick or '익명')[:1] }}</span>{% endif %}<span><b>{{ c.nick or ui('home.card_anon', '익명 소비자') }}</b><small>{{ c.when }}</small></span><em class="ap-st s{{ c.step }}">{{ c.status }}</em></div>
-      <div class="ap-cb"><div class="ap-ct"><b>{% if c.title %}{% if c.company %}<span class="ap-co-t">[{{ c.company }}]</span> {% endif %}{{ c.title }}{% else %}{{ ui('app.secret', '비공개 고발이에요') }}{% endif %}</b>
-        {% if c.body %}<p class="ap-cx">{{ c.body|truncate(90, True, '…') }}</p>{% endif %}
-        <p>{{ c.cat }}{% set t = tc.get(c.no) %}{% if t %} · {{ ui('app.metoo', '공감') }} {{ t[0] }} · {{ ui('app.talk', '댓글') }} {{ t[1] }}{% endif %}</p></div>
-        {% if pic %}<img class="ap-pic" src="{{ pic }}" alt="" loading="lazy">{% endif %}</div>
+    {% for c in cases %}{% set open = c.title and not c.secret and not c.pending %}{% set t = tc.get(c.no) or (0, 0) %}{% set src = avatar_url(c.uid) if c.uid and avatar_url is defined else '' %}
+    {% if open %}<a class="ap-case ap-hm" href="{{ url_for('public_case', case_id=c.no) }}">{% else %}<div class="ap-case ap-hm">{% endif %}
+      <div class="ap-who"><img class="ap-av" src="{{ src or soboru_av(c.uid or c.no) }}" alt=""><span><b>{{ c.nick or ui('home.card_anon', '익명 소비자') }}</b><small>{{ c.when }} {{ ui('app.started', '소보루고발에서 고발') }}</small></span><em class="ap-st s{{ c.step }}">{{ c.status }}</em></div>
+      <div class="ap-hb">
+        <b class="ap-ht">{% if open and t[0] >= 5 %}<i class="ap-tagn hot">HOT</i> {% endif %}{{ c.title if open else ui('app.secret', '비공개 고발이에요') }}</b>
+        {% if c.body %}<p class="ap-hx">{{ c.body }}</p>{% endif %}
+        {% if open %}<dl class="ap-hd">
+          <div><dt>{{ ui('app.target', '고발 대상') }}</dt><dd class="co">{{ c.company or ui('app.co_hidden', '업체명 비공개') }}</dd></div>
+          {% if c.wants %}<div><dt>{{ ui('app.g_tag_want', '요구') }}</dt><dd>{{ c.wants|join(' · ') }}</dd></div>{% endif %}
+        </dl>
+        <p class="ap-hc"><span><i class="tf" aria-hidden="true">👍</i>{{ t[0] }}</span><span><i class="tf" aria-hidden="true">💬</i>{{ t[1] }}</span><span>{{ c.cat }}</span></p>{% endif %}
+      </div>
     {% if open %}</a>{% else %}</div>{% endif %}
     {% else %}<p class="ap-empty">{{ ui('app.list_empty', '아직 여기에 올라온 고발이 없어요.') }}</p>{% endfor %}

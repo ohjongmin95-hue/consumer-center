@@ -1,0 +1,45 @@
+{# 소보루고발 앱 고발 글 (public_case.html에서 앱일 때). 운영자 2026-11-13: 헤이마오 고발 상세 배치 그대로, 디자인은 토스식.
+   머리글(뒤로·고발 번호·공유, app_header.html) → 고발 대상 카드(로고·업체, 고발 문제·요구, 관련 공동 대응) → 글 카드(단계·제목, 글쓴이, 본문, 가려 둔 사진)
+   → 진행 단계·기업 답변·댓글 → 아래 고정 줄(공감·댓글·공유 아이콘 + 나도 고발하기 하나). 버튼 두 개 나란히 금지라 공유는 아이콘으로 #}
+{% set now_step = pub_step(step) %}{% set talk = case_talk(case['id']) %}{% set wants = app_wants(request_text) %}
+<main class="ac">
+  <section class="ac-card ac-co">
+    {% set lg = co_logo(co) if co and co_logo is defined else '' %}
+    <a class="ac-co-h" {% if co %}href="{{ url_for('company_page', company_id=co['id']) }}"{% endif %}>{% if lg %}<img class="ac-co-lg" src="{{ lg }}" alt="">{% else %}<span class="ac-co-lg" aria-hidden="true">{{ company[:1] }}</span>{% endif %}<b>{{ company }}</b></a>
+    <dl class="ac-kv">
+      <div><dt>{{ ui('app.i_cat', '고발 문제') }}</dt><dd><span class="ac-chip">{{ category }}</span></dd></div>
+      <div><dt>{{ ui('app.i_want', '고발 요구') }}</dt><dd>{% for w in wants %}<span class="ac-chip">{{ w }}</span>{% else %}<span class="ac-chip">{{ request_text|truncate(24, True, '…') }}</span>{% endfor %}</dd></div>
+      {% if case['industry'] and case['industry'] != '기타' %}<div><dt>{{ ui('app.i_ind', '업종') }}</dt><dd>{{ case['industry'] }}</dd></div>{% endif %}
+    </dl>
+    {% if grp %}<a class="ac-grp" href="{{ url_for('group_page', group_id=grp['id']) }}">{{ ui('app.see_group', '관련 공동 대응 보기') }}</a>{% endif %}
+  </section>
+
+  <article class="ac-card ac-post">
+    <h1 class="ac-t"><em class="ac-st s{{ now_step }}">{{ pub_names()[now_step - 1] }}</em>{{ subject }}</h1>
+    <div class="ac-who">{% set src = avatar_url(author['id']) if author and avatar_url is defined else '' %}<img class="ac-av" src="{{ src or soboru_av(author['id'] if author else case['id']) }}" alt="">
+      <span><b>{{ author['nickname'] if author else ui('home.card_anon', '익명 소비자') }}</b><small>{{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }} {{ ui('app.started', '소보루고발에서 고발') }}</small></span></div>
+    <p class="ac-body">{{ description }}</p>
+    {% if photos %}<div class="ac-ph">{% for i in range(photos if photos < 3 else 3) %}<span>{{ ui('app.photo_hidden', '가려 둔 사진') }}</span>{% endfor %}</div>{% endif %}
+    <p class="ac-meta">{{ ui('case.views', '조회') }} {{ '{:,}'.format(case['views'] or 0) }}{% if case['occurred_on'] %} · {{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
+  </article>
+
+  <section class="ac-card">
+    <h2 class="ac-h">{{ ui('reports.col_status', '진행 단계') }}</h2>
+    <ol class="pc-steps pf-steps">{% for s in pub_names() %}<li class="{{ 'on' if loop.index <= now_step else '' }}{{ ' now' if loop.index == now_step else '' }}"{% if loop.index == now_step %} aria-current="step"{% endif %}><i>{% if loop.index < now_step %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4 8-9"/></svg>{% else %}{{ loop.index }}{% endif %}</i><span>{{ s }}</span></li>{% endfor %}</ol>
+  </section>
+
+  <section class="ac-card">
+    <h2 class="ac-h">{{ ui('reports.company_answer', '기업 공식 답변') }}</h2>
+    {% for a in answers %}<div class="pc-ans"><p class="pc-ans-head">{% if lg %}<img class="pc-co-av sm" src="{{ lg }}" alt="">{% endif %}<b>{{ (a['company_name'] if not case['company_hidden'] else '') or company }}</b><time>{{ a['created'][:10]|replace('-', '.') }}</time></p><p class="pc-body pc-bubble">{{ a['body'] }}</p></div>
+    {% else %}<div class="pc-wait"><span class="pc-wait-dot" aria-hidden="true"></span>{{ ui('case.answer_checking_short', '기업 답변을 확인하고 있어요') if has_answer else ui('case.answer_waiting', '기업 답변을 기다리고 있어요') }}</div>{% endfor %}
+  </section>
+
+  {% if talk %}<div class="ac-card ac-talk">{% with case_id = case['id'], talk_events = events %}{% include 'case_talk.html' %}{% endwith %}</div>{% endif %}
+</main>
+<nav class="ac-bar" aria-label="{{ ui('app.case_actions', '고발 글 메뉴') }}">
+  {% if talk %}<form method="post" action="{{ url_for('case_react', case_id=case['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="metoo"><button type="submit" class="ac-ic{{ ' on' if 'metoo' in talk.mine }}" aria-label="{{ ui('case.react_metoo', '나도 겪었어요') }}"><i class="tf" aria-hidden="true">👍</i><small>{{ talk.counts['metoo'] }}</small></button></form>
+  <a class="ac-ic" href="#talk" aria-label="{{ ui('case.comments', '댓글') }}"><i class="tf" aria-hidden="true">💬</i><small>{{ talk.comments|length }}</small></a>{% endif %}
+  <button type="button" class="ac-ic" data-share data-title="{{ subject }}" data-done="✓" aria-label="{{ ui('case.share', '공유하기') }}"><i class="tf" aria-hidden="true">🔗</i><small>{{ ui('app.share_s', '공유') }}</small></button>
+  <a class="ac-go" href="{{ url_for('report') }}">{{ ui('app.me_too', '나도 고발하기') }}</a>
+</nav>
+<script>document.querySelectorAll('[data-share]').forEach(function(b){b.addEventListener('click',function(){var u=location.href.split('#')[0],t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u}).catch(function(){});return}(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){},function(){})})})</script>

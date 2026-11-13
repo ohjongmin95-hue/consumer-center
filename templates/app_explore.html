@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}{{ ui('app.explore', '둘러보기') }} | 소보루고발{% endblock %}
+{% block content %}
+{# 소보루고발 앱 둘러보기 (app_screens.py). 운영자 2026-11-13: 헤이마오 发现 캡처 배치 그대로, 디자인은 토스식 #}
+<main class="ap">
+  {% if guides %}<section class="ap-card ap-mini">
+    <a class="ap-mh" href="{{ url_for('check_list') }}"><i class="tf" aria-hidden="true">🔍</i><b>{{ ui('app.check2', '사기 전에 확인') }}</b><small>{{ ui('app.check_sub', '사기 전에 한 번, 피해는 없게') }}</small><span class="ap-more" aria-hidden="true">›</span></a>
+    <ul>{% for g_ in guides %}<li><a href="{{ url_for('check_page', gid=g_.id) }}"><span>{{ g_.title }}</span>{% if g_.new %}<em class="ap-tagn new">NEW</em>{% elif loop.index <= 2 %}<em class="ap-tagn hot">HOT</em>{% endif %}</a></li>{% endfor %}</ul>
+  </section>{% endif %}
+
+  <section class="ap-card ap-ai">
+    <a class="ap-ai-h" href="{{ url_for('law_ask') }}"><b>{{ ui('app.ai_t', '안녕하세요, AI 상담이에요') }}</b><small>{{ ui('app.ai_s', '소비자 법률 상담, 24시간 바로 답해요') }} ›</small></a>
+    <i class="ap-ai-pic tf" aria-hidden="true">🧑‍⚖️</i>
+    <a class="ap-ai-q" href="{{ url_for('law_ask') }}"><i class="tf" aria-hidden="true">💬</i><span>{{ ui('app.ai_q', '어떤 일이 있었나요? 물어보세요') }}</span><b aria-hidden="true">→</b></a>
+  </section>
+
+  <div class="ap-two">
+    <a class="ap-tile2 t1" href="{{ url_for('howto_list') }}"><b>{{ ui('app.t_howto', '분쟁·대응') }}</b><small>{{ ui('app.t_howto_s', '환불·해지, 이렇게 대응해요') }} ›</small><i class="tf" aria-hidden="true">🧾</i></a>
+    <a class="ap-tile2 t2" href="{{ url_for('experts_page') }}"><b>{{ ui('app.t_exp', '소보루 자문단') }}</b><small>{{ ui('app.t_exp_s', '변호사·교수가 한 줄 의견') }} ›</small><i class="tf" aria-hidden="true">⚖️</i></a>
+  </div>
+
+  <section class="ap-card ap-list ap-xt">
+    <nav class="ap-tabs" role="tablist">
+      <button type="button" class="on" data-x="news" role="tab" aria-selected="true">{{ ui('app.news2', '소보루 아티클') }}</button>
+      <button type="button" data-x="hot" role="tab" aria-selected="false">{{ ui('app.x_hot', '공감 많은 고발') }}</button>
+      {% if hows %}<button type="button" data-x="how" role="tab" aria-selected="false">{{ ui('app.x_how', '대응 방법') }}</button>{% endif %}
+    </nav>
+    <div data-p="news">{% for n in news %}<a class="ap-art" href="{{ n.link }}"><span><b>{{ n.title }}</b><small>{{ ui('app.paper', '소비자를위한신문') }}{% if n.date %} · {{ n.date }}{% endif %}</small></span>{% if n.img %}<img src="{{ n.img }}" alt="" loading="lazy" width="112" height="76">{% endif %}</a>{% else %}<p class="ap-empty">{{ ui('app.news_none', '기사를 불러오고 있어요. 잠시 뒤 다시 열어 주세요.') }}</p>{% endfor %}
+      <a class="ap-all" href="{{ news_home }}">{{ ui('app.news_all', '소비자를위한신문에서 더 보기') }}</a></div>
+    <div data-p="hot" hidden>{% include 'app_feed.html' %}</div>
+    {% if hows %}<div data-p="how" hidden>{% for h in hows %}<a class="ap-row" href="{{ url_for('howto_page', gid=h['id']) }}"><span class="ap-tile tf" aria-hidden="true">{{ h['emoji'] or '🧾' }}</span><span class="ap-t">{{ h['title'] }}</span></a>{% endfor %}</div>{% endif %}
+  </section>
+</main>
+<script>
+document.querySelector('.ap-xt .ap-tabs').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  this.querySelectorAll('button').forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', on); });
+  document.querySelectorAll('.ap-xt [data-p]').forEach(function (p) { p.hidden = p.dataset.p !== b.dataset.x; });
+});
+</script>
+{% endblock %}

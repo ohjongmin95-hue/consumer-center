@@ -1,4 +1,4 @@
-// 아래 탭 (소보루고발 앱, 운영자 2026-11-11 헤이마오터우쑤처럼): 홈·기업 순위·고발하기(가운데 큰 버튼)·둘러보기·내 정보. 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
+// 아래 탭 (소보루고발 앱, 운영자 2026-11-11 헤이마오터우쑤처럼): 가운데 고발하기는 📢 이모지(운영자 2026-11-13). 홈·기업 순위·고발하기(가운데 큰 버튼)·둘러보기·내 정보. 앱 안에서는 사이트가 자기 탭바를 숨김 (templates/base.html)
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,7 +61,7 @@ export default function TabBar({ tabs, active, onPress }: { tabs: Tab[]; active:
             onPress={() => { Haptics.selectionAsync().catch(() => {}); onPress(t); }}
           >
             {plus ? (
-              <View style={s.plus}><Icon name="report" color="#FFFFFF" /></View>
+              <View style={s.plus}><Text style={s.emoji} allowFontScaling={false}>📢</Text></View>
             ) : (
               <Icon name={t.key} color={on ? INK : MUTE} />
             )}
@@ -76,6 +76,7 @@ export default function TabBar({ tabs, active, onPress }: { tabs: Tab[]; active:
 const s = StyleSheet.create({
   bar: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E8E2DC', paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 3, minHeight: 50 },
+  emoji: { fontSize: 24, lineHeight: 30 },
   plus: { width: 50, height: 50, borderRadius: 25, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', marginTop: -20, borderWidth: 3, borderColor: '#FFFFFF',
     shadowColor: ORANGE, shadowOpacity: 0.32, shadowRadius: 7, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   label: { fontSize: 11, fontWeight: '600' },

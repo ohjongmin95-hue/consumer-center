@@ -138,12 +138,13 @@
           <p>{{ m['body'] }}</p>
           {% for af in desk.answer_files.get(m['id'], []) %}<p><a class="cs-file" href="{{ url_for('desk_answer_file' if ep.list == 'admin_reports' else 'desk_answer_file_reporter', file_id=af['id']) }}">⬇ {{ af['original'] }}</a></p>{% endfor %}
           {% if revisions.get(m['id']) %}<details class="cs-rev"><summary>수정 이력 {{ revisions[m['id']]|length }}건</summary>{% for r in revisions[m['id']]|reverse %}<div class="cs-rev-item"><span>{{ r['edited_at'][:16]|replace('T', ' ') }}에 고치기 전 글{% if r['was_public'] %} · 그때 공개 중{% endif %}</span><p>{{ r['body'] }}</p></div>{% endfor %}</details>{% endif %}
-          {% if m['author'] in ('기업 답변', '제보자') and case['public_consent'] %}<form class="cs-inline cs-msg-pub" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="answer_public"><input type="hidden" name="message_id" value="{{ m['id'] }}">
+          {% if m['author'] in ('기업 답변', '제보자', '센터') and case['public_consent'] %}<form class="cs-inline cs-msg-pub" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="answer_public"><input type="hidden" name="message_id" value="{{ m['id'] }}">
             {% if m['public'] %}<span class="cs-tag">사이트에 공개 중</span><button class="cs-btn" name="public" value="0">공개 취소</button>{% else %}<button class="cs-btn" name="public" value="1">확인했어요 · 사이트에 공개</button>{% endif %}</form>{% endif %}
         </div>
         {% else %}<p class="cs-muted">아직 메시지가 없어요.</p>{% endfor %}
         <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="message">
           <textarea class="cs-compose" data-autogrow name="message" maxlength="3000" required rows="10" placeholder="제보자에게 보낼 메시지 (제보자가 조회 화면에서 봐요)" aria-label="제보자에게 메시지"></textarea>
+          {% if case['public_consent'] %}<label class="cs-check"><input type="checkbox" name="as_comment" value="1" checked> 공개 제보에 담당자 댓글로도 달기 <small>(개인정보는 가려져요. 끄면 제보자만 봐요)</small></label>{% endif %}
           <button class="cs-btn" type="submit">메시지 보내기</button>
         </form>
       </section>

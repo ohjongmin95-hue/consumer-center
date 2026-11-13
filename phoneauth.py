@@ -9,7 +9,7 @@
 """
 import datetime, hashlib, hmac, os, secrets
 import bizmsg
-from flask import abort, flash, g, redirect, render_template, request, session, url_for
+from flask import abort, flash, g, jsonify, redirect, render_template, request, session, url_for
 
 CODE_MIN = 5
 MAX_TRIES = 5
@@ -76,6 +76,57 @@ def install(S):
                 flash(ui_text('msg.code_fail', '문자를 보내지 못했어요. 잠시 뒤 다시 해 주세요.')); return view('phone'), 502
         session['ph_phone'] = phone; session.pop('ph_ok', None)
         return redirect(url_for('phone_start'))
+
+    # ── 앱 로그인 화면 (운영자 2026-11-13: 헤이마오 账号登录처럼 한 화면에서 번호·인증번호, 처음이면 바로 가입) ──
+    @app.route('/start/phone/send', methods=['POST'])
+    def phone_send_api():
+        if not phone_ready() or not S.members_enabled(): return jsonify(ok=False, msg='지금은 휴대폰 로그인을 쓸 수 없어요.'), 404
+        if request.form.get('website'): abort(400)
+        with conn() as db: ensure(db)
+        res = send_code()
+        msgs = [m for m in session.pop('_flashes', []) if m]  # send_code가 남긴 안내를 JSON으로
+        text = ' '.join(m[1] if isinstance(m, (list, tuple)) else str(m) for m in msgs)
+        ok = session.get('ph_phone') == members.kr_phone(request.form.get('phone', ''))
+        return jsonify(ok=ok, msg=text or ('인증번호를 보냈어요.' if ok else '인증번호를 보내지 못했어요.')), (200 if ok else 400)
+
+    @app.route('/start/phone/verify', methods=['POST'])
+    def phone_verify_api():
+        if not phone_ready() or not S.members_enabled(): return jsonify(ok=False, msg='지금은 휴대폰 로그인을 쓸 수 없어요.'), 404
+        phone = session.get('ph_phone', '')
+        if not phone: return jsonify(ok=False, msg='먼저 인증번호를 받아 주세요.'), 400
+        code = ''.join(c for c in request.form.get('code', '') if c.isdigit())
+        nxt = request.form.get('next', '')
+        nxt = nxt if nxt.startswith('/') and not nxt.startswith('//') else url_for('home')
+        with conn() as db:
+            row = db.execute('SELECT * FROM phone_codes WHERE phone=? ORDER BY id DESC LIMIT 1', (phone,)).fetchone()
+            if not row or row['expires'] < now() or row['tries'] >= MAX_TRIES: return jsonify(ok=False, msg=ui_text('msg.code_expired', '인증번호가 만료됐어요. 다시 받아 주세요.')), 400
+            if not hmac.compare_digest(row['code_hash'], digest(phone, code)):
+                db.execute('UPDATE phone_codes SET tries=tries+1 WHERE id=?', (row['id'],))
+                return jsonify(ok=False, msg=ui_text('msg.code_wrong', '인증번호가 맞지 않아요.')), 400
+            user = db.execute("SELECT * FROM users WHERE phone_verified=? ORDER BY id LIMIT 1", (phone,)).fetchone()
+            if user and user['status'] != 'active': return jsonify(ok=False, msg=ui_text('msg.m29', '이용이 제한된 계정이에요. 운영자에게 문의해 주세요.')), 403
+            if not user:
+                # 처음 쓰는 번호는 바로 가입 (약관·개인정보·만 14세 동의는 화면 아래 한 칸으로 받음)
+                if not request.form.get('agree'): return jsonify(ok=False, msg='처음이면 아래 약관 동의에 체크해 주세요.', need_agree=True), 400
+                if db.execute('SELECT COUNT(*) FROM users WHERE ip_hash=? AND created>=?', (S.ip_hash(), ago(hours=1))).fetchone()[0] >= 3:
+                    return jsonify(ok=False, msg=ui_text('msg.m27', '잠시 후 다시 가입해 주세요.')), 429
+                nick = members.auto_nickname(db)
+                for _ in range(5):
+                    login_id = 'p_' + secrets.token_hex(5)
+                    if not db.execute('SELECT 1 FROM users WHERE login_id=?', (login_id,)).fetchone(): break
+                cur = db.execute("INSERT INTO users(login_id,pw_hash,nickname,email,terms_version,agreed_at,ip_hash,created,phone,phone_verified) VALUES(?,'',?,'',?,?,?,?,?,?)",
+                                 (login_id, nick, S.TERMS_VERSION, now(), S.ip_hash(), now(), phone, phone))
+                user = db.execute('SELECT * FROM users WHERE id=?', (cur.lastrowid,)).fetchone()
+                S.ad_event('signup', db)
+                joined = True
+            else:
+                db.execute("UPDATE users SET failed=0,locked_until='',last_login=? WHERE id=?", (now(), user['id']))
+                joined = False
+            db.execute('DELETE FROM phone_codes WHERE phone=?', (phone,))
+        for k in ('ph_phone', 'ph_ok', 'ph_next'): session.pop(k, None)
+        S.sign_in(user, True)
+        if joined: flash(user['nickname'] + ui_text('msg.welcome', '님, 가입을 환영해요!'))
+        return jsonify(ok=True, go=nxt)
 
     def check_code():
         phone = session.get('ph_phone', '')

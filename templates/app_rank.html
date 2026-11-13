@@ -7,21 +7,19 @@
     <div><b>{{ ui('rank.title', '기업 응대 순위') }}</b><small>{{ ui('app.rank_sub', '고발에 얼마나 잘 답했는지로 순위를 매겨요') }}</small></div>
     <a href="{{ url_for('company_grade_guide') }}">{{ ui('app.rank_how', '기준 보기') }}</a>
   </section>
-  <nav class="ap-cats" aria-label="{{ ui('reports.f_ind', '업종') }}"><a href="{{ url_for('companies_rank', tab=tab) }}"{% if not ind %} class="on" aria-current="true"{% endif %}>{{ ui('reports.cat_all', '전체') }}</a>{% for i in inds %}<a href="{{ url_for('companies_rank', tab=tab, ind=i) }}"{% if i == ind %} class="on" aria-current="true"{% endif %}>{{ i }}</a>{% endfor %}</nav>
-  <nav class="ap-chips">{% for k, label in tabs.items() %}<a href="{{ url_for('companies_rank', tab=k, ind=ind or None) }}"{% if k == tab %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+  <nav class="ap-cats" aria-label="{{ ui('reports.f_ind', '업종') }}"><a href="{{ url_for('companies_rank', tab=tab, p=period if period != 'all' else None) }}"{% if not ind %} class="on" aria-current="true"{% endif %}>{{ ui('reports.cat_all', '전체') }}</a>{% for i in inds %}<a href="{{ url_for('companies_rank', tab=tab, ind=i, p=period if period != 'all' else None) }}"{% if i == ind %} class="on" aria-current="true"{% endif %}>{{ i }}</a>{% endfor %}</nav>
+  <div class="ap-chrow"><nav class="ap-chips">{% for k, label in tabs.items() %}<a href="{{ url_for('companies_rank', tab=k, ind=ind or None, p=period if period != 'all' else None) }}"{% if k == tab %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+    <select class="ap-per" aria-label="{{ ui('app.period', '기간') }}" onchange="location.href=this.value">{% for k, v in periods.items() %}<option value="{{ url_for('companies_rank', tab=tab, ind=ind or None, p=k if k != 'all' else None) }}"{% if k == period %} selected{% endif %}>{{ v[0] }}</option>{% endfor %}</select></div>
   {% if cards %}<div class="ap-grid{{ ' one' if ind }}">
     {% for name, rows in cards %}<section class="ap-gb">
       <a class="ap-gh" href="{{ url_for('companies_rank', tab=tab, ind=name) }}">{{ name }}{% if not ind %}<span aria-hidden="true">›</span>{% endif %}</a>
       {% for co, gr in rows %}{% set rate = (100 * gr['answered'] / gr['scored'])|round|int if gr['scored'] else 0 %}
       <a class="ap-r" href="{{ url_for('company_page', company_id=co['id']) }}">
-        <i>{{ loop.index }}</i>
         {% if co_logo(co) %}<img class="ap-lg" src="{{ co_logo(co) }}" alt="" loading="lazy">{% else %}<span class="ap-lg c{{ co['id'] % 6 }}" aria-hidden="true">{{ co['name'][:1] }}</span>{% endif %}
         <s>{{ co['name'] }}</s>
-        <em class="{{ 'bad' if tab == 'bad' }}">{% if tab == 'fast' %}{{ fmt_hours(gr['med']) }}{% else %}{{ rate }}%{% endif %}</em>
       </a>{% endfor %}
     </section>{% endfor %}
   </div>
-  <p class="ap-how">{% if tab == 'fast' %}{{ ui('app.rank_fast', '오른쪽은 기업이 고발에 처음 답하기까지 걸린 보통 시간이에요.') }}{% else %}{{ ui('app.rank_rate', '오른쪽은 전달된 고발에 기업이 답한 비율이에요.') }}{% endif %}</p>
   {% else %}<div class="ap-card ap-none"><i class="tf" aria-hidden="true">📊</i><p>{{ ui('rank.empty', '아직 기업에 전달된 고발이 없어요.') }}</p></div>{% endif %}
 </main>
 {% endblock %}

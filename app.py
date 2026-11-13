@@ -659,10 +659,11 @@ def public_case(case_id):
         events,step,has_answer=jebo.timeline(db,case,mask_personal)
         co=jebo.visible_company(db,case['company_id']) if case['company_id'] else None
         author=db.execute("SELECT id,nickname FROM users WHERE id=? AND status='active'",(case['user_id'],)).fetchone() if case['user_id'] else None  # 작성자 닉네임 (목록 카드와 같게)
+        photos=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?',(case_id,)).fetchone()[0]  # 앱 고발 글: 사진은 '가려 둔 사진'으로 장수만
     text=jebo.pub(case,mask_personal)
     if company_hidden(case):co=None
     return render_template('public_case.html',case=case,answers=answers,grp=grp,group_statuses=GROUP_STATUSES,company=ANON_COMPANY if company_hidden(case) else co['name'] if co else mask_personal(case['company']),co=co,
-                           subject=text['subject'],description=text['body'],request_text=text['request'],events=events,step=step,has_answer=has_answer,category=jebo.cat_label(case['category']),author=author)
+                           subject=text['subject'],description=text['body'],request_text=text['request'],events=events,step=step,has_answer=has_answer,category=jebo.cat_label(case['category']),author=author,photos=photos)
 
 CUSTOM_SLUG=re.compile(r'^[a-z0-9][a-z0-9-]{0,39}$')
 def page_layout(page):
@@ -2310,9 +2311,9 @@ def report_detail(case_id):
                     db.execute('UPDATE cases SET company_id=0 WHERE id=?',(case_id,));log_case(db,case_id,'기업 연결 해제')  # 0 = 운영자가 일부러 뗌 (자동 연결이 다시 붙이지 않음);flash('기업 연결을 해제했어요.')
             elif form=='answer_public':
                 mid=request.form.get('message_id',type=int);public=int(request.form.get('public')=='1')
-                msg=db.execute("SELECT id,author FROM messages WHERE id=? AND case_id=? AND author IN ('기업 답변','제보자')",(mid,case_id)).fetchone()
+                msg=db.execute("SELECT id,author FROM messages WHERE id=? AND case_id=? AND author IN ('기업 답변','제보자','센터')",(mid,case_id)).fetchone()
                 if not msg or (public and not case['public_consent']):abort(400)
-                who='기업 답변' if msg['author']=='기업 답변' else '제보자 추가 의견'
+                who={'기업 답변':'기업 답변','센터':'담당자 안내 댓글'}.get(msg['author'],'제보자 추가 의견')
                 db.execute('UPDATE messages SET public=? WHERE id=?',(public,mid));log_case(db,case_id,f'{who} 사이트 공개' if public else f'{who} 공개 취소')
             elif form=='email_answer':
                 # 가입하지 않은 기업이 이메일로 보낸 답변: 받은 글을 고치지 않고 그대로 붙여 넣어 등록
@@ -2342,8 +2343,9 @@ def report_detail(case_id):
             elif form=='message':
                 msg=request.form.get('message','').strip()
                 if not msg or len(msg)>3000:abort(400)
-                db.execute('INSERT INTO messages(case_id,author,body,created,sender) VALUES(?,?,?,?,?)',(case_id,'센터',msg,now(),staff_sender()))
-                log_case(db,case_id,'제보자에게 메시지 보냄');notify_later(case_id,'message')
+                pub=int(bool(case['public_consent']) and request.form.get('as_comment')=='1')  # 운영자 2026-11-13: 담당자 안내는 공개 제보에 댓글로도 (끄면 제보자만 봄)
+                db.execute('INSERT INTO messages(case_id,author,body,created,sender,public) VALUES(?,?,?,?,?,?)',(case_id,'센터',msg,now(),staff_sender(),pub))
+                log_case(db,case_id,'제보자에게 메시지 보냄'+(' · 공개 댓글로 달림' if pub else ''));notify_later(case_id,'message')
             elif form in DESK_FORMS:desk_handle_form(db,case,form)
             elif form in TRIAGE_FORMS:triage_handle_form(db,case,form)
             elif form in OPS_FORMS:ops_handle_form(db,case,form)

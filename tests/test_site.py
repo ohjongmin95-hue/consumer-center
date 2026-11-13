@@ -291,6 +291,36 @@ class SiteTest(unittest.TestCase):
         web = self.client.get('/', base_url=jebo).get_data(as_text=True)
         self.assertNotIn('ap-stat', web); self.assertNotIn('토스페이스가 사용되었습니다', web)
         self.assertNotIn('ap-stat', self.client.get('/', headers=ua).get_data(as_text=True))  # 소보루 주소는 그대로
+        # 운영자 2026-11-13: 앱 홈에 소보루 기사 (소비자를위한신문 RSS)
+        import app_screens, time as _t
+        rss = b'''<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>t</title>
+<item><title>&lt;b&gt;&lt;/b&gt;\xec\xbf\xa0\xed\x8c\xa1 \xed\x99\x98\xeb\xb6\x88 \xec\xa7\x80\xec\x97\xb0</title><link>https://www.consumertimes.kr/news/articleView.html?idxno=1</link>
+<description>&lt;img src="https://cdn.example/1.jpg"&gt; \xeb\xb3\xb8\xeb\xac\xb8</description><pubDate>Fri, 13 Nov 2026 10:00:00 +0900</pubDate></item>
+<item><title>No image</title><link>https://www.consumertimes.kr/news/articleView.html?idxno=2</link><enclosure url="https://cdn.example/2.jpg" type="image/jpeg"/></item>
+<item><title>bad</title><link>javascript:alert(1)</link></item></channel></rss>'''
+        items = app_screens.parse_news(rss)
+        self.assertEqual([i['img'] for i in items], ['https://cdn.example/1.jpg', 'https://cdn.example/2.jpg'])
+        self.assertEqual(items[0]['date'], '11.13')
+        app_screens._news.update(at=_t.time(), items=items); self.addCleanup(app_screens._news.update, at=0, items=[])
+        home = self.client.get('/', base_url=jebo, headers=ua).get_data(as_text=True)
+        self.assertIn('소보루 아티클', home); self.assertIn('idxno=2', home); self.assertNotIn('javascript:', home)
+
+    def test_app_case_and_staff_comment(self):
+        # 운영자 2026-11-13: 앱 고발 글 = 헤이마오 고발 상세 배치, 프로필 없으면 소보루 5가지, 담당자 안내는 댓글로도
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        jebo, ua = 'https://consumerjebo.co.kr', {'User-Agent': 'Mozilla/5.0 SoboruApp/1.2.0 (android)'}
+        with self.site.conn() as db:
+            cid = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                             ('ac1', 'x', '배송·교환·환불', '가게', '택배가 안 와요', '본문입니다', '환불해 주세요', '2026-11-13T10:00:00', 1, 1)).lastrowid
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'message', 'message': '업체에 확인 요청했어요 010-1234-5678', 'as_comment': '1'})
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'message', 'message': '제보자만 보는 안내'})
+        page = self.client.get('/reports/%d' % cid, base_url=jebo, headers=ua).get_data(as_text=True)
+        for text in ('ac-co', '고발 번호 %d' % cid, '환불', 'img/av/soboru-', '업체에 확인 요청했어요', '나도 고발하기'):
+            self.assertIn(text, page)
+        self.assertNotIn('010-1234-5678', page); self.assertNotIn('제보자만 보는 안내', page)
+        web = self.client.get('/reports/%d' % cid, base_url=jebo).get_data(as_text=True)
+        self.assertNotIn('ac-co', web); self.assertIn('업체에 확인 요청했어요', web)  # 웹에도 담당자 댓글
 
     def test_guide_toss_jebo(self):
         # 운영자 2026-11-03: 제보센터 이용 안내 = 토스식 + '대화로 제보하기' 화면 영상 + 업종 칩
