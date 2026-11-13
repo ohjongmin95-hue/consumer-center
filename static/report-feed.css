@@ -2130,7 +2130,3 @@ body:not(.sb) .ev-field .ev-txt small,.ev-field .ev-txt small{font-size:13.5px;c
 .rp-talk-go{display:flex;align-items:center;justify-content:center;height:52px;border-radius:14px;background:#8B7CF6;color:#fff;font-size:16px;font-weight:700}
 .rp-talk:hover .rp-talk-go{background:#7A6AF0}
 @media(max-width:680px){.rp-alt.rp-talk{padding:20px 16px}.rp-b{max-width:88%}}
-/* 운영자 2026-11-14: 고발하기 버튼 아래 해결 도우미 글자 링크 (버튼은 하나만) */
-.hero-doumi{display:block;margin-top:14px;font-size:14px;line-height:21px;font-weight:500;color:#4E5968;text-decoration:none}
-.hero-doumi:hover{text-decoration:underline}
-.hero-banner .hero-doumi,.hero-photo .hero-doumi,.hero-card .hero-doumi{color:rgba(255,255,255,.8);text-shadow:0 1px 8px rgba(0,0,0,.35)}
