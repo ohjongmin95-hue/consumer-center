@@ -1,5 +1,5 @@
 /* AI 소비자 상담을 소비자고발제보센터 화면에서도 (운영자 2026-11-03). soboru.css의 상담 화면 규칙을 그대로 옮기고 아래에서 TDS로 다듬음. 자동 생성: soboru.css에서 sba/sbv 규칙 */
-body:not(.sb){--sb-ink:#191f28;--sb-sub:#6b7684;--sb-mute:#8b95a1;--sb-line:#e5e8eb;--sb-soft:#f2f4f6;--sb-orange:#ef920e;--sb-orange-soft:#fff3e0;--sb-gray:#f2f4f6;--sb-gray-ink:#4e5968;--sb-ease:cubic-bezier(.2,.8,.2,1)}
+body:not(.sb){--sb-ink:#191f28;--sb-sub:#6b7684;--sb-mute:#8b95a1;--sb-line:#e5e8eb;--sb-soft:#f2f4f6;--sb-orange:#F69431;--sb-orange-soft:#fff3e0;--sb-gray:#f2f4f6;--sb-gray-ink:#4e5968;--sb-ease:cubic-bezier(.2,.8,.2,1)}
 body:not(.sb) main.sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;min-height:auto}
 .sb-wrap{max-width:1080px;margin:0 auto;padding:0 20px}
 @media(max-width:860px){.sb-wrap,body:not(.sb) main.sb-wrap{padding-left:16px;padding-right:16px}}
@@ -196,8 +196,8 @@ body:not(.sb) .sba-privacy{color:#8b95a1}
 .sbv.is-hero .sbv-notice{order:3;margin:32px 0 0;padding:0;background:none;color:#8b95a1;font-size:13px;line-height:19.5px;justify-content:center;text-align:center}
 .sbv.is-hero .sbv-notice b{font-weight:600;color:#6b7684}.sbv.is-hero .sbv-notice-i{display:none}
 .sbv.is-hero .sbv-box{position:relative;display:flex;align-items:center;gap:12px;width:100%;max-width:720px;min-height:64px;padding:8px 10px 8px 28px;box-sizing:border-box;border:1px solid #e5e8eb;border-radius:32px;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.06)}
-.sbv.is-hero .sbv-box:focus-within{border-color:#EF920E}
-.sbv.is-hero .sbv-spark{flex:none;width:22px;height:22px;fill:#EF920E}
+.sbv.is-hero .sbv-box:focus-within{border-color:#F69431}
+.sbv.is-hero .sbv-spark{flex:none;width:22px;height:22px;fill:#F69431}
 .sbv.is-hero .sbv-box textarea{flex:1;min-width:0;height:26px;min-height:0;padding:0;border:0;background:none;box-shadow:none;resize:none;font-size:17px;line-height:25.5px;color:#191f28;outline:none;overflow:hidden}
 .sbv.is-hero .sbv-box textarea::placeholder{color:#b0b8c1}
 .sbv.is-hero .sba-box-foot{flex:none;display:flex;align-items:center;margin:0;padding:0;border:0}
@@ -205,7 +205,7 @@ body:not(.sb) .sba-privacy{color:#8b95a1}
 .sbv.is-hero .sba-send{display:grid;place-items:center;width:44px;height:44px;min-width:0;padding:0;border-radius:50%;background:#f2f4f6;color:#b0b8c1;box-shadow:none}
 .sbv.is-hero .sba-send span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .sbv.is-hero .sba-send svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.sbv.is-hero .sbv-box:has(textarea:not(:placeholder-shown)) .sba-send{background:#EF920E;color:#fff}
+.sbv.is-hero .sbv-box:has(textarea:not(:placeholder-shown)) .sba-send{background:#F69431;color:#fff}
 .sbv.is-hero .sba-privacy{margin:12px 0 0;max-width:720px;text-align:center;font-size:13px;line-height:19.5px;color:#8b95a1}
 .sbv.is-hero .sba-error{width:100%;max-width:720px;text-align:center}
 .sbv.is-hero .sba-ex{margin-top:32px;width:100%}
@@ -256,4 +256,4 @@ body:not(.sb) .sba-privacy{color:#8b95a1}
   .sbv.is-hero .sba-how{margin-top:40px}
 }
 /* 운영자 2026-11-03: 보내기 버튼은 늘 우리 색 */
-.sbv.is-hero .sba-send{background:#EF920E;color:#fff}.sbv.is-hero .sba-send:hover{background:#CE6719}
+.sbv.is-hero .sba-send{background:#F69431;color:#fff}.sbv.is-hero .sba-send:hover{background:#CE6719}
