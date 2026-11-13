@@ -1,0 +1,42 @@
+/* 해결 도우미 (singo.html). 토스 TDS: 회색 바탕 #F2F4F6 + 흰 카드 r24, 글자 Grey900/700/500, 버튼 TDS 오렌지 500 #FE9800 (운영자 2026-11-13) */
+body:has(.sg){background:#F2F4F6}
+.sg{max-width:640px;margin:0 auto;padding:8px 16px 120px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box}
+.sg-h{margin:12px 4px 4px;font-size:24px;line-height:33px;font-weight:700;color:#191F28;text-wrap:balance;word-break:keep-all}
+.sg-back{align-self:flex-start;margin:4px 4px 0;font-size:15px;color:#6B7684;text-decoration:none}
+.sg-card{background:#fff;border-radius:24px;padding:8px 20px}
+.sg-card:has(.sg-st){padding:20px}
+.sg-st{margin:0 0 12px;font-size:17px;line-height:25.5px;font-weight:700;color:#191F28}
+.sg-lead{margin:-6px 0 14px;font-size:14px;line-height:21px;color:#6B7684;word-break:keep-all}
+.sg-row{display:flex;align-items:center;gap:12px;padding:12px 0;text-decoration:none;color:#191F28}
+.sg-row+.sg-row{border-top:1px solid #F2F4F6}
+.sg-ic{flex:none;width:44px;height:44px;border-radius:14px;background:#F2F4F6;display:flex;align-items:center;justify-content:center;font-size:24px;font-style:normal}
+.sg-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sg-tx b{font-size:16px;line-height:24px;font-weight:600;color:#191F28}
+.sg-tx small{font-size:13px;line-height:19.5px;color:#8B95A1;word-break:keep-all}
+.sg-arr{color:#B0B8C1;font-size:20px}
+.sg-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px}
+.sg-steps li{display:flex;gap:12px;align-items:flex-start}
+.sg-n{flex:none;width:24px;height:24px;margin-top:1px;border-radius:12px;background:#FFF3E0;color:#F57800;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.sg-links{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px}
+.sg-links a{font-size:14px;font-weight:600;color:#F57800;text-decoration:none}
+.sg-check{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.sg-check li{position:relative;padding-left:28px;font-size:15px;line-height:22.5px;color:#333D48;word-break:keep-all}
+.sg-check li:before{content:"";position:absolute;left:0;top:2px;width:18px;height:18px;border-radius:9px;background:#FE9800 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.2l2.6 2.6L13 6.4' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat}
+.sg-form{display:flex;flex-direction:column;gap:8px}
+.sg-form input,.sg-form textarea{width:100%;box-sizing:border-box;border:0;border-radius:14px;background:#F2F4F6;padding:14px 16px;font:inherit;font-size:16px;line-height:24px;color:#191F28;resize:vertical}
+.sg-form input::placeholder,.sg-form textarea::placeholder{color:#8B95A1}
+.sg-form input:focus,.sg-form textarea:focus{outline:2px solid #FE9800;outline-offset:-2px}
+.sg-date{display:flex;align-items:center;gap:12px;border-radius:14px;background:#F2F4F6;padding:0 0 0 16px;font-size:16px;color:#6B7684}
+.sg-date span{flex:none}.sg-date input{flex:1;min-width:0;text-align:right;background:transparent}
+.sg-chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0}
+.sg-chips button{border:1px solid #E5E8EB;background:#fff;border-radius:18px;height:36px;padding:0 14px;font:inherit;font-size:14px;font-weight:600;color:#4E5968;cursor:pointer}
+.sg-chips button[aria-pressed=true]{border-color:#FE9800;background:#FFF3E0;color:#F57800}
+.sg-out{margin-top:14px;border-radius:16px;background:#F9FAFB;border:1px solid #F2F4F6;padding:16px}
+.sg-out pre{margin:0;white-space:pre-wrap;word-break:break-word;font:inherit;font-size:14px;line-height:22px;color:#333D48;max-height:320px;overflow:auto}
+.sg-copy{margin-top:12px;width:100%;height:44px;border:0;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1px #E5E8EB;font:inherit;font-size:15px;font-weight:700;color:#333D48;cursor:pointer}
+.sg-msg{margin:8px 0 0;font-size:13px;color:#F57800;min-height:0}.sg-msg:empty{display:none}
+.sg-note{margin:12px 4px 0;font-size:13px;line-height:19.5px;color:#8B95A1;word-break:keep-all}
+.sg-bar{position:fixed;left:0;right:0;bottom:0;padding:36px 20px calc(20px + env(safe-area-inset-bottom,0px));background:linear-gradient(rgba(242,244,246,0),#F2F4F6 36px);z-index:20}
+.sg-go{display:flex;align-items:center;justify-content:center;max-width:600px;margin:0 auto;height:56px;border-radius:16px;background:#FE9800;color:#fff;font-size:17px;font-weight:700;text-decoration:none}
+.sg-go:active{background:#FB8800}
+.sg-more{padding:8px 20px}

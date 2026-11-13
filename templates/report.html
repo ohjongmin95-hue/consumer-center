@@ -244,4 +244,15 @@
     update();
   })();
 </script>
+<script>
+/* 해결 도우미에서 '소보루고발에도 올리기'를 누르고 왔으면 쓴 내용을 채움 (운영자 2026-11-13) */
+(function () {
+  var d; try { d = JSON.parse(sessionStorage.getItem('singo_draft') || 'null'); sessionStorage.removeItem('singo_draft'); } catch (e) { return; }
+  if (!d) return;
+  function put(id, val) { var el = document.getElementById(id); if (el && val && !el.value) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } }
+  var c = document.getElementById('r-category');
+  if (c && d.category && !c.value && [].some.call(c.options, function (o) { return o.value === d.category; })) { c.value = d.category; c.dispatchEvent(new Event('change', { bubbles: true })); }
+  put('r-company', d.company); put('r-occurred', d.occurred_on); put('r-description', d.description); put('r-request', d.request_text);
+})();
+</script>
 {% endblock %}

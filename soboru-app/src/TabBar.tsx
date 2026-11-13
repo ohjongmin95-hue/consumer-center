@@ -17,7 +17,7 @@ export function tabsFor(member: boolean): Tab[] {
     { key: 'rank', label: '기업 순위', path: '/companies/rank' },
     { key: 'report', label: '고발하기', path: '/report' },
     { key: 'explore', label: '둘러보기', path: '/explore' },
-    member ? { key: 'my', label: '내 정보', path: '/me' } : { key: 'my', label: '내 정보', path: '/lookup' },
+    { key: 'my', label: '내 정보', path: '/me' },  // 운영자 2026-11-13: 로그인 전에도 /me → 사이트가 로그인 화면으로 보냄
   ];
 }
 

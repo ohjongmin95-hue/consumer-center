@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{# 앱 안에서 기사 읽기 (app_screens.py news_read). 운영자 2026-11-13: 기사를 누르면 신문 사이트로 넘어가지 않고 앱 안에서. 글과 사진만 뽑아 토스식으로 #}
+{% block title %}{{ a.title }} | 소보루고발{% endblock %}
+{% block description %}{{ (a.blocks|selectattr(0, 'equalto', 'p')|map(attribute=1)|first or '')[:120] }}{% endblock %}
+{% block content %}
+<main class="nw">
+  <article class="nw-card">
+    <h1 class="nw-t">{{ a.title }}</h1>
+    <p class="nw-meta">{{ ui('app.paper', '소비자를위한신문') }}{% if a.by %} · {{ a.by }}{% endif %}{% if a.day %} · {{ a.day }}{% endif %}</p>
+    <div class="nw-body">
+      {% for b in a.blocks %}{% if b[0] == 'img' %}<figure><img src="{{ b[1] }}" alt="{{ b[2] }}" loading="lazy">{% if b[2] %}<figcaption>{{ b[2] }}</figcaption>{% endif %}</figure>{% else %}<p>{{ b[1] }}</p>{% endif %}{% endfor %}
+    </div>
+    <p class="nw-src">{{ ui('app.news_src', '저작권자 © 소비자를위한신문') }} · <a href="{{ a.url }}">{{ ui('app.news_orig', '원문 보기') }}</a></p>
+  </article>
+  <a class="nw-more" href="{{ url_for('explore') }}">{{ ui('app.news_more', '다른 기사 보기') }} ›</a>
+</main>
+<style>
+body:has(.nw){background:#F2F4F6}
+.nw{max-width:640px;margin:0 auto;padding:8px 16px 32px;display:flex;flex-direction:column;gap:12px}
+.nw-card{background:#fff;border-radius:24px;padding:24px 20px}
+.nw-t{margin:0;font-size:24px;line-height:33px;font-weight:700;color:#191F28;word-break:keep-all;text-wrap:balance}
+.nw-meta{margin:10px 0 0;font-size:13px;color:#8B95A1}
+.nw-body{margin-top:20px;border-top:1px solid #F2F4F6;padding-top:20px}
+.nw-body p{margin:0 0 18px;font-size:18px;line-height:30px;color:#333D48;word-break:keep-all;overflow-wrap:anywhere}
+.nw-body figure{margin:4px 0 20px}
+.nw-body img{display:block;width:100%;height:auto;border-radius:16px;background:#F2F4F6}
+.nw-body figcaption{margin-top:8px;font-size:13px;line-height:19.5px;color:#8B95A1}
+.nw-src{margin:8px 0 0;font-size:13px;color:#8B95A1}.nw-src a{color:#6B7684}
+.nw-more{align-self:center;padding:8px 12px;font-size:15px;font-weight:600;color:#6B7684;text-decoration:none}
+</style>
+{% endblock %}
