@@ -40,3 +40,16 @@ body:has(.sg){background:#F2F4F6}
 .sg-go{display:flex;align-items:center;justify-content:center;max-width:600px;margin:0 auto;height:56px;border-radius:16px;background:#FE9800;color:#fff;font-size:17px;font-weight:700;text-decoration:none}
 .sg-go:active{background:#FB8800}
 .sg-more{padding:8px 20px}
+/* 절차 안내 (singo_guide.html) */
+.sg-flow{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:18px;position:relative}
+.sg-flow li{display:flex;gap:12px;align-items:flex-start;position:relative}
+.sg-flow li:not(:last-child):after{content:"";position:absolute;left:21px;top:50px;bottom:-14px;width:2px;background:#F2F4F6}
+.sg-flow .sg-ic{background:#FFF3E0}
+.sg-flow .sg-tx small{color:#6B7684;font-size:14px;line-height:21px}
+.sg-faq details{border-top:1px solid #F2F4F6}.sg-faq details:first-child{border-top:0}
+.sg-faq summary{list-style:none;display:flex;align-items:center;gap:8px;padding:14px 0;font-size:16px;line-height:24px;font-weight:600;color:#191F28;cursor:pointer;word-break:keep-all}
+.sg-faq summary::-webkit-details-marker{display:none}
+.sg-faq summary:after{content:"";flex:none;margin-left:auto;width:8px;height:8px;border-right:2px solid #B0B8C1;border-bottom:2px solid #B0B8C1;transform:rotate(45deg);transition:transform .2s}
+.sg-faq details[open] summary:after{transform:rotate(-135deg)}
+.sg-faq p{margin:0 0 16px;font-size:15px;line-height:24px;color:#4E5968;word-break:keep-all}
+.sg-guide{background:#FFF8EE}

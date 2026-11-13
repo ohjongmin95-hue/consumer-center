@@ -322,7 +322,9 @@ class SiteTest(unittest.TestCase):
         self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
         jebo, ua = 'https://consumerjebo.co.kr', {'User-Agent': 'Mozilla/5.0 SoboruApp/1.2.0 (android)'}
         page = self.client.get('/doumi', base_url=jebo, headers=ua).get_data(as_text=True)
-        self.assertIn('어떤 피해를 입었나요?', page); self.assertIn('/doumi/scam', page)
+        self.assertIn('어떤 피해를 입었나요?', page); self.assertIn('/doumi/scam', page); self.assertIn('/doumi/guide', page)
+        page = self.client.get('/doumi/guide', base_url=jebo, headers=ua).get_data(as_text=True)
+        self.assertIn('소비자분쟁조정위원회', page); self.assertIn('자주 묻는 질문', page); self.assertIn('tel:1372', page)
         page = self.client.get('/doumi/contract', base_url=jebo, headers=ua).get_data(as_text=True)
         for text in ('1372 소비자상담센터', 'https://www.ccn.go.kr', '신고서, 대신 써 드려요', '/doumi/letter', '/tools/calc/fitness', '소보루고발에도 올리기'):
             self.assertIn(text, page)

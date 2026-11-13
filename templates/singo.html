@@ -7,6 +7,8 @@
 <main class="sg">
 {% if not t %}
   <h1 class="sg-h">{{ ui('singo.q', '어떤 피해를 입었나요?') }}</h1>
+  {# 운영자 2026-11-13: 절차·방법 안내도 #}
+  <a class="sg-card sg-row sg-guide" href="{{ url_for('singo_guide') }}" style="padding:16px 20px"><span class="sg-ic tf" aria-hidden="true">🗺️</span><span class="sg-tx"><b>{{ ui('singo.guide', '피해구제·분쟁조정 절차 안내') }}</b><small>{{ ui('singo.guide_s', '신청 방법과 순서, 자주 묻는 질문') }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
   <section class="sg-card">
     {% for key, emo, name, ex, places, prep, cat in types %}
     <a class="sg-row" href="{{ url_for('singo_type', key=key) }}"><span class="sg-ic tf" aria-hidden="true">{{ emo }}</span><span class="sg-tx"><b>{{ name }}</b><small>{{ ex }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
@@ -34,6 +36,7 @@
   </section>
 
   <section class="sg-card sg-more">
+    <a class="sg-row" href="{{ url_for('singo_guide') }}"><span class="sg-ic tf" aria-hidden="true">🗺️</span><span class="sg-tx"><b>{{ ui('singo.guide2', '피해구제·분쟁조정 절차 보기') }}</b><small>{{ ui('singo.guide2_s', '1372 상담부터 분쟁조정까지 순서대로') }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
     <a class="sg-row" href="{{ url_for('singo_letter', case=case['id'] if case else None) }}"><span class="sg-ic tf" aria-hidden="true">✉️</span><span class="sg-tx"><b>{{ ui('singo.letter', '업체에 내용증명 보내기') }}</b><small>{{ ui('singo.letter_s', '기관에 가기 전에, 기한을 정해 정식으로 요구해요') }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
     {% for c in calcs %}<a class="sg-row" href="{{ url_for('calc', slug=c.slug) }}"><span class="sg-ic tf" aria-hidden="true">{{ c.emoji }}</span><span class="sg-tx"><b>{{ c.name }}</b><small>{{ ui('singo.calc_s', '얼마를 돌려받을 수 있는지 먼저 계산해 봐요') }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>{% endfor %}
   </section>
