@@ -9,14 +9,14 @@
   </section>{% endif %}
 
   <section class="ap-card ap-ai">
-    <a class="ap-ai-h" href="{{ url_for('law_ask') }}"><b>{{ ui('app.ai_t', '안녕하세요, AI 상담이에요') }}</b><small>{{ ui('app.ai_s', '소비자 법률 상담, 24시간 바로 답해요') }} ›</small></a>
+    <a class="ap-ai-h" href="{{ url_for('law_ask') }}"><b>{{ ui('app.ai_t2', 'AI 법률 상담') }}</b><small>{{ ui('app.ai_s2', '소비자 문제, 24시간 바로 답해요') }} ›</small></a>
     <i class="ap-ai-pic tf" aria-hidden="true">🤖</i>{# 운영자 2026-11-13: 캐릭터 말고 토스처럼 이모지 #}
-    <a class="ap-ai-q" href="{{ url_for('law_ask') }}"><i class="tf" aria-hidden="true">💬</i><span>{{ ui('app.ai_q', '어떤 일이 있었나요? 물어보세요') }}</span><b aria-hidden="true">→</b></a>
+    <a class="ap-ai-q" href="{{ url_for('law_ask') }}"><i class="tf" aria-hidden="true">💬</i><span>{{ ui('app.ai_q2', '어떤 일이 있었나요?') }}</span><b aria-hidden="true">→</b></a>
   </section>
 
   <div class="ap-two">
-    <a class="ap-tile2 t1" href="{{ url_for('howto_list') }}"><b>{{ ui('app.t_howto', '분쟁·대응') }}</b><small>{{ ui('app.t_howto_s', '환불·해지, 이렇게 대응해요') }} ›</small><i class="tf" aria-hidden="true">🧾</i></a>
-    <a class="ap-tile2 t2" href="{{ url_for('experts_page') }}"><b>{{ ui('app.t_exp', '소보루 자문단') }}</b><small>{{ ui('app.t_exp_s', '변호사·교수가 한 줄 의견') }} ›</small><i class="tf" aria-hidden="true">⚖️</i></a>
+    <a class="ap-tile2 t1" href="{{ url_for('howto_list') }}"><b>{{ ui('app.t_howto', '분쟁·대응') }}</b><small>{{ ui('app.t_howto_s2', '환불·해지 대응법') }} ›</small><i class="tf" aria-hidden="true">🧾</i></a>
+    <a class="ap-tile2 t2" href="{{ url_for('experts_page') }}"><b>{{ ui('app.t_exp', '소보루 자문단') }}</b><small>{{ ui('app.t_exp_s2', '변호사·교수 의견') }} ›</small><i class="tf" aria-hidden="true">⚖️</i></a>
   </div>
 
   <section class="ap-card ap-list ap-xt">

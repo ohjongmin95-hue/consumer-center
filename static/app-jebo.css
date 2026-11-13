@@ -340,3 +340,9 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-tile2 .tf{position:static;order:-1;font-size:28px;opacity:1;line-height:1}
 .ac-ph span{background:#E5E8EB;color:#6B7684}
 .ap-st{font-weight:600}
+/* 운영자 2026-11-13: 글 간격·줄바꿈 비율. 짧은 설명은 한 줄로, 넘치면 말줄임 */
+.ap-tile2 b,.ap-tile2 small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
+.ap-tile2{gap:4px}
+.ap-ai-h b{line-height:1.4}.ap-ai-h small{line-height:1.4}
+.ap-ht,.ac-t{word-break:keep-all;overflow-wrap:anywhere}
+.ap-ai-q span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
