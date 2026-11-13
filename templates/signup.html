@@ -6,10 +6,11 @@
   {# 토스식: 제목은 카드 위, 한 화면에 가입 버튼까지 (스크롤 없이) #}
   <h1 class="auth-title auth-title-out">{{ ui('common.signup', '회원가입') }}</h1>
   {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead2', '카카오·네이버로 3초 만에 시작해요') if 'naver' in social_providers() else ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
-  {# 운영자 2026-11-03: 아이디 가입은 없음. 문자 키가 없을 때도 아이디 칸으로 돌아가지 않고 카카오·네이버만 보여 줌 #}
+  {# 운영자 2026-11-13: 아이디 가입은 작은 글자 링크로 다시 보임 (?id=1). 2026-11-03: 아이디 가입은 없음. 문자 키가 없을 때도 아이디 칸으로 돌아가지 않고 카카오·네이버만 보여 줌 #}
   {% if enabled and not request.args.get('id') and request.method == 'GET' and (phone_login_ready() or not is_soboru()) %}
   <div class="auth-card auth-start"><div class="auth-body">{{ social_buttons('시작하기') }}
     {% if phone_login_ready() %}<a class="ph-btn" href="{{ url_for('phone_start', next=request.args.get('next') or None) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10.5 18h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>{{ ui('phone.btn', '휴대폰 번호로 시작하기') }}</span></a>{% endif %}</div></div>
+  <p class="auth-other"><a href="{{ url_for('signup', id=1, next=request.args.get('next') or None) }}">{{ ui('member.id_signup', '아이디로 가입') }}</a></p>
   <p class="auth-join">{{ ui('member.already', '이미 회원이신가요?') }} <a href="{{ url_for('login') }}">{{ ui('common.login', '로그인') }}</a></p>
   {% else %}
   <div class="auth-card auth-card-wide">
