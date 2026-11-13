@@ -159,6 +159,27 @@ def install(S):
 
     app.jinja_env.globals['app_feed'] = feed
 
+    HOT_TOPICS = ('환불 거부', '택배 분실', '중도 해지', '개인정보 유출', '위약금')
+    def app_hot():
+        """운영자 2026-11-13: 검색칸 안내 문구는 헤이마오처럼 몇 초마다 바뀜. 요즘 많이 고발된 업체 + 많이 찾는 말.
+        한 줄에 다 보이게 7글자 이하만 (잘리는 건 넣지 않음)."""
+        out = []
+        try:
+            with S.conn() as db:
+                for r in db.execute("""SELECT company FROM cases WHERE public_consent=1 AND published=1 AND COALESCE(company_hidden,0)=0
+                        AND COALESCE(company,'')<>'' AND created >= date('now','-30 day') GROUP BY company ORDER BY COUNT(*) DESC, MAX(id) DESC LIMIT 8"""):
+                    n = S.mask_personal(r['company'] or '').strip()
+                    if 0 < len(n) <= 7 and n not in out: out.append(n)
+        except Exception:
+            pass
+        out = out[:4]
+        for t in HOT_TOPICS:
+            if len(out) >= 6: break
+            out.append(t)
+        return out
+    app.jinja_env.globals['app_hot'] = app_hot
+    app.jinja_env.globals['app_hot_topics'] = HOT_TOPICS
+
     def home_list(tab):
         if tab == 'hot': rows = S.report_rows(order=S.HOT_ORDER, limit=6)
         elif tab in ('answer', 'done'): rows = S.report_rows(S.REPORT_STAGES[tab][1], (), 6)

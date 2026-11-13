@@ -10,7 +10,7 @@ html:has(.ap-body),body.ap-body{font-family:'Pretendard Variable',Pretendard,Tos
 /* 운영자 2026-11-13: 로고 위 여백 없앰. 위쪽 안전 영역은 앱(SafeAreaView)이 맡으니 여기서는 더하지 않음 */
 .ap-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:8px 16px 10px;background:#F2F4F6}
 .ap-logo{display:flex;align-items:center;gap:5px;flex:none;text-decoration:none}
-.ap-logo img{height:24px;width:auto;display:block}  /* 소보루고발 가로 로고: 로고체 + 갈색 고발 글자, 상자·심볼 없음 (운영자 2026-11-13) */
+.ap-logo img{height:15px;width:auto;display:block}  /* 소보루고발 가로 로고: 로고체 + 갈색 고발 글자, 상자·심볼 없음 (운영자 2026-11-13) */
 .ap-search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;background:#fff;border-radius:12px;color:#B0B8C1}
 .ap-search input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:14px;color:#191F28}
 .ap-search input::placeholder{color:#B0B8C1}
@@ -359,3 +359,14 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-tile2 b,.ap-tile2 small{position:relative;z-index:1;max-width:calc(100% - 8px)}
 .ap-tile2 small{white-space:nowrap}
 .ap-tile2{min-height:128px}.ap-tile2 .tf{font-size:40px;bottom:10px;right:12px}
+/* 운영자 2026-11-13: 타일 색도 TDS 오렌지 단계로 (분쟁·대응 400→500, 자문단 700→900 붉은 오렌지) */
+.ap-tile2.t1{background:linear-gradient(135deg,#FFA927 0%,#FE9800 100%)!important}
+.ap-tile2.t2{background:linear-gradient(135deg,#F57800 0%,#E45600 100%)!important}
+/* 아티클 칸 머리: 헤이마오 '猫一眼 + 한 줄'처럼 제목 옆에 짧은 한 줄 */
+.ap-mh b{flex:none}.ap-mh small{flex:1}
+/* 운영자 2026-11-13: 소식 줄 칩에 TDS 색 (새 고발=노랑 100, 기업 답변=청록 100, 해결=초록 100) */
+.ap-tick a.k-new{background:#FFEFBF;color:#333D48}
+.ap-tick a.k-ans{background:#BCE9E9;color:#0C8585}
+.ap-tick a.k-done{background:#AEEFD5;color:#027854}
+/* 운영자 2026-11-13: 검색칸 안내 문구가 3초마다 바뀜 (헤이마오식) */
+.ap-search input::placeholder{transition:opacity .2s}.ap-search input.ap-ph-out::placeholder{opacity:0}
