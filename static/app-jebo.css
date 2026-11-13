@@ -359,3 +359,6 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-tile2 b,.ap-tile2 small{position:relative;z-index:1;max-width:calc(100% - 8px)}
 .ap-tile2 small{white-space:nowrap}
 .ap-tile2{min-height:128px}.ap-tile2 .tf{font-size:40px;bottom:10px;right:12px}
+/* 운영자 2026-11-13: 타일 색도 TDS 오렌지 단계로 (분쟁·대응 400→500, 자문단 700→900 붉은 오렌지) */
+.ap-tile2.t1{background:linear-gradient(135deg,#FFA927 0%,#FE9800 100%)!important}
+.ap-tile2.t2{background:linear-gradient(135deg,#F57800 0%,#E45600 100%)!important}
