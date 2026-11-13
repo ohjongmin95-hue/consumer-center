@@ -36,7 +36,7 @@
 
   <section class="ap-card ap-list">
     <nav class="ap-tabs" aria-label="{{ ui('app.list', '고발 목록') }}">{% for k, label in tabs.items() %}<a href="{{ url_for('home', t=k) }}"{% if k == tab %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</nav>
-    {% with cases = cases, brief = False %}{% include 'app_feed.html' %}{% endwith %}{# 운영자 2026-11-14: 헤이마오처럼 제목·본문 두 줄·고발 대상·유형까지, 글자는 작게 #}
+    {% with cases = cases, brief = False, no_body = True %}{% include 'app_feed.html' %}{% endwith %}{# 운영자 2026-11-14: 헤이마오처럼 제목·고발 대상·유형·요구, 글자는 작게. 본문 줄은 뺌 #}
     <a class="ap-all" href="{{ url_for('reports', sort='hot' if tab == 'hot' else None, st=tab if tab in ('answer', 'done') else None) }}">{{ ui('app.all', '전체 고발 보기') }}</a>
   </section>
 </main>
