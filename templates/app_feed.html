@@ -7,12 +7,13 @@
       <div class="ap-who"><img class="ap-av" src="{{ src or soboru_av(c.uid or c.no) }}" alt=""><span><b>{{ c.nick or ui('home.card_anon', '익명 소비자') }}</b><small>{{ c.when }} {{ ui('app.started', '소보루고발에서 고발') }}</small></span><em class="ap-st s{{ c.step }}">{{ c.status }}</em></div>
       <div class="ap-hb">
         <b class="ap-ht">{% if open and t[0] >= 5 %}<i class="ap-tagn hot">HOT</i> {% endif %}{{ c.title if open else ui('app.secret', '비공개 고발이에요') }}</b>
-        {% if c.body and not brief %}<p class="ap-hx">{{ c.body }}</p>{% endif %}
+        {% if c.body and not brief and not no_body %}<p class="ap-hx">{{ c.body }}</p>{% endif %}
         {% if open and not brief %}<dl class="ap-hd">
           <div><dt>{{ ui('app.target', '고발 대상') }}</dt><dd class="co">{{ c.company or ui('app.co_hidden', '업체명 비공개') }}</dd></div>
+          {% if c.cat %}<div><dt>{{ ui('app.g_tag_cat', '고발 유형') }}</dt><dd><span class="ap-chip">{{ c.cat }}</span></dd></div>{% endif %}
           {% if c.wants %}<div><dt>{{ ui('app.g_tag_want', '요구') }}</dt><dd>{{ c.wants|join(' · ') }}</dd></div>{% endif %}
         </dl>{% endif %}
-        {% if open %}<p class="ap-hc"><span><i class="tf" aria-hidden="true">👍</i>{{ t[0] }}</span><span><i class="tf" aria-hidden="true">💬</i>{{ t[1] }}</span><span>{{ c.cat }}</span></p>{% endif %}
+        {% if open %}<p class="ap-hc"><span><i class="tf" aria-hidden="true">👍</i>{{ t[0] }}</span><span><i class="tf" aria-hidden="true">💬</i>{{ t[1] }}</span>{% if brief %}<span>{{ c.cat }}</span>{% endif %}</p>{% endif %}
       </div>
     {% if open %}</a>{% else %}</div>{% endif %}
     {% else %}<p class="ap-empty">{{ ui('app.list_empty', '아직 여기에 올라온 고발이 없어요.') }}</p>{% endfor %}
