@@ -362,12 +362,11 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 /* 운영자 2026-11-13: 타일 색도 TDS 오렌지 단계로 (분쟁·대응 400→500, 자문단 700→900 붉은 오렌지) */
 .ap-tile2.t1{background:linear-gradient(135deg,#FFA927 0%,#FE9800 100%)!important}
 .ap-tile2.t2{background:linear-gradient(135deg,#F57800 0%,#E45600 100%)!important}
-/* 운영자 2026-11-13: 타일에 귤색·오렌지·파랑 쓰지 말 것 → TDS 청록(Teal)·보라(Purple) */
-.ap-tile2.t1{background:linear-gradient(135deg,#30B6B6 0%,#109595 100%)!important}
-.ap-tile2.t2{background:linear-gradient(135deg,#B44BD7 0%,#9128B4 100%)!important}
 /* 아티클 칸 머리: 헤이마오 '猫一眼 + 한 줄'처럼 제목 옆에 짧은 한 줄 */
 .ap-mh b{flex:none}.ap-mh small{flex:1}
 /* 운영자 2026-11-13: 소식 줄 칩에 TDS 색 (새 고발=노랑 100, 기업 답변=청록 100, 해결=초록 100) */
 .ap-tick a.k-new{background:#FFEFBF;color:#333D48}
 .ap-tick a.k-ans{background:#BCE9E9;color:#0C8585}
 .ap-tick a.k-done{background:#AEEFD5;color:#027854}
+/* 운영자 2026-11-13: 검색칸 안내 문구가 3초마다 바뀜 (헤이마오식) */
+.ap-search input::placeholder{transition:opacity .2s}.ap-search input.ap-ph-out::placeholder{opacity:0}
