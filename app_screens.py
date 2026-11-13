@@ -8,6 +8,13 @@
 이모지는 토스페이스(앱 바닥글에 출처). 버튼은 #CE6719.
 """
 import datetime
+import html
+import os
+import re
+import threading
+import time
+import urllib.request
+import xml.etree.ElementTree as ET
 
 from flask import render_template, request
 
@@ -15,6 +22,62 @@ TABS = {'hot': '인기', 'new': '최신', 'answer': '답변 완료', 'done': '�
 RANK_TABS = {'good': '잘 답하는 곳', 'bad': '아쉬운 곳', 'fast': '답변 빠른 곳'}
 CARD_N = 5      # 업종 카드 한 장에 보이는 기업 수
 ONE_IND_N = 10  # 업종 하나만 볼 때
+NEWS_HOME = 'https://www.consumertimes.kr'
+NEWS_N = 5           # 앱 홈 '소보루 기사' 칸에 보이는 기사 수
+NEWS_TTL = 30 * 60   # 기사 목록을 다시 가져오는 간격(초)
+_news = {'at': 0, 'items': [], 'busy': False}
+
+
+def news_rss():
+    # 소비자를위한신문(ND소프트) 전체 기사 RSS. 주소가 바뀌면 서버 설정 SOBORU_NEWS_RSS로
+    return os.getenv('SOBORU_NEWS_RSS', NEWS_HOME + '/rss/allArticle.xml')
+
+
+def parse_news(xml_bytes, limit=NEWS_N):
+    """RSS에서 (제목, 링크, 날짜, 사진). 사진은 enclosure·media·본문 첫 그림 순으로"""
+    out = []
+    root = ET.fromstring(xml_bytes)
+    for it in root.iter('item'):
+        title = re.sub(r'<[^>]+>', '', html.unescape((it.findtext('title') or '').strip())).strip()
+        link = (it.findtext('link') or '').strip()
+        if not title or not link.startswith(('http://', 'https://')): continue
+        img = ''
+        for el in it:
+            tag = el.tag.split('}')[-1]
+            if tag in ('enclosure', 'content', 'thumbnail') and (el.get('url') or '').startswith('http') and 'image' in (el.get('type') or 'image'):
+                img = el.get('url'); break
+        if not img:
+            m = re.search(r'<img[^>]+src=["\']([^"\']+)', html.unescape(it.findtext('description') or ''))
+            if m and m.group(1).startswith('http'): img = m.group(1)
+        when = ''
+        raw = (it.findtext('pubDate') or '').strip()
+        for fmt in ('%a, %d %b %Y %H:%M:%S %z', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S%z'):
+            try: when = datetime.datetime.strptime(raw, fmt).strftime('%m.%d'); break
+            except ValueError: pass
+        out.append(dict(title=title, link=link, date=when, img=img))
+        if len(out) >= limit: break
+    return out
+
+
+def refresh_news():
+    try:
+        req = urllib.request.Request(news_rss(), headers={'User-Agent': 'Mozilla/5.0 (SoboruJebo)'})
+        with urllib.request.urlopen(req, timeout=6) as r: items = parse_news(r.read(2_000_000))
+        if items: _news['items'] = items
+    except Exception:
+        pass
+    finally:
+        _news['at'] = time.time(); _news['busy'] = False
+
+
+def soboru_news():
+    """앱 홈 '소보루 기사' (운영자 2026-11-13). 화면을 기다리게 하지 않게 뒤에서 새로 가져오고, 그동안은 가져온 목록을 씀"""
+    if time.time() - _news['at'] > NEWS_TTL and not _news['busy']:
+        _news['busy'] = True
+        threading.Thread(target=refresh_news, daemon=True).start()
+    return _news['items']
+
+
 WANTS = ('환불', '교환', '수리', '해지', '배상', '보상', '사과', '취소', '재발 방지')  # 공동 대응 '요구' 태그: 관련 고발의 요청 사항에 이 말이 있으면
 
 
@@ -82,7 +145,7 @@ def install(S):
         tab = request.args.get('t', 'hot')
         if tab not in TABS: tab = 'hot'
         with S.conn() as db:
-            data = dict(tick=ticker(db), guides=guides(db), groups=open_groups(db))
+            data = dict(tick=ticker(db), guides=guides(db), groups=open_groups(db), news=soboru_news(), news_home=NEWS_HOME)
         return render_template('app_home.html', summary=S.report_summary(), tab=tab, tabs=TABS, cases=home_list(tab), **data)
 
     # ── 기업 순위 ────────────────────────────────────────

@@ -13,6 +13,11 @@
     {% for dup in (0, 1) %}{% for at, emo, text, cid, kind in tick %}<a class="k-{{ kind }}" href="{{ url_for('public_case', case_id=cid) }}"{% if dup %} aria-hidden="true" tabindex="-1"{% endif %}><span class="ap-tav" aria-hidden="true">{{ emo }}</span>{{ text }}</a>{% endfor %}{% endfor %}
   </div></div>{% endif %}
 
+  {% if news %}<section class="ap-card">
+    <a class="ap-h" href="{{ news_home }}"><i class="tf" aria-hidden="true">📰</i>{{ ui('app.news', '소보루 기사') }}<span class="ap-more" aria-hidden="true">›</span></a>
+    {% for n in news %}<a class="ap-row ap-news" href="{{ n.link }}"><span class="ap-t"><b>{{ n.title }}</b>{% if n.date %}<small>{{ n.date }}</small>{% endif %}</span>{% if n.img %}<img class="ap-nimg" src="{{ n.img }}" alt="" loading="lazy" width="88" height="64">{% endif %}</a>{% endfor %}
+  </section>{% endif %}
+
   {% if guides %}<section class="ap-card">
     <a class="ap-h" href="{{ url_for('check_list') }}"><i class="tf" aria-hidden="true">🔍</i>{{ ui('app.check', '사기 전에 확인해 보세요') }}<span class="ap-more" aria-hidden="true">›</span></a>
     {% for g_ in guides %}<a class="ap-row" href="{{ url_for('check_page', gid=g_.id) }}"><span class="ap-tile tf" aria-hidden="true">{{ g_.emo }}</span><span class="ap-t">{{ g_.title }}</span>{% if g_.new %}<em class="ap-badge red">NEW</em>{% endif %}</a>{% endfor %}
