@@ -4,7 +4,7 @@
 {% block description %}{{ ui('letter.desc', '업체에 보낼 내용증명 문장을 대신 써 드려요. 인터넷우체국에서 바로 보낼 수 있어요.') }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ asset('singo.css') }}">{% endblock %}
 {% block content %}
-<main class="sg">
+<main class="sg{% if not sg_app %} sg-web{% endif %}">
   <a class="sg-back" href="{{ url_for('singo_home') }}">‹ {{ ui('singo.t', '해결 도우미') }}</a>
   <h1 class="sg-h"><span class="tf" aria-hidden="true">✉️</span> {{ ui('letter.h', '업체에 보낼 내용증명') }}</h1>
 

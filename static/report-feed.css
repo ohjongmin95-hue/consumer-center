@@ -2119,3 +2119,14 @@ body:not(.sb) .ev-field .ev-txt small,.ev-field .ev-txt small{font-size:13.5px;c
 .ev-field .ev-head{margin-bottom:4px}
 .ev-field .file-picked{color:#191F28;font-weight:600;word-break:break-all}
 .ev-field .ev-head>label{margin:0;line-height:24px}
+/* 대화로 제보하기 칸 + 대화 예시 (운영자 2026-11-14) */
+.rp-alt.rp-talk{display:flex;flex-direction:column;align-items:stretch;gap:16px;padding:24px;border-radius:24px;background:#F5F3FF}
+.rp-alt.rp-talk:hover{background:#F5F3FF}
+.rp-talk-top{display:flex;align-items:center;gap:16px}
+.rp-talk-ex{display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:16px;background:#fff}
+.rp-b{max-width:78%;padding:10px 14px;border-radius:18px;font-size:15px;line-height:22.5px;word-break:keep-all}
+.rp-b.ai{align-self:flex-start;background:#F2F4F6;color:#333D4B;border-top-left-radius:6px}
+.rp-b.me{align-self:flex-end;background:#8B7CF6;color:#fff;border-top-right-radius:6px}
+.rp-talk-go{display:flex;align-items:center;justify-content:center;height:52px;border-radius:14px;background:#8B7CF6;color:#fff;font-size:16px;font-weight:700}
+.rp-talk:hover .rp-talk-go{background:#7A6AF0}
+@media(max-width:680px){.rp-alt.rp-talk{padding:20px 16px}.rp-b{max-width:88%}}

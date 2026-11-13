@@ -53,3 +53,20 @@ body:has(.sg){background:#F2F4F6}
 .sg-faq details[open] summary:after{transform:rotate(-135deg)}
 .sg-faq p{margin:0 0 16px;font-size:15px;line-height:24px;color:#4E5968;word-break:keep-all}
 .sg-guide{background:#FFF8EE}
+/* 웹사이트(PC·모바일 웹)에서도 같은 모양 (운영자 2026-11-14: 해결 도우미를 웹에도). 사이트 공통 main 폭 규칙보다 우선 */
+html body:not(.sb):has(main.sg){background:#F2F4F6}
+body:not(.sb) main.sg{max-width:760px;margin:0 auto;padding:24px 16px 120px;min-height:0}
+@media(min-width:900px){
+  body:not(.sb) main.sg{padding:40px 24px 80px;gap:16px}
+  body:not(.sb) main.sg.sg-wide{max-width:1160px}
+  .sg-wide .sg-h{font-size:30px;line-height:40px;margin:0 4px 8px}
+  .sg-wide .sg-types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;background:none;padding:0}
+  .sg-wide .sg-types .sg-row{background:#fff;border-radius:20px;padding:20px;border:0}
+  .sg-wide .sg-types .sg-row:hover{background:#F9FAFB}
+  .sg-bar{position:static;padding:8px 0 0;background:none}
+  .sg-go{max-width:none}
+}
+/* 웹(흰 바탕)에서는 사이트 제보 카드처럼 흰 카드 + 1px Grey200 테두리 (운영자 11/03 결정) */
+.sg-web .sg-card:not(.sg-guide):not(.sg-types),.sg-web .sg-types .sg-row{border:1px solid #E5E8EB}
+.sg-web .sg-types{background:none;padding:0}
+@media(max-width:899px){.sg-web .sg-types{display:flex;flex-direction:column;gap:8px}.sg-web .sg-types .sg-row{background:#fff;border-radius:16px;padding:14px 16px}.sg-web .sg-types .sg-row+.sg-row{border-top:1px solid #E5E8EB}}

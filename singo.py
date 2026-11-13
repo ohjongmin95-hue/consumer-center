@@ -99,6 +99,11 @@ def install(S):
             c = db.execute('SELECT id,user_id,company,category,subject,description,request_text,occurred_on FROM cases WHERE id=?', (int(cid),)).fetchone()
         return c if c and c['user_id'] and c['user_id'] == g.user['id'] else None
 
+    @app.context_processor
+    def _sg_app():
+        # 앱(소보루고발)인지 웹(소비자고발제보센터)인지: 버튼 문구만 다름
+        return {'sg_app': 'SoboruApp/' in (request.headers.get('User-Agent') or '')}
+
     def singo_for(category):
         return url_for('singo_type', key=FROM_CATEGORY.get(category or '', 'shop'))
     app.jinja_env.globals['singo_for'] = singo_for
