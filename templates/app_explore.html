@@ -14,6 +14,11 @@
     <a class="ap-ai-q" href="{{ url_for('law_ask') }}"><i class="tf" aria-hidden="true">💬</i><span>{{ ui('app.ai_q2', '어떤 일이 있었나요?') }}</span><b aria-hidden="true">→</b></a>
   </section>
 
+  <section class="ap-card ap-mini">
+    <a class="ap-mh" href="{{ url_for('singo_home') }}"><i class="tf" aria-hidden="true">🧭</i><b>{{ ui('app.sg_t', '해결 도우미') }}</b><small>{{ ui('app.sg_s2', '고발 다음, 해결까지 도와드려요') }}</small><span class="ap-more" aria-hidden="true">›</span></a>
+    <ul>{% for k, e, n in [('shop', '🛒', '온라인 쇼핑·환불'), ('contract', '🏋️', '헬스장·학원·구독 해지'), ('scam', '🚨', '사기·중고거래')] %}<li><a href="{{ url_for('singo_type', key=k) }}"><span><i class="tf" aria-hidden="true">{{ e }}</i> {{ n }}</span></a></li>{% endfor %}</ul>
+  </section>
+
   <div class="ap-two">
     <a class="ap-tile2 t1" href="{{ url_for('howto_list') }}"><b>{{ ui('app.t_howto', '분쟁·대응') }}</b><small>{{ ui('app.t_howto_s2', '환불·해지 대응법') }} ›</small><i class="tf" aria-hidden="true">📘</i></a>
     <a class="ap-tile2 t2" href="{{ url_for('experts_page') }}"><b>{{ ui('app.t_exp', '소보루 자문단') }}</b><small>{{ ui('app.t_exp_s2', '변호사·교수 의견') }} ›</small><i class="tf" aria-hidden="true">⚖️</i></a>
@@ -27,13 +32,15 @@
       {% if scams %}<button type="button" data-x="scam" role="tab" aria-selected="false">{{ ui('app.x_scam', '사기 경보') }}</button>{% endif %}
       {% if hows %}<button type="button" data-x="how" role="tab" aria-selected="false">{{ ui('app.x_class', '소비자 교실') }}</button>{% endif %}
       {% if guides_all %}<button type="button" data-x="check" role="tab" aria-selected="false">{{ ui('app.x_check', '사기 전 확인') }}</button>{% endif %}
+      <button type="button" data-x="calc" role="tab" aria-selected="false">{{ ui('app.x_calc', '계산기') }}</button>
       <button type="button" data-x="law" role="tab" aria-selected="false">{{ ui('app.x_law', '법률 상담') }}</button>
     </nav>
-    <div data-p="news">{% for n in news %}<a class="ap-art" href="{{ n.link }}"><span><b>{{ n.title }}</b><small>{{ ui('app.paper', '소비자를위한신문') }}{% if n.date %} · {{ n.date }}{% endif %}</small></span>{% if n.img %}<img src="{{ n.img }}" alt="" loading="lazy" width="112" height="76">{% endif %}</a>{% else %}<p class="ap-empty">{{ ui('app.news_none', '기사를 불러오고 있어요. 잠시 뒤 다시 열어 주세요.') }}</p>{% endfor %}
+    <div data-p="news">{% for n in news %}<a class="ap-art" href="{{ news_link(n.link) }}"><span><b>{{ n.title }}</b><small>{{ ui('app.paper', '소비자를위한신문') }}{% if n.date %} · {{ n.date }}{% endif %}</small></span>{% if n.img %}<img src="{{ n.img }}" alt="" loading="lazy" width="112" height="76">{% endif %}</a>{% else %}<p class="ap-empty">{{ ui('app.news_none', '기사를 불러오고 있어요. 잠시 뒤 다시 열어 주세요.') }}</p>{% endfor %}
       <a class="ap-all" href="{{ news_home }}">{{ ui('app.news_all', '소비자를위한신문에서 더 보기') }}</a></div>
     <div data-p="hot" hidden>{% include 'app_feed.html' %}</div>
     {% if scams %}<div data-p="scam" hidden>{% for x in scams %}<a class="ap-row" href="{{ url_for('scam_home') }}"><span class="ap-tile tf" aria-hidden="true">🚨</span><span class="ap-t">{{ x['title'] }}<small class="ap-sub">{{ x['region'] }} · {{ x['created'][:10]|replace('-', '.') }}</small></span></a>{% endfor %}<a class="ap-all" href="{{ url_for('scam_home') }}">{{ ui('app.scam_all', '사기 경보 전체 보기') }}</a></div>{% endif %}
     {% if guides_all %}<div data-p="check" hidden>{% for g_ in guides_all %}<a class="ap-row" href="{{ url_for('check_page', gid=g_.id) }}"><span class="ap-tile tf" aria-hidden="true">{{ g_.emo }}</span><span class="ap-t">{{ g_.title }}</span></a>{% endfor %}<a class="ap-all" href="{{ url_for('check_list') }}">{{ ui('app.check_all', '사기 전 확인 전체 보기') }}</a></div>{% endif %}
+    <div data-p="calc" hidden>{% for c in consumer_calcs() %}<a class="ap-row" href="{{ url_for('calc', slug=c.slug) }}"><span class="ap-tile tf" aria-hidden="true">{{ c.emoji }}</span><span class="ap-t">{{ c.name }}</span></a>{% endfor %}</div>
     <div data-p="law" hidden><a class="ap-row" href="{{ url_for('law_ask') }}"><span class="ap-tile tf" aria-hidden="true">💬</span><span class="ap-t">{{ ui('app.law1', 'AI에게 소비자 법률 묻기') }}<small class="ap-sub">{{ ui('app.law1s', '24시간 바로 답해요') }}</small></span></a><a class="ap-row" href="{{ url_for('experts_page') }}"><span class="ap-tile tf" aria-hidden="true">⚖️</span><span class="ap-t">{{ ui('app.law2', '소보루 자문단 의견 듣기') }}<small class="ap-sub">{{ ui('app.law2s', '변호사·교수가 한 줄 의견') }}</small></span></a><a class="ap-row" href="{{ url_for('howto_list') }}"><span class="ap-tile tf" aria-hidden="true">🧾</span><span class="ap-t">{{ ui('app.law3', '분쟁 대응 방법 보기') }}<small class="ap-sub">{{ ui('app.law3s', '환불·해지·위약금') }}</small></span></a></div>
     {% if hows %}<div data-p="how" hidden>{% for h in hows %}<a class="ap-row" href="{{ url_for('howto_page', gid=h['id']) }}"><span class="ap-tile tf" aria-hidden="true">{{ h['emoji'] or '🧾' }}</span><span class="ap-t">{{ h['title'] }}</span></a>{% endfor %}</div>{% endif %}
   </section>

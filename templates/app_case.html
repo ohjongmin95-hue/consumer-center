@@ -28,6 +28,18 @@
     <ol class="pc-steps pf-steps">{% for s in pub_names() %}<li class="{{ 'on' if loop.index <= now_step else '' }}{{ ' now' if loop.index == now_step else '' }}"{% if loop.index == now_step %} aria-current="step"{% endif %}><i>{% if loop.index < now_step %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4 8-9"/></svg>{% else %}{{ loop.index }}{% endif %}</i><span>{{ s }}</span></li>{% endfor %}</ol>
   </section>
 
+  {% set steps = case_steps(case) if case_steps is defined else none %}
+  {% if steps %}<section class="ac-card ac-steps" id="steps">{# 운영자 2026-11-13: 내 고발마다 해결까지 할 일. 끝낸 것은 눌러서 표시 #}
+    <h2 class="ac-h">{{ ui('app.steps_t', '해결까지 할 일') }}</h2>
+    <ol>{% for k, n, d, done, go in steps %}<li class="{{ 'done' if done }}">
+      <form method="post" action="{{ url_for('case_step_toggle', case_id=case['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="step" value="{{ k }}"><button type="submit" class="ac-ck" aria-pressed="{{ 'true' if done else 'false' }}" aria-label="{{ n }} {{ ui('app.steps_done', '끝냄') }}"></button></form>
+      <div><b>{{ n }}</b><small>{% if done %}{{ done[5:10]|replace('-', '.') }} {{ ui('app.steps_did', '끝냈어요') }}{% else %}{{ d }}{% endif %}</small></div>
+      {% if go and not done %}<a href="{{ go }}">{{ ui('app.steps_go', '하기') }} ›</a>{% endif %}</li>{% endfor %}</ol>
+  </section>{% endif %}
+
+  {# 운영자 2026-11-13: 고발에서 기관 신고로 이어지게. 내 글이면 내용으로 신고서를 채움 #}
+  <a class="ac-card ap-sg" href="{% if g.user and case['user_id'] == g.user['id'] %}{{ url_for('singo_home', case=case['id']) }}{% else %}{{ singo_for(case['category']) }}{% endif %}"><i class="tf" aria-hidden="true">🧭</i><span><b>{{ ui('app.sg_case', '기관에도 신고하기') }}</b><small>{% if g.user and case['user_id'] == g.user['id'] %}{{ ui('app.sg_case_s', '이 고발 내용으로 신고서를 써 드려요') }}{% else %}{{ ui('app.sg_case_s2', '이런 피해는 어디에 신고하는지 알려 드려요') }}{% endif %}</small></span><em aria-hidden="true">›</em></a>
+
   <section class="ac-card">
     <h2 class="ac-h">{{ ui('reports.company_answer', '기업 공식 답변') }}</h2>
     {% for a in answers %}<div class="pc-ans"><p class="pc-ans-head">{% if lg %}<img class="pc-co-av sm" src="{{ lg }}" alt="">{% endif %}<b>{{ (a['company_name'] if not case['company_hidden'] else '') or company }}</b><time>{{ a['created'][:10]|replace('-', '.') }}</time></p><p class="pc-body pc-bubble">{{ a['body'] }}</p></div>

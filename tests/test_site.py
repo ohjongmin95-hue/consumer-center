@@ -303,7 +303,7 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(items[0]['date'], '11.13')
         app_screens._news.update(at=_t.time(), items=items); self.addCleanup(app_screens._news.update, at=0, items=[])
         home = self.client.get('/', base_url=jebo, headers=ua).get_data(as_text=True)
-        self.assertIn('소보루 아티클', home); self.assertIn('idxno=2', home); self.assertNotIn('javascript:', home)
+        self.assertIn('소보루 아티클', home); self.assertIn('/news/read?u=', home); self.assertIn('idxno%3D2', home); self.assertNotIn('javascript:', home)
 
     def test_app_case_and_staff_comment(self):
         # 운영자 2026-11-13: 앱 고발 글 = 헤이마오 고발 상세 배치, 프로필 없으면 소보루 5가지
@@ -316,6 +316,54 @@ class SiteTest(unittest.TestCase):
         for text in ('ac-co', '고발 번호 %d' % cid, '환불', 'img/av/bird-', '나도 고발하기'):
             self.assertIn(text, page)
         self.assertNotIn('ac-co', self.client.get('/reports/%d' % cid, base_url=jebo).get_data(as_text=True))
+
+    def test_app_doumi_news_login(self):
+        # 운영자 2026-11-13: 소비자 고발 종합 앱. 해결 도우미(기관·준비물·신고서·내용증명·할 일), 앱 안 기사 읽기, '내 정보'는 로그인으로
+        self.site.JEBO_HOSTS.add('consumerjebo.co.kr'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'consumerjebo.co.kr')
+        jebo, ua = 'https://consumerjebo.co.kr', {'User-Agent': 'Mozilla/5.0 SoboruApp/1.2.0 (android)'}
+        page = self.client.get('/doumi', base_url=jebo, headers=ua).get_data(as_text=True)
+        self.assertIn('어떤 피해를 입었나요?', page); self.assertIn('/doumi/scam', page); self.assertIn('/doumi/guide', page)
+        page = self.client.get('/doumi/guide', base_url=jebo, headers=ua).get_data(as_text=True)
+        self.assertIn('소비자분쟁조정위원회', page); self.assertIn('자주 묻는 질문', page); self.assertIn('tel:1372', page)
+        page = self.client.get('/doumi/contract', base_url=jebo, headers=ua).get_data(as_text=True)
+        for text in ('1372 소비자상담센터', 'https://www.ccn.go.kr', '신고서, 대신 써 드려요', '/doumi/letter', '/tools/calc/fitness', '소보루고발에도 올리기'):
+            self.assertIn(text, page)
+        self.assertEqual(self.client.get('/doumi/nope', base_url=jebo).status_code, 404)
+        self.assertIn('내 용 증 명', self.client.get('/doumi/letter', base_url=jebo, headers=ua).get_data(as_text=True))
+        self.assertIn('해결 도우미', self.client.get('/', base_url=jebo, headers=ua).get_data(as_text=True))
+        # 로그인 안 한 앱 '내 정보'(=/lookup) → 로그인 화면, 웹과 ?old=1은 그대로
+        r = self.client.get('/lookup', base_url=jebo, headers=ua); self.assertEqual(r.status_code, 302); self.assertIn('/login', r.headers['Location'])
+        self.assertEqual(self.client.get('/lookup?old=1', base_url=jebo, headers=ua).status_code, 200)
+        self.assertEqual(self.client.get('/lookup', base_url=jebo).status_code, 200)
+        # 내 고발: 해결까지 할 일 + 고발 내용으로 신고서
+        self.signup(self.client)
+        self.site.JEBO_HOSTS.add('localhost'); self.addCleanup(self.site.JEBO_HOSTS.discard, 'localhost')  # 로그인 쿠키가 붙는 주소를 제보센터로
+        with self.site.conn() as db:
+            uid = db.execute("SELECT id FROM users WHERE login_id='sobo_ru'").fetchone()[0]
+            cid = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published,user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+                             ('dm1', 'x', '계약·해지', '소보짐', '해지를 안 해 줘요', '헬스장 해지 요청을 거절했어요', '환불', '2026-11-13T10:00:00', 1, 1, uid)).lastrowid
+        page = self.client.get('/reports/%d' % cid, headers=ua).get_data(as_text=True)
+        self.assertIn('해결까지 할 일', page); self.assertIn('/doumi?case=%d' % cid, page)
+        tok = re.search(r'name="_csrf" value="([^"]+)"', page)[1]
+        self.client.post('/case/%d/steps' % cid, headers=ua, data={'_csrf': tok, 'step': 'ask'})
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT COUNT(*) FROM case_steps WHERE case_id=?', (cid,)).fetchone()[0], 1)
+        r = self.client.get('/doumi?case=%d' % cid, headers=ua); self.assertIn('/doumi/contract', r.headers['Location'])
+        self.assertIn('헬스장 해지 요청을 거절했어요', self.client.get(r.headers['Location'], headers=ua).get_data(as_text=True))
+        other = self.site.app.test_client()
+        self.assertEqual(other.post('/case/%d/steps' % cid, data={'_csrf': self.csrf(other, '/lookup'), 'step': 'ask'}).status_code, 404)
+        # 앱 안 기사 읽기: 우리 신문 주소만, 글·사진만 뽑음, 못 읽으면 원문으로
+        import app_screens
+        art = app_screens.parse_article('<meta property="og:title" content="기사 제목 - 신문"><div id="article-view-content-div" class="a"><figure><img src="/p/1.jpg"><figcaption>사진 설명</figcaption></figure>'
+                                        '<p>' + '본문입니다. ' * 20 + '</p><script>x()</script><p>저작권자 © 신문</p></div>', 'https://www.consumertimes.kr/news/articleView.html?idxno=7')
+        self.assertEqual(art['title'], '기사 제목'); self.assertEqual(art['blocks'][0], ('img', 'https://www.consumertimes.kr/p/1.jpg', '사진 설명'))
+        self.assertFalse(any('저작권자' in b[1] or 'x()' in b[1] for b in art['blocks']))
+        u = 'https://www.consumertimes.kr/news/articleView.html?idxno=7'
+        with patch.object(app_screens, 'read_news', return_value=art):
+            page = self.client.get('/news/read', base_url=jebo, headers=ua, query_string={'u': u}).get_data(as_text=True)
+        self.assertIn('기사 제목', page); self.assertIn('사진 설명', page)
+        with patch.object(app_screens, 'read_news', return_value=None):
+            self.assertEqual(self.client.get('/news/read', base_url=jebo, headers=ua, query_string={'u': u}).headers['Location'], u)
+        self.assertEqual(self.client.get('/news/read', base_url=jebo, query_string={'u': 'https://evil.example/a'}).status_code, 404)
 
     def test_guide_toss_jebo(self):
         # 운영자 2026-11-03: 제보센터 이용 안내 = 토스식 + '대화로 제보하기' 화면 영상 + 업종 칩

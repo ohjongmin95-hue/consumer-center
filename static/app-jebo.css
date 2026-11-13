@@ -370,3 +370,23 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-tick a.k-done{background:#AEEFD5;color:#027854}
 /* 운영자 2026-11-13: 검색칸 안내 문구가 3초마다 바뀜 (헤이마오식) */
 .ap-search input::placeholder{transition:opacity .2s}.ap-search input.ap-ph-out::placeholder{opacity:0}
+
+/* 해결 도우미 한 줄 카드 (운영자 2026-11-13) */
+.ap-sg{display:flex;align-items:center;gap:12px;padding:16px 20px;text-decoration:none;color:#191F28}
+.ap-sg>.tf{flex:none;width:44px;height:44px;border-radius:14px;background:#FFF3E0;display:flex;align-items:center;justify-content:center;font-size:24px;font-style:normal}
+.ap-sg span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ap-sg b{font-size:17px;line-height:25.5px;font-weight:700}
+.ap-sg small{font-size:13px;line-height:19.5px;color:#6B7684;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap-sg em{font-style:normal;color:#B0B8C1;font-size:20px}
+.ap-mini li .tf{font-style:normal;margin-right:4px}
+
+/* 내 고발 '해결까지 할 일' (운영자 2026-11-13) */
+.ac-steps ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.ac-steps li{display:flex;align-items:center;gap:12px}
+.ac-steps li>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ac-steps b{font-size:16px;line-height:24px;font-weight:600;color:#191F28}
+.ac-steps small{font-size:13px;line-height:19.5px;color:#8B95A1;word-break:keep-all}
+.ac-steps li.done b{color:#8B95A1;text-decoration:line-through}
+.ac-steps li>a{flex:none;font-size:14px;font-weight:700;color:#F57800;text-decoration:none}
+.ac-ck{width:24px;height:24px;border-radius:12px;border:2px solid #D1D6DB;background:#fff;padding:0;cursor:pointer;display:block}
+.ac-ck[aria-pressed=true]{border-color:#FE9800;background:#FE9800 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.2l2.6 2.6L13 6.4' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat}

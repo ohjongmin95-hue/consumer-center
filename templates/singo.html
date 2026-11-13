@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{# 해결 도우미 (singo.py). 운영자 2026-11-13: 소보루고발에 신고·고발 도우미를 엮음. 토스 TDS: 회색 바탕 + 흰 카드, 버튼은 아래 하나 #}
+{% block title %}{% if t %}{{ t[2] }} {% endif %}{{ ui('singo.t', '해결 도우미') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('singo.desc', '피해 유형을 고르면 신고할 기관, 준비할 것, 신고서 문장까지 알려 드려요.') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset('singo.css') }}">{% endblock %}
+{% block content %}
+<main class="sg">
+{% if not t %}
+  <h1 class="sg-h">{{ ui('singo.q', '어떤 피해를 입었나요?') }}</h1>
+  {# 운영자 2026-11-13: 절차·방법 안내도 #}
+  <a class="sg-card sg-row sg-guide" href="{{ url_for('singo_guide') }}" style="padding:16px 20px"><span class="sg-ic tf" aria-hidden="true">🗺️</span><span class="sg-tx"><b>{{ ui('singo.guide', '피해구제·분쟁조정 절차 안내') }}</b><small>{{ ui('singo.guide_s', '신청 방법과 순서, 자주 묻는 질문') }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
+  <section class="sg-card">
+    {% for key, emo, name, ex, places, prep, cat in types %}
+    <a class="sg-row" href="{{ url_for('singo_type', key=key) }}"><span class="sg-ic tf" aria-hidden="true">{{ emo }}</span><span class="sg-tx"><b>{{ name }}</b><small>{{ ex }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
+    {% endfor %}
+  </section>
+  <p class="sg-note">{{ ui('singo.note0', '기관 신고는 본인 인증이 필요해서 직접 접수해야 해요. 어디에, 무엇을, 어떻게 쓰면 되는지는 소보루고발이 알려 드려요.') }}</p>
+{% else %}
+  {% set key, emo, name, ex, plist, prep, cat = t %}
+  <a class="sg-back" href="{{ url_for('singo_home') }}">‹ {{ ui('singo.other', '다른 피해 고르기') }}</a>
+  <h1 class="sg-h"><span class="tf" aria-hidden="true">{{ emo }}</span> {{ name }}</h1>
+
+  <section class="sg-card">
+    <h2 class="sg-st">{{ ui('singo.where', '여기에 신고해요') }}</h2>
+    <ol class="sg-steps">
+      {% for pk, pname, pdesc, phone, url in places %}
+      <li><span class="sg-n">{{ loop.index }}</span><div class="sg-tx"><b>{{ pname }}</b><small>{{ pdesc }}</small>
+        <span class="sg-links">{% if phone %}<a href="tel:{{ phone }}">{{ ui('singo.call', '전화') }} {{ phone }}</a>{% endif %}<a href="{{ url }}" target="_blank" rel="noopener">{{ ui('singo.open', '신청 페이지 열기') }} ›</a></span></div></li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="sg-card">
+    <h2 class="sg-st">{{ ui('singo.prep', '이것부터 챙겨요') }}</h2>
+    <ul class="sg-check">{% for p in prep %}<li>{{ p }}</li>{% endfor %}</ul>
+  </section>
+
+  <section class="sg-card sg-more">
+    <a class="sg-row" href="{{ url_for('singo_guide') }}"><span class="sg-ic tf" aria-hidden="true">🗺️</span><span class="sg-tx"><b>{{ ui('singo.guide2', '피해구제·분쟁조정 절차 보기') }}</b><small>{{ ui('singo.guide2_s', '1372 상담부터 분쟁조정까지 순서대로') }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
+    <a class="sg-row" href="{{ url_for('singo_letter', case=case['id'] if case else None) }}"><span class="sg-ic tf" aria-hidden="true">✉️</span><span class="sg-tx"><b>{{ ui('singo.letter', '업체에 내용증명 보내기') }}</b><small>{{ ui('singo.letter_s', '기관에 가기 전에, 기한을 정해 정식으로 요구해요') }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
+    {% for c in calcs %}<a class="sg-row" href="{{ url_for('calc', slug=c.slug) }}"><span class="sg-ic tf" aria-hidden="true">{{ c.emoji }}</span><span class="sg-tx"><b>{{ c.name }}</b><small>{{ ui('singo.calc_s', '얼마를 돌려받을 수 있는지 먼저 계산해 봐요') }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>{% endfor %}
+  </section>
+
+  <section class="sg-card" id="sg-write">
+    <h2 class="sg-st">{{ ui('singo.write', '신고서, 대신 써 드려요') }}</h2>
+    <p class="sg-lead">{{ ui('singo.write_s', '아래를 채우면 기관 신청서에 붙여넣을 글이 바로 만들어져요.') }}</p>
+    <form class="sg-form" id="sg-f" onsubmit="return false">
+      <input name="company" maxlength="120" placeholder="{{ ui('singo.f_co', '업체 이름') }}" aria-label="{{ ui('singo.f_co', '업체 이름') }}" value="{{ draft.company if draft else '' }}">
+      <label class="sg-date"><span>{{ ui('singo.f_when', '일어난 날') }}</span><input type="date" name="when" value="{{ draft.when if draft else '' }}"></label>
+      <textarea name="what" rows="5" maxlength="3000" placeholder="{{ ui('singo.f_what', '무슨 일이 있었나요? 언제 무엇을 샀고, 어떤 문제가 생겼고, 업체가 뭐라고 했는지 적어 주세요.') }}" aria-label="{{ ui('singo.f_what_l', '피해 내용') }}">{{ draft.what if draft else '' }}</textarea>
+      <div class="sg-chips" role="group" aria-label="{{ ui('singo.f_want', '원하는 해결') }}">{% for w in wants %}<button type="button" data-w="{{ w }}" aria-pressed="false">{{ w }}</button>{% endfor %}</div>
+      <input name="want" maxlength="300" placeholder="{{ ui('singo.f_want2', '원하는 해결 (예: 결제 금액 전액 환불)') }}" aria-label="{{ ui('singo.f_want', '원하는 해결') }}" value="{{ draft.want if draft else '' }}">
+    </form>
+    <div class="sg-out">
+      <pre id="sg-text"></pre>
+      <button type="button" class="sg-copy" id="sg-copy">{{ ui('singo.copy', '글 복사하기') }}</button>
+      <p class="sg-msg" id="sg-msg" role="status"></p>
+    </div>
+    <p class="sg-note">{{ ui('singo.note1', "기관 신청서의 '피해 내용' 칸에 붙여넣으세요. 기관 접수는 본인 인증이 필요해서 직접 해야 해요.") }}</p>
+  </section>
+
+  <div class="sg-bar">
+    {% if case %}<a class="sg-go" href="{{ url_for('public_case', case_id=case['id']) }}">{{ ui('singo.my_case', '내 고발 보기') }}</a>
+    {% else %}<a class="sg-go" id="sg-go" href="{{ url_for('report') }}">{{ ui('singo.go', '소보루고발에도 올리기') }}</a>{% endif %}
+  </div>
+<script>
+(function () {
+  var f = document.getElementById('sg-f'), out = document.getElementById('sg-text'), msg = document.getElementById('sg-msg');
+  var prep = {{ prep|tojson }}, cat = {{ cat|tojson }}, kind = {{ name|tojson }};
+  function v(n) { return (f.elements[n].value || '').trim(); }
+  function day(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s); return m ? m[1] + '년 ' + (+m[2]) + '월 ' + (+m[3]) + '일' : ''; }
+  function wants() { var a = []; f.querySelectorAll('[data-w][aria-pressed="true"]').forEach(function (b) { a.push(b.dataset.w); }); return a; }
+  function wantText() { var t = v('want'), w = wants(); if (t || !w.length) return t; var last = w[w.length - 1], code = last.charCodeAt(last.length - 1) - 0xAC00; return w.join(', ') + (code >= 0 && code % 28 ? '을' : '를') + ' 원합니다.'; }
+  function build() {
+    var co = v('company') || '(업체 이름)', when = day(v('when')) || '(일어난 날)', what = v('what') || '(무슨 일이 있었는지)';
+    var lines = ['[' + kind + ' 피해 신고]', '', '1. 업체: ' + co, '2. 일어난 날: ' + when, '3. 피해 내용', what, '',
+      '4. 업체에 요청한 내용과 결과', '업체에 해결을 요청했지만 받아들여지지 않았습니다.', '',
+      '5. 원하는 해결', wantText() || '(원하는 해결)', '', '6. 갖고 있는 자료', prep.map(function (p) { return '- ' + p; }).join('\n')];
+    out.textContent = lines.join('\n');
+  }
+  f.addEventListener('input', build);
+  f.querySelectorAll('[data-w]').forEach(function (b) { b.addEventListener('click', function () { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); build(); }); });
+  document.getElementById('sg-copy').addEventListener('click', function () {
+    var t = out.textContent, done = function () { msg.textContent = '{{ ui('singo.copied', '복사했어요. 기관 신청서에 붙여넣으세요.') }}'; };
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, function () { sel(); }); else sel();
+    function sel() { var r = document.createRange(); r.selectNodeContents(out); var s = getSelection(); s.removeAllRanges(); s.addRange(r); msg.textContent = '{{ ui('singo.select', '글을 골라 뒀어요. 길게 눌러 복사하세요.') }}'; }
+  });
+  var go = document.getElementById('sg-go');
+  if (go) go.addEventListener('click', function () {
+    try { sessionStorage.setItem('singo_draft', JSON.stringify({ category: cat, company: v('company'), occurred_on: v('when'), description: v('what'), request_text: wantText() })); } catch (e) {}
+  });
+  build();
+})();
+</script>
+{% endif %}
+</main>
+{% endblock %}

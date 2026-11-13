@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{# 내용증명 쓰기 (singo.py). 운영자 2026-11-13: 소비자 고발 종합 앱. 칸을 채우면 화면에서 바로 문장을 만들고(서버로 보내지 않음), 인터넷우체국으로 보내게 안내 #}
+{% block title %}{{ ui('letter.t', '내용증명 쓰기') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('letter.desc', '업체에 보낼 내용증명 문장을 대신 써 드려요. 인터넷우체국에서 바로 보낼 수 있어요.') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset('singo.css') }}">{% endblock %}
+{% block content %}
+<main class="sg">
+  <a class="sg-back" href="{{ url_for('singo_home') }}">‹ {{ ui('singo.t', '해결 도우미') }}</a>
+  <h1 class="sg-h"><span class="tf" aria-hidden="true">✉️</span> {{ ui('letter.h', '업체에 보낼 내용증명') }}</h1>
+
+  <section class="sg-card">
+    <h2 class="sg-st">{{ ui('letter.who', '누가 누구에게') }}</h2>
+    <form class="sg-form" id="sg-f" onsubmit="return false">
+      <input name="name" maxlength="40" placeholder="{{ ui('letter.f_name', '내 이름') }}" aria-label="{{ ui('letter.f_name', '내 이름') }}">
+      <input name="addr" maxlength="200" placeholder="{{ ui('letter.f_addr', '내 주소') }}" aria-label="{{ ui('letter.f_addr', '내 주소') }}">
+      <input name="phone" maxlength="20" inputmode="tel" placeholder="{{ ui('letter.f_phone', '내 연락처') }}" aria-label="{{ ui('letter.f_phone', '내 연락처') }}">
+      <input name="company" maxlength="120" placeholder="{{ ui('letter.f_co', '받는 업체 이름') }}" aria-label="{{ ui('letter.f_co', '받는 업체 이름') }}" value="{{ draft.company if draft else '' }}">
+      <input name="co_addr" maxlength="200" placeholder="{{ ui('letter.f_co_addr', '업체 주소 (사업자 정보에 있어요)') }}" aria-label="{{ ui('letter.f_co_addr2', '업체 주소') }}">
+    </form>
+  </section>
+
+  <section class="sg-card">
+    <h2 class="sg-st">{{ ui('letter.what', '무슨 일이고, 무엇을 원하나요') }}</h2>
+    <div class="sg-form">
+      <label class="sg-date"><span>{{ ui('singo.f_when', '일어난 날') }}</span><input type="date" name="when" form="sg-f" value="{{ draft.when if draft else '' }}"></label>
+      <textarea name="what" form="sg-f" rows="5" maxlength="3000" placeholder="{{ ui('letter.f_what', '언제 무엇을 샀고, 어떤 문제가 생겼고, 업체에 어떻게 요구했는지 적어 주세요.') }}" aria-label="{{ ui('singo.f_what_l', '피해 내용') }}">{{ draft.what if draft else '' }}</textarea>
+      <div class="sg-chips" role="group" aria-label="{{ ui('singo.f_want', '원하는 해결') }}">{% for w in wants %}<button type="button" data-w="{{ w }}" aria-pressed="false">{{ w }}</button>{% endfor %}</div>
+      <input name="want" form="sg-f" maxlength="300" placeholder="{{ ui('singo.f_want2', '원하는 해결 (예: 결제 금액 전액 환불)') }}" aria-label="{{ ui('singo.f_want', '원하는 해결') }}" value="{{ draft.want if draft else '' }}">
+      <div class="sg-chips" role="radiogroup" aria-label="{{ ui('letter.f_days', '회신 기한') }}" id="sg-days">{% for d in (7, 10, 14) %}<button type="button" data-d="{{ d }}" aria-pressed="{{ 'true' if d == 7 else 'false' }}">{{ ui('letter.days', '{n}일 안에 회신', n=d) }}</button>{% endfor %}</div>
+    </div>
+    <div class="sg-out">
+      <pre id="sg-text"></pre>
+      <button type="button" class="sg-copy" id="sg-copy">{{ ui('singo.copy', '글 복사하기') }}</button>
+      <p class="sg-msg" id="sg-msg" role="status"></p>
+    </div>
+  </section>
+
+  <section class="sg-card">
+    <h2 class="sg-st">{{ ui('letter.how', '이렇게 보내요') }}</h2>
+    <ul class="sg-check">
+      <li>{{ ui('letter.how1', "인터넷우체국에서 '내용증명'을 고르고, 복사한 글을 붙여넣어요.") }}</li>
+      <li>{{ ui('letter.how2', '우체국 창구로 보낼 때는 같은 글 3부를 출력해 가져가요. 업체용, 우체국 보관용, 내 보관용이에요.') }}</li>
+      <li>{{ ui('letter.how3', '보낸 날짜와 영수증을 꼭 보관해요. 기관에 신고할 때 근거가 돼요.') }}</li>
+    </ul>
+  </section>
+
+  <div class="sg-bar"><a class="sg-go" href="https://www.epost.go.kr" target="_blank" rel="noopener">{{ ui('letter.go', '인터넷우체국 열기') }}</a></div>
+</main>
+<script>
+(function () {
+  var f = document.getElementById('sg-f'), out = document.getElementById('sg-text'), msg = document.getElementById('sg-msg'), days = 7;
+  function v(n) { return (f.elements[n].value || '').trim(); }
+  function day(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s); return m ? m[1] + '년 ' + (+m[2]) + '월 ' + (+m[3]) + '일' : ''; }
+  function josa(word, a, b) { var c = word.charCodeAt(word.length - 1) - 0xAC00; return word + (c >= 0 && c % 28 ? a : b); }
+  function wantText() { var t = v('want'); if (t) return t; var w = []; document.querySelectorAll('[data-w][aria-pressed="true"]').forEach(function (b) { w.push(b.dataset.w); }); return w.length ? josa(w.join(', '), '을', '를') + ' 요청합니다.' : '(원하는 해결)'; }
+  function build() {
+    var d = new Date(), today = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+    var name = v('name') || '(내 이름)', co = v('company') || '(업체 이름)';
+    out.textContent = ['내 용 증 명', '',
+      '수신인: ' + co, '주소: ' + (v('co_addr') || '(업체 주소)'), '',
+      '발신인: ' + name, '주소: ' + (v('addr') || '(내 주소)'), '연락처: ' + (v('phone') || '(내 연락처)'), '',
+      '제목: ' + (wantText().replace(/ 요청합니다\.$/, '').replace(/[을를]$/, '') || '피해 해결') + ' 요청', '',
+      '1. 사실 관계', (day(v('when')) ? day(v('when')) + ', ' : '') + (v('what') || '(무슨 일이 있었는지)'), '',
+      '2. 요청 사항', '발신인은 귀사에 ' + wantText(), '',
+      '3. 회신 기한', '이 내용증명을 받은 날부터 ' + days + '일 안에 서면으로 회신해 주시기 바랍니다.', '기한 안에 회신이 없거나 요청이 받아들여지지 않으면 한국소비자원 피해구제 신청, 관계 기관 신고 등 필요한 절차를 진행하겠습니다.', '',
+      today, '발신인 ' + name + ' (인)'].join('\n');
+  }
+  f.addEventListener('input', build);
+  document.querySelectorAll('[data-w]').forEach(function (b) { b.addEventListener('click', function () { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); build(); }); });
+  document.querySelectorAll('[data-d]').forEach(function (b) { b.addEventListener('click', function () { document.querySelectorAll('[data-d]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); days = +b.dataset.d; build(); }); });
+  document.getElementById('sg-copy').addEventListener('click', function () {
+    var done = function () { msg.textContent = '{{ ui('letter.copied', '복사했어요. 인터넷우체국 내용증명에 붙여넣으세요.') }}'; };
+    function sel() { var r = document.createRange(); r.selectNodeContents(out); var s = getSelection(); s.removeAllRanges(); s.addRange(r); msg.textContent = '{{ ui('singo.select', '글을 골라 뒀어요. 길게 눌러 복사하세요.') }}'; }
+    if (navigator.clipboard) navigator.clipboard.writeText(out.textContent).then(done, sel); else sel();
+  });
+  build();
+})();
+</script>
+{% endblock %}

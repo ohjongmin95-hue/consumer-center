@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{# 피해구제·분쟁조정 안내 (singo.py singo_guide). 운영자 2026-11-13: 신고서·내용증명뿐 아니라 절차와 방법도 안내. 토스 TDS #}
+{% block title %}{{ ui('guide2.t', '피해구제·분쟁조정 안내') }} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ ui('guide2.desc', '소비자 피해를 입었을 때 업체 요구부터 1372 상담, 피해구제, 분쟁조정까지 순서대로 알려 드려요.') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset('singo.css') }}">{% endblock %}
+{% block content %}
+<main class="sg">
+  <a class="sg-back" href="{{ url_for('singo_home') }}">‹ {{ ui('singo.t', '해결 도우미') }}</a>
+  <h1 class="sg-h">{{ ui('guide2.h', '피해 해결, 이 순서로 진행돼요') }}</h1>
+
+  <section class="sg-card">
+    <h2 class="sg-st">{{ ui('guide2.flow', '피해구제와 분쟁조정') }}</h2>
+    <ol class="sg-flow">
+      {% for emo, name, desc, go in flow %}
+      <li><span class="sg-ic tf" aria-hidden="true">{{ emo }}</span><div class="sg-tx"><b>{{ loop.index }}. {{ name }}</b><small>{{ desc }}</small>
+        {% if go == 'letter' %}<span class="sg-links"><a href="{{ url_for('singo_letter') }}">{{ ui('guide2.go_letter', '내용증명 쓰기') }} ›</a></span>
+        {% elif go == 'ccn' %}<span class="sg-links"><a href="tel:1372">{{ ui('singo.call', '전화') }} 1372</a><a href="https://www.ccn.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_ccn', '온라인 상담') }} ›</a></span>
+        {% elif go == 'kca' %}<span class="sg-links"><a href="https://www.kca.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_kca', '한국소비자원') }} ›</a></span>{% endif %}
+      </div></li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="sg-card">
+    <h2 class="sg-st">{{ ui('guide2.need', '신청하려면 이게 필요해요') }}</h2>
+    <ul class="sg-check">
+      <li>{{ ui('guide2.need1', '사업자와 소비자 사이의 거래여야 해요. 개인끼리 한 거래는 다루지 않아요.') }}</li>
+      <li>{{ ui('guide2.need2', '업체에 먼저 해결을 요구한 기록이 있으면 좋아요.') }}</li>
+      <li>{{ ui('guide2.need3', '계약서, 영수증, 결제 내역, 대화 캡처, 사진을 모아 둬요.') }}</li>
+      <li>{{ ui('guide2.need4', '이미 소송 중인 일은 피해구제를 신청할 수 없어요.') }}</li>
+    </ul>
+  </section>
+
+  <section class="sg-card sg-more">
+    {% for emo, name, desc, url in links %}<a class="sg-row" href="{{ url }}" target="_blank" rel="noopener"><span class="sg-ic tf" aria-hidden="true">{{ emo }}</span><span class="sg-tx"><b>{{ name }}</b><small>{{ desc }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>{% endfor %}
+  </section>
+
+  <section class="sg-card">
+    <h2 class="sg-st">{{ ui('guide2.faq', '자주 묻는 질문') }}</h2>
+    <div class="sg-faq">{% for q, a in faq %}<details><summary>{{ q }}</summary><p>{{ a }}</p></details>{% endfor %}</div>
+  </section>
+
+  <div class="sg-bar"><a class="sg-go" href="{{ url_for('singo_home') }}">{{ ui('guide2.cta', '내 피해 유형 고르기') }}</a></div>
+</main>
+{% endblock %}

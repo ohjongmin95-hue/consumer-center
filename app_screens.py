@@ -16,7 +16,7 @@ import time
 import urllib.request
 import xml.etree.ElementTree as ET
 
-from flask import render_template, request, url_for
+from flask import abort, redirect, render_template, request, url_for
 
 TABS = {'hot': '인기', 'new': '최신', 'answer': '답변 완료', 'done': '해결됨'}
 RANK_TABS = {'good': '잘 답하는 곳', 'bad': '아쉬운 곳', 'fast': '답변 빠른 곳'}
@@ -79,6 +79,69 @@ def soboru_news():
         if not _news['items']: th.join(4)  # 서버를 막 켰을 때 첫 화면부터 기사가 보이게 (최대 4초)
     return _news['items']
 
+
+
+# ── 앱 안에서 기사 읽기 (운영자 2026-11-13: 기사를 누르면 신문 사이트로 넘어가지 않고 앱 안에서) ──
+READ_TTL = 30 * 60
+_read = {}
+
+
+def news_host_ok(url):
+    import urllib.parse
+    u = urllib.parse.urlsplit(url or '')
+    home = urllib.parse.urlsplit(NEWS_HOME).hostname or ''
+    return u.scheme in ('http', 'https') and (u.hostname or '') in (home, home.removeprefix('www.'))
+
+
+def _txt(chunk):
+    chunk = re.sub(r'(?is)<(script|style|noscript|button|iframe)[^>]*>.*?</\1>', ' ', chunk)
+    chunk = re.sub(r'(?i)<br\s*/?>|</p>|</div>|</h\d>|</li>', '\n', chunk)
+    chunk = html.unescape(re.sub(r'<[^>]+>', ' ', chunk))
+    return [x for x in (re.sub(r'[ \t\u00a0]+', ' ', y).strip() for y in chunk.split('\n')) if x]
+
+
+def parse_article(page, url):
+    """ND소프트 기사 화면 → 제목·날짜·기자·[('p', 글) | ('img', 주소, 설명)]. 본문을 못 찾으면 None. 글과 사진 주소만 뽑아 쓰고 원래 HTML은 쓰지 않음"""
+    import urllib.parse
+    from mag_assist import ARTICLE_BOX
+    meta = lambda prop: (re.search(r'(?is)<meta[^>]+(?:property|name)=["\']' + prop + r'["\'][^>]+content=["\']([^"\']*)', page) or [None, ''])[1]
+    title = html.unescape(meta('og:title')).split(' - ')[0].strip()
+    if not title:
+        m = re.search(r'(?is)<title[^>]*>(.*?)</title>', page); title = html.unescape(m[1]).split(' - ')[0].strip() if m else ''
+    day = meta('article:published_time')[:10].replace('-', '.')
+    if not day:
+        m = re.search(r'(\d{4})[.-](\d{2})[.-](\d{2}) \d{2}:\d{2}', page); day = '.'.join(m.groups()) if m else ''
+    by = html.unescape(meta('og:article:author') or meta('dable:author') or '').strip()
+    start = None
+    for pat in ARTICLE_BOX:
+        b = re.search(pat, page, re.I)
+        if b: start = page.find('>', b.end() - 1) + 1; break  # 본문 상자 여는 태그 다음부터
+    if start is None: return None
+    chunk = page[start:start + 150000]
+    end = re.search(r'저작권자|무단\s*전재|</article>', chunk)
+    if end: chunk = chunk[:end.start()]
+    blocks, pos = [], 0
+    for m in re.finditer(r'(?is)<img\b[^>]*?\bsrc=["\']([^"\']+)["\'][^>]*>(?:\s*</?[a-z][^>]*>)*?\s*(?:<figcaption[^>]*>(.*?)</figcaption>)?', chunk):
+        blocks += [('p', t) for t in _txt(re.sub(r'(?is)<figcaption[^>]*>.*?</figcaption>', ' ', chunk[pos:m.start()]))]
+        src = urllib.parse.urljoin(url, html.unescape(m[1]))
+        if src.startswith(('https://', 'http://')) and not re.search(r'(?i)icon|logo|banner|\.gif$', src):
+            blocks.append(('img', src, ' '.join(_txt(m[2] or ''))))
+        pos = m.end()
+    blocks += [('p', t) for t in _txt(re.sub(r'(?is)<figcaption[^>]*>.*?</figcaption>', ' ', chunk[pos:]))]
+    if sum(len(b[1]) for b in blocks if b[0] == 'p') < 80: return None
+    return dict(title=title, day=day, by=by, blocks=blocks[:200], url=url)
+
+
+def read_news(url):
+    hit = _read.get(url)
+    if hit and time.time() - hit[0] < READ_TTL: return hit[1]
+    import company_web_email
+    try: page = company_web_email.get(url)
+    except Exception: page = ''
+    art = parse_article(page, url) if page else None
+    if len(_read) > 300: _read.clear()
+    _read[url] = (time.time(), art)
+    return art
 
 WANTS = ('환불', '교환', '수리', '해지', '배상', '보상', '사과', '취소', '재발 방지')  # 공동 대응 '요구' 태그: 관련 고발의 요청 사항에 이 말이 있으면
 
@@ -248,6 +311,17 @@ def install(S):
         hot = S.report_rows("public_consent=1 AND published=1 AND title_hidden=0 AND " + S.PUBLIC_VALID, (), 6, 0, S.HOT_ORDER)
         return render_template('app_explore.html', guides=g5, guides_all=g10, scams=scams, news=soboru_news(), news_home=NEWS_HOME, hows=hows, cases=hot)
 
+    # ── 기사 읽기 ────────────────────────────────────────
+    app.jinja_env.globals['news_link'] = lambda link: url_for('news_read', u=link) if news_host_ok(link) else link
+
+    @app.route('/news/read')
+    def news_read():
+        u = request.args.get('u', '').strip()
+        if not news_host_ok(u): abort(404)
+        art = read_news(u)
+        if not art: return redirect(u)  # 못 읽으면 원래 기사로
+        return render_template('app_news.html', a=art, news_home=NEWS_HOME)
+
     # ── 공동 대응 ────────────────────────────────────────
     def app_groups():
         sort = 'new' if request.args.get('sort') == 'new' else 'many'
@@ -279,6 +353,15 @@ def install(S):
         def new(*a, **kw): return view() if in_app() else old(*a, **kw)
         app.view_functions[name] = new
 
+    # 운영자 2026-11-13: 앱에서 로그인 안 한 채 '내 정보' 탭(앱은 /lookup을 엶)을 누르면 제보 조회가 아니라 로그인 화면으로.
+    # 예전 비회원 제보를 찾을 때만 /lookup?old=1
+    old_lookup = app.view_functions['lookup']
+    def lookup_in_app(*a, **kw):
+        from flask import g
+        if in_app() and request.method == 'GET' and not g.get('user') and not request.args.get('old'):
+            return redirect(url_for('login', next='/me'))
+        return old_lookup(*a, **kw)
+    app.view_functions['lookup'] = lookup_in_app
     wrap('home', app_home)
     if 'explore' in app.view_functions: wrap('explore', app_explore)
     wrap('companies_rank', app_rank)
