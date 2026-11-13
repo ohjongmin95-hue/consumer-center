@@ -16,7 +16,7 @@
   {% endif %}
   <form class="cs-panel" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <h2>회사 정보</h2>
-    <div class="field"><label for="b-name">회사 이름</label><input id="b-name" name="company_name" maxlength="60" required placeholder="예: 주식회사 OO쇼핑" value="{{ request.form.get('company_name','') }}"></div>
+    <div class="field"><label for="b-name">회사 이름</label><input id="b-name" name="company_name" maxlength="60" required placeholder="예: 주식회사 OO쇼핑" value="{{ request.form.get('company_name', request.args.get('company', '')[:60]) }}"></div>
     <div class="field"><label for="b-no">사업자등록번호</label><input id="b-no" name="biz_no" inputmode="numeric" maxlength="12" required placeholder="000-00-00000" value="{{ request.form.get('biz_no','') }}"></div>
     <h2>담당자</h2>
     <div class="field"><label for="b-cn">이름</label><input id="b-cn" name="contact_name" maxlength="30" required value="{{ request.form.get('contact_name','') }}"></div>

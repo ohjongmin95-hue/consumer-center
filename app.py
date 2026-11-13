@@ -251,8 +251,8 @@ app.jinja_env.globals['GROUP_STATUSES']=None  # 아래 공동 대응 부분에�
 # 공동 대응(집단 피해 모집)은 기본으로 꺼 둠. 다시 켜려면 서버 설정에 ENABLE_GROUPS=1
 GROUPS_ON=os.getenv('ENABLE_GROUPS')=='1'
 app.jinja_env.globals['groups_on']=lambda:GROUPS_ON
-# 기업 회원(업체 가입·로그인)도 기본으로 꺼 둠. 업체 답변은 센터가 보내는 답변 링크(/company/...)로 받음. 다시 켜려면 ENABLE_BIZ_MEMBERS=1
-BIZ_ON=os.getenv('ENABLE_BIZ_MEMBERS')=='1'
+# 기업 회원(업체 가입·로그인). 운영자 2026-11-13: 답변 링크에서 가입하게 기본으로 켬. 끄려면 ENABLE_BIZ_MEMBERS=0
+BIZ_ON=os.getenv('ENABLE_BIZ_MEMBERS','1')!='0'
 app.jinja_env.globals['biz_on']=lambda:BIZ_ON
 # 대표 주소. soboru.co.kr로 옮길 때 서버 설정에 CANONICAL_HOST=soboru.co.kr (deploy/soboru-main.sh --make-main)
 CANONICAL_HOST=(os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().lower()

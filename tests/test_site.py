@@ -1979,15 +1979,17 @@ class SiteTest(unittest.TestCase):
         notify.ASYNC = True
 
     def test_company_members(self):
-        # 기업 회원은 기본으로 꺼져 있음: 화면은 404, 하단 링크 없음
+        # 기업 회원을 끄면(ENABLE_BIZ_MEMBERS=0) 화면은 404, 하단 링크 없음
+        self.site.BIZ_ON = False
         self.assertEqual(self.client.get('/biz/login').status_code, 404)
         self.assertNotIn('/biz/login', self.client.get('/').get_data(as_text=True))
         self.site.BIZ_ON = True
         self.addCleanup(setattr, self.site, 'BIZ_ON', False)
         notify = self.site.notify
         notify.ASYNC = False
-        # 1) 기업 가입: 사업자번호 검증번호가 틀리면 거절
+        # 1) 기업 가입: 답변 링크의 가입 버튼에서 오면 회사 이름이 채워져 있음. 사업자번호 검증번호가 틀리면 거절
         biz = self.site.app.test_client()
+        self.assertIn('value="주식회사 테스트몰"', biz.get('/biz/signup?company=주식회사 테스트몰').get_data(as_text=True))
         form = {'company_name': '주식회사 테스트몰', 'biz_no': '123-45-67890', 'contact_name': '김담당', 'contact_phone': '02-123-4567',
                 'contact_email': 'cs@testmall.co.kr', 'login_id': 'testmall', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'}
         self.assertEqual(self.post_form(biz, '/biz/signup', form).status_code, 400)
