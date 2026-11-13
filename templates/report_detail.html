@@ -213,28 +213,6 @@
         <button class="cs-btn cs-btn-main" type="submit">저장</button>
       </form>
 
-      {# 1-2. 기업에 보내기 (운영자 2026-11-13: 검토 결과 칸 대신 버튼 하나). 누르면 '정상' 승인 + 기업 자동 전달. 중복·제외는 접어 둠 #}
-      {% set rv = case['review'] %}
-      <section class="cs-panel cs-card rv-panel" id="review">
-        <h2>기업에 보내기 {% if rv == 'ok' %}<span class="rv-chip rv-ok">{{ '보냄' if case['forwarded_at'] else '승인됨' }}</span>{% elif rv %}<span class="rv-chip rv-{{ rv }}">{{ reviews[rv] }}</span>{% endif %}</h2>
-        {% if not rv %}
-        <p class="rv-desc">내용을 확인했으면 승인해 주세요. 기업 메일(가입 기업은 담당자 화면)로 바로 가고, 단계가 '기업 전달'로 바뀌어요. 아래 입장 요청서를 '관리자 승인'해도 똑같이 보내져요.</p>
-        <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="review"><input type="hidden" name="review" value="ok">
-          <button class="cs-btn cs-btn-main rv-go" type="submit">승인하고 기업에 보내기</button></form>
-        {% elif rv == 'ok' %}
-        <p class="rv-desc">{% if case['forwarded_at'] %}{{ case['forwarded_at'][5:16]|replace('T', ' ')|replace('-', '.') }}에 기업에 보냈어요.{% elif not case['share_company'] %}제보자가 기업 전달에 동의하지 않아 보내지 않았어요.{% else %}아직 못 보냈어요. 아래 ‘기업 안내’에서 이유를 확인해 주세요.{% endif %}</p>
-        {% else %}
-        <p class="rv-desc">{{ review_hints[rv] }}{% if case['review_note'] %} · {{ case['review_note'] }}{% endif %}. 공개 목록과 기업 통계에서 빠져요.</p>
-        {% endif %}
-        <details class="rv-more"{% if rv in ('duplicate', 'rejected') %} open{% endif %}>
-          <summary>{{ '검토 결과 바꾸기' if rv else '중복·제외로 빼기' }}</summary>
-          <form method="post" class="rv-more-f"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="review">
-            <div class="field"><label for="c-review">검토 결과</label><select id="c-review" name="review">{% for k, v in reviews.items() %}{% if k != rv %}<option value="{{ k }}"{% if (not rv and k == 'duplicate') %} selected{% endif %}>{{ v }}{{ '하고 기업에 보내기' if k == 'ok' }}</option>{% endif %}{% endfor %}</select></div>
-            <div class="field"><label for="c-review-note">사유 <em class="cs-muted">중복·제외일 때, 내부 기록용</em></label><input id="c-review-note" name="review_note" maxlength="500" value="{{ case['review_note'] if rv in ('duplicate', 'rejected') else '' }}" placeholder="예: 3번 제보와 같은 내용"></div>
-            <button class="cs-btn" type="submit">바꾸기</button>
-          </form>
-        </details>
-      </section>
 
       {# 2. 기업: 기업 페이지 연결, 가입 기업 전달, 답변 링크 #}
       <section class="cs-panel cs-card">
@@ -262,7 +240,7 @@
         {% if case['share_company'] %}
         <div class="cs-divide">
           <span class="cs-label">가입 안 한 기업</span>
-          <form method="post" action="{{ url_for(ep.invite, case_id=case['id']) }}" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><span class="cs-hint">이 제보만 볼 수 있는 답변 링크{% if invite %} · {{ invite['created'][5:10]|replace('-', '.') }} 발급{% endif %}{% if case['seen_at'] %} · 기업이 열어 봄{% endif %}{% if invite and invite['used_at'] %} · 답변 받음{% endif %}</span><button class="cs-btn" type="submit">{{ '다시 만들기' if invite else '링크 만들기' }}</button></form>
+          <form method="post" action="{{ url_for(ep.invite, case_id=case['id']) }}" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><span class="cs-hint">이 제보만 볼 수 있는 답변 링크{% if invite %} · {{ invite['created'][5:10]|replace('-', '.') }} 발급{% endif %}{% if case['seen_at'] %} · 기업이 {{ case['seen_at'][5:16]|replace('T', ' ')|replace('-', '.') }}에 열어 봄{% endif %}{% if invite and invite['used_at'] %} · 답변 받음{% endif %}</span><button class="cs-btn" type="submit">{{ '다시 만들기' if invite else '링크 만들기' }}</button></form>
         </div>
         {% else %}<p class="cs-muted">제보자가 기업 전달에 동의하지 않아 기업에 내용을 보낼 수 없어요. 기업 페이지 연결은 할 수 있어요.</p>{% endif %}
       </section>
@@ -270,10 +248,10 @@
       {# 2-1. 기업 안내: 검토 '정상' 승인 때 자동으로, 또는 버튼으로 공식 이메일에 답변 링크를 보냄. 보낸 기록·직접 연락 기록 #}
       {% if case['share_company'] %}
       <section class="cs-panel cs-card" id="notice">
-        <h2>기업 안내 {% if case['seen_at'] %}<span class="cs-pill on">기업이 열어 봄</span>{% elif case['forwarded_at'] %}<span class="cs-pill">전달 시도</span>{% endif %}</h2>
+        <h2>기업 안내 {% if case['seen_at'] %}<span class="cs-pill on">기업이 열어 봄 · {{ case['seen_at'][5:16]|replace('T', ' ')|replace('-', '.') }}</span>{% elif case['forwarded_at'] %}<span class="cs-pill">전달 시도</span>{% endif %}</h2>
         {% if ops.notice_block %}<p class="cs-hint">{{ ops.notice_block }}</p>
         {% else %}<form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice"><span class="cs-hint">{{ ops.company['name'] }} {% if ops.notice_to %}공식 이메일({{ ops.notice_to }}){% endif %}{% if ops.notice_to and ops.notice_phone %}과 {% endif %}{% if ops.notice_phone %}카카오톡({{ ops.notice_phone }}){% endif %}로 이 제보만 볼 수 있는 답변 링크를 보내요.</span><button class="cs-btn" type="submit" onclick="return confirm('{{ ops.company['name'] }}에 안내를 보낼까요?')">{{ '재안내 보내기' if ops.notices|selectattr('status', 'equalto', '보냄')|list else '안내 보내기' }}</button></form>{% endif %}
-        <p class="cs-hint">위 '기업에 보내기'를 누르면 첫 안내가 나가요. 제보자가 '답변 독촉'을 누르면 재안내가 나가요. 메일은 같은 제보로 3번까지, 72시간 간격이에요. 기업이 링크를 열어야 '기업 전달 확인'이 돼요.</p>
+        <p class="cs-hint">진행 단계를 '기업 전달'로 바꾸면 첫 안내가 나가요. 제보자가 '답변 독촉'을 누르면 재안내가 나가요. 메일은 같은 제보로 3번까지, 72시간 간격이에요. 기업이 링크를 열어야 '기업 전달 확인'이 돼요.</p>
         {% if ops.notices %}<ol class="ops-notices">{% for n in ops.notices %}<li><span>{{ n['created'][5:16]|replace('T', ' ')|replace('-', '.') }}</span><b>{{ OPS_NOTICE_KINDS.get(n['kind'], n['kind']) }}</b> {{ n['status'] }}{% if n['target'] %} · {{ n['target'] }}{% endif %}{% if n['memo'] %} · {{ n['memo'] }}{% endif %}</li>{% endfor %}</ol>{% endif %}
         <details class="cs-more" id="notice_manual"><summary>전화·우편 등 직접 연락 기록</summary>
           <form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice_manual"><input name="memo" maxlength="300" required placeholder="예: 고객센터에 전화로 안내 (담당 김OO)" aria-label="연락 기록"><button class="cs-btn" type="submit">기록</button></form>

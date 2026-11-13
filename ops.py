@@ -217,9 +217,8 @@ def install(S):
         """기업 공식 이메일로 답변 링크를 보냄 (운영자 버튼, 승인 시 자동 전달, 제보자 독촉). 보냈으면 True.
         메일을 보냈다고 '기업이 확인했다'고 표시하지 않음(열어 봐야 확인)."""
         cid = case['id']; to, phone = notice_ways(company)
-        token = secrets.token_urlsafe(32)
-        db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created) VALUES(?,?,?,?)', (cid, hashlib.sha256(token.encode()).hexdigest(), company['name'], now()))
-        link = url_for('company_access', case_id=cid, token=token, _external=True); optout = optout_url(db, company)
+        link = S.answer_link(db, case) or S.answer_link(db, case, new=True)  # 입장 요청서에 넣은 링크와 같은 링크 (운영자 2026-11-13)
+        optout = optout_url(db, company)
         kind = 'remind' if db.execute("SELECT 1 FROM company_notices WHERE case_id=? AND kind IN ('first','remind') AND status='보냄'", (cid,)).fetchone() else 'first'
         subject = f"[{notify.CENTER}] {company['name']} 관련 소비자 제보 안내 ({case['receipt']})" + (' - 재안내' if kind == 'remind' else '')
         body = (f"{company['name']} 고객 담당자님께,\n\n안녕하세요. {notify.INTRO}입니다.\n{company['name']}와(과) 관련된 소비자 제보가 접수돼 안내드립니다.\n\n"

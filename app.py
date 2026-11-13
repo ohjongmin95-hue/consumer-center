@@ -55,6 +55,7 @@ def init():
 init()
 with conn() as db:
     db.execute('''CREATE TABLE IF NOT EXISTS company_invites(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL UNIQUE,token_hash TEXT NOT NULL,company_name TEXT NOT NULL,created TEXT NOT NULL,FOREIGN KEY(case_id) REFERENCES cases(id))''')
+    if 'link' not in {r['name'] for r in db.execute('PRAGMA table_info(company_invites)')}:db.execute("ALTER TABLE company_invites ADD COLUMN link TEXT NOT NULL DEFAULT ''")  # 입장 요청서에 넣을 답변 링크 (운영자 2026-11-13)
     if 'used_at' not in {r['name'] for r in db.execute('PRAGMA table_info(company_invites)')}:db.execute("ALTER TABLE company_invites ADD COLUMN used_at TEXT NOT NULL DEFAULT ''")  # 1회용: 답변을 한 번 남기면 그 링크는 닫힘 (운영자 2026-11-06)
     db.execute('''CREATE TABLE IF NOT EXISTS internal_notes(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,note TEXT NOT NULL,created TEXT NOT NULL,FOREIGN KEY(case_id) REFERENCES cases(id))''')
     cols={row['name'] for row in db.execute('PRAGMA table_info(cases)')}
@@ -952,6 +953,28 @@ def case_open(case_id):
         note_attempt('case');flash(ui_text('msg.case_pw_fail','조회 비밀번호가 맞지 않아요.'))
         return render_template('case_open.html',case=case,title=title),401
     return render_template('case_open.html',case=case,title=title)
+with conn() as db:db.execute('CREATE TABLE IF NOT EXISTS case_edits(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,subject TEXT NOT NULL,description TEXT NOT NULL,request_text TEXT NOT NULL,created TEXT NOT NULL)')
+@app.route('/case/edit',methods=['POST'])
+def case_edit():
+    """제보자가 자기 제보 글을 고침 (운영자 2026-11-13: 삭제는 말고 수정은 되게). 고치기 전 글은 case_edits에 남김. 종결된 제보는 못 고침"""
+    case_id=session.get('case_id')
+    if not case_id:return redirect(url_for('lookup'))
+    f={k:request.form.get(k,'').strip() for k in ('subject','description','request_text')}
+    if not all(f.values()) or len(f['subject'])>160 or len(f['description'])>6000 or len(f['request_text'])>3000:
+        flash('제목, 내용, 요청 사항을 모두 채워 주세요.');return redirect(url_for('case_detail')+'#edit')
+    with conn() as db:
+        case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+        if not case:abort(404)
+        if case['status']=='종결':flash('종결된 제보는 고칠 수 없어요. 정정 요청을 남겨 주세요.');return redirect(url_for('case_detail'))
+        if (f['subject'],f['description'],f['request_text'])==(case['subject'],case['description'],case['request_text']):flash('바뀐 내용이 없어요.');return redirect(url_for('case_detail'))
+        if db.execute("SELECT COUNT(*) FROM case_edits WHERE case_id=? AND created>=?",(case_id,(datetime.datetime.now()-datetime.timedelta(days=1)).isoformat(timespec='seconds'))).fetchone()[0]>=10:
+            flash('오늘은 더 고칠 수 없어요. 내일 다시 해 주세요.');return redirect(url_for('case_detail'))
+        db.execute('INSERT INTO case_edits(case_id,subject,description,request_text,created) VALUES(?,?,?,?,?)',(case_id,case['subject'],case['description'],case['request_text'],now()))
+        db.execute('UPDATE cases SET subject=?,description=?,request_text=? WHERE id=?',(f['subject'],f['description'],f['request_text'],case_id))
+        db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,'제보자','제보 내용 수정 (고치기 전 글은 보관)',now()))
+        if case['published']:art_later(case_id)
+    flash('제보 내용을 고쳤어요.'+(' 기업에도 고친 내용으로 보여요.' if case['forwarded_at'] else ''))
+    return redirect(url_for('case_detail'))
 @app.route('/case',methods=['GET','POST'])
 def case_detail():
     case_id=session.get('case_id')
@@ -2121,14 +2144,26 @@ def set_review(db,case,review,note=''):
     if review in jebo.NOT_VALID and case['published']:db.execute('UPDATE cases SET published=0 WHERE id=?',(case_id,));log_case(db,case_id,'비공개로 전환')
     if review!=case['review']:log_case(db,case_id,f"검토 결과: {jebo.REVIEWS[case['review']]} → {jebo.REVIEWS[review]}")
     if review=='ok' and case['status']=='접수':set_status(db,case,'검토 중')  # 정상으로 승인하면 '접수'에서 '검토'로 (운영자 2026-11-13)
+WAIT_STATUS='기업 답변 대기'
 def set_status(db,case,status):
-    """진행 단계 바꾸기 (제보 화면 저장·목록 일괄 처리). 제보자 화면 단계가 바뀔 때만 알림"""
-    if status==case['status']:return
+    """진행 단계 바꾸기 (제보 화면 저장·목록 일괄 처리·줄마다 고르기). 제보자 화면 단계가 바뀔 때만 알림. 관리자에게 보일 문구를 돌려줌.
+    운영자 2026-11-13: '기업 전달'로 바꾸면 그대로 기업에 자동으로 보냄 (검토 결과를 따로 고르지 않음). 못 보내면 단계는 그대로 두고 이유를 알려 줌"""
+    if status==case['status']:return ''
+    if status==WAIT_STATUS and not case['forwarded_at'] and case['share_company'] and case['company_id']!=0:
+        if case['review'] in jebo.NOT_VALID:return '중복·제외로 처리한 제보라 기업에 보내지 않았어요.'
+        if case['review']!='ok':set_review(db,case,'ok')
+        msg=ops_auto_forward(db,case['id'])
+        if db.execute('SELECT forwarded_at FROM cases WHERE id=?',(case['id'],)).fetchone()['forwarded_at']:
+            cur=db.execute('SELECT * FROM cases WHERE id=?',(case['id'],)).fetchone()
+            if cur['status']!=WAIT_STATUS:set_status(db,cur,WAIT_STATUS)
+            return msg
+        return (msg or '기업에 보내지 못했어요.')+' 단계는 그대로 뒀어요.'
     db.execute('UPDATE cases SET status=? WHERE id=?',(status,case['id']))
     log_case(db,case['id'],f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
     if jebo.STATUS_MY.get(status)!=jebo.STATUS_MY.get(case['status']):notify_later(case['id'],'status')
     if status!='접수':jebo.mark(db,case['id'],'reviewed_at')
     if status=='종결':jebo.mark(db,case['id'],'closed_at')
+    return ''
 BULK_ACTS={'ok':'승인하고 기업에 보내기','forward':'기업에 다시 보내기','duplicate':'중복으로 처리','rejected':'제외로 처리'}
 
 def reports_list():
@@ -2196,19 +2231,15 @@ def report_detail(case_id):
                 assignee=request.form.get('assignee',case['assignee'] or '').strip()[:80]
                 published=int(bool(request.form.get('published'))) if case['public_consent'] and case['review'] not in jebo.NOT_VALID else 0
                 title_hidden=0  # 목록 제목·업체명은 늘 보임 (예전 '숨김' 설정은 쓰지 않음)
-                db.execute('UPDATE cases SET status=?,assignee=?,published=?,title_hidden=? WHERE id=?',(status,assignee,published,title_hidden,case_id))
+                db.execute('UPDATE cases SET assignee=?,published=?,title_hidden=? WHERE id=?',(assignee,published,title_hidden,case_id))
                 co_hidden=int(bool(request.form.get('company_hidden')))
                 if co_hidden!=case['company_hidden']:db.execute('UPDATE cases SET company_hidden=? WHERE id=?',(co_hidden,case_id));log_case(db,case_id,'공개 화면에서 업체명 숨김' if co_hidden else '공개 화면에 업체명 표시')
                 if published:art_later(case_id)
                 if not published and title_hidden!=case['title_hidden']:log_case(db,case_id,'목록에서 제목·업체명 숨김' if title_hidden else '목록에 제목·업체명 표시')
-                if status!=case['status']:
-                    log_case(db,case_id,f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
-                    if jebo.STATUS_MY.get(status)!=jebo.STATUS_MY.get(case['status']):notify_later(case_id,'status')  # 제보자 화면 단계가 바뀔 때만 알림
+                st_msg=set_status(db,case,status)  # '기업 전달'이면 기업에 자동으로 보냄
                 if assignee!=(case['assignee'] or ''):log_case(db,case_id,f"담당 기자: {assignee or '미배정'}")
                 if case['public_consent'] and published!=case['published']:log_case(db,case_id,'공개로 전환' if published else '비공개로 전환')
-                if status!='접수':jebo.mark(db,case_id,'reviewed_at')
-                if status=='종결':jebo.mark(db,case_id,'closed_at')
-                flash('저장했어요.')
+                flash('저장했어요.'+(' '+st_msg if st_msg else ''))
             elif form=='publish_review':
                 # 공개 심사: 공개용 글을 다듬고(개인정보·비방 표현 정리) 승인하거나 비공개로 둠. 원문은 그대로 보관.
                 fields={k:request.form.get(k,'').strip() for k in ('public_subject','public_body','public_request')}
@@ -2332,6 +2363,14 @@ def download_file(file_id):
     if not f:abort(404)
     return send_file(UPLOAD/f['stored'],as_attachment=True,download_name=f['original'])
 
+def answer_link(db,case,new=False):
+    """기업 답변 링크 (이 제보 하나만, 로그인 없이). 있으면 그대로 쓰고(메일·요청서가 같은 링크), 없으면 만듦. new=True면 새로 발급.
+    예전에 만든 링크(주소를 저장하지 않은 것)는 이미 보낸 메일이 살아 있게 그대로 두고 ''를 돌려줌"""
+    inv=db.execute('SELECT * FROM company_invites WHERE case_id=?',(case['id'],)).fetchone()
+    if inv and not new:return inv['link']
+    token=secrets.token_urlsafe(32);link=url_for('company_access',case_id=case['id'],token=token,_external=True)
+    db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created,link) VALUES(?,?,?,?,?)',(case['id'],hashlib.sha256(token.encode()).hexdigest(),case['company'],now(),link))
+    return link
 def make_invite(case_id):
     ep=AREAS[g.area]
     with conn() as db:
@@ -2339,11 +2378,10 @@ def make_invite(case_id):
         if not case:abort(404)
         if not case['share_company']:
             flash('기업 전달에 동의하지 않은 제보예요.');return redirect(url_for(ep['case'],case_id=case_id))
-        token=secrets.token_urlsafe(32)
-        db.execute('INSERT OR REPLACE INTO company_invites(case_id,token_hash,company_name,created) VALUES(?,?,?,?)',(case_id,hashlib.sha256(token.encode()).hexdigest(),case['company'],now()))
+        invite_url=answer_link(db,case,new=True)
         log_case(db,case_id,'기업 답변 링크 발급');jebo.mark(db,case_id,'forwarded_at')
         company_ai_summary(db,case)  # AI 정리가 아직 없으면 지금 뒤에서 만들어 둠 (기업이 열 때 보이게)
-    return render_template('invite_created.html',layout=ep['layout'],ep=ep,case=case,invite_url=url_for('company_access',case_id=case_id,token=token,_external=True))
+    return render_template('invite_created.html',layout=ep['layout'],ep=ep,case=case,invite_url=invite_url)
 
 # ---- 소보루 기자실 (/reporter) ----
 @app.route('/reporter/login',methods=['GET','POST'])
@@ -2440,14 +2478,23 @@ def admin_reports_bulk():
         # 단계·담당 기자를 한 번에 (운영자 2026-11-13: 쌓이면 하나하나 들어가기 힘듦)
         with conn() as db:
             if kind=='as' and val and not db.execute('SELECT 1 FROM staff WHERE name=? AND active=1',(val,)).fetchone():abort(400)
-            n=0
+            n=0;msgs=[];now_st=''
             for cid in ids:
                 case=db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
                 if not case:continue
-                if kind=='st':set_status(db,case,val)
+                if kind=='st':
+                    m=set_status(db,case,val);now_st=db.execute('SELECT status FROM cases WHERE id=?',(cid,)).fetchone()['status']
+                    if now_st==val:n+=1
+                    if m and now_st!=val:msgs.append(f"{case['receipt']}: {m}")
+                    continue
                 elif val!=(case['assignee'] or ''):db.execute('UPDATE cases SET assignee=? WHERE id=?',(val,cid));log_case(db,cid,f"담당 기자: {val or '미배정'}")
                 n+=1
-        flash(f"{n}건의 단계를 '{stage_names()[stage_of(val)-1]}'(으)로 바꿨어요." if kind=='st' else f"{n}건의 담당 기자를 '{val or '미배정'}'(으)로 정했어요.")
+        if request.headers.get('X-Inline')=='1':  # 목록 줄마다 고르기: 화면을 새로 고치지 않음
+            return {'status':now_st,'stage':stage_of(now_st) if now_st else 0,'msg':' '.join(msgs)}
+        text=f"{n}건의 단계를 '{stage_names()[stage_of(val)-1]}'(으)로 바꿨어요." if kind=='st' else f"{n}건의 담당 기자를 '{val or '미배정'}'(으)로 정했어요."
+        if kind=='st' and val==WAIT_STATUS:text+=' 바꾼 제보는 기업에 자동으로 보냈어요.'
+        if msgs:text+=f" 못 바꾼 {len(msgs)}건: "+' / '.join(msgs[:3])+(' 외' if len(msgs)>3 else '')
+        flash(text)
         return redirect(back)
     done=sent=0;skipped=[]
     with conn() as db:
