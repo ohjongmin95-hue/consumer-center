@@ -65,6 +65,7 @@ with conn() as db:
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
     if 'rating' not in cols: db.execute('ALTER TABLE cases ADD COLUMN rating INTEGER')  # 제보자가 처리 결과를 확인하며 남긴 만족도 1~5
+    if 'rating_note' not in cols: db.execute("ALTER TABLE cases ADD COLUMN rating_note TEXT NOT NULL DEFAULT ''")  # 운영자 2026-11-13: 해결 확인 때 남긴 한마디 (헤이마오 만족도 한마디, 앱 첫 화면 소식 줄)
     if 'title_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN title_hidden INTEGER NOT NULL DEFAULT 0')
     if 'company_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN company_hidden INTEGER NOT NULL DEFAULT 0')  # 운영자가 업체명을 공개 화면에서 가림 (2026-11-10)  # 비밀글 제목·업체명을 목록에서 숨김(운영자)
     for col in ('article_url','article_title','article_sent_at'):  # 제보가 기사로 나가면 기사 주소·제목 (운영자 2026-11-10: 제보자에게 알림톡으로 기사 보내기)
