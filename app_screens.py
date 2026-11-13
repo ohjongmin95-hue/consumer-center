@@ -16,14 +16,15 @@ import time
 import urllib.request
 import xml.etree.ElementTree as ET
 
-from flask import render_template, request
+from flask import render_template, request, url_for
 
 TABS = {'hot': '인기', 'new': '최신', 'answer': '답변 완료', 'done': '해결됨'}
 RANK_TABS = {'good': '잘 답하는 곳', 'bad': '아쉬운 곳', 'fast': '답변 빠른 곳'}
+PERIODS = {'week': ('주간', 7), 'month': ('월간', 30), 'all': ('전체', 0)}
 CARD_N = 5      # 업종 카드 한 장에 보이는 기업 수
 ONE_IND_N = 10  # 업종 하나만 볼 때
 NEWS_HOME = 'https://www.consumertimes.kr'
-NEWS_N = 5           # 앱 홈 '소보루 기사' 칸에 보이는 기사 수
+NEWS_N = 12          # 가져오는 기사 수 (첫 화면 칸은 5개, 둘러보기 탭은 전부)
 NEWS_TTL = 30 * 60   # 기사 목록을 다시 가져오는 간격(초)
 _news = {'at': 0, 'items': [], 'busy': False}
 
@@ -52,9 +53,9 @@ def parse_news(xml_bytes, limit=NEWS_N):
         when = ''
         raw = (it.findtext('pubDate') or '').strip()
         for fmt in ('%a, %d %b %Y %H:%M:%S %z', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S%z'):
-            try: when = datetime.datetime.strptime(raw, fmt).strftime('%m.%d'); break
+            try: dt = datetime.datetime.strptime(raw, fmt); when = dt.strftime('%m.%d'); break
             except ValueError: pass
-        out.append(dict(title=title, link=link, date=when, img=img))
+        out.append(dict(title=title, link=link, date=when, img=img, new=bool(when) and when == datetime.date.today().strftime('%m.%d')))
         if len(out) >= limit: break
     return out
 
@@ -92,6 +93,13 @@ def install(S):
 
     app.jinja_env.globals['app_jebo'] = in_app
 
+    def soboru_av(seed):
+        # 운영자 2026-11-13: 프로필 사진이 없으면 소보루 5가지(기본·초코·녹차·딸기·치즈) 중 하나. 같은 사람은 늘 같은 얼굴
+        n = seed if isinstance(seed, int) else sum(ord(ch) * (i + 1) for i, ch in enumerate(str(seed or '')))
+        return url_for('static', filename='img/av/soboru-%d.svg' % (n % 5 + 1))
+    app.jinja_env.globals['soboru_av'] = soboru_av
+    app.jinja_env.globals['app_wants'] = lambda text: [w for w in WANTS if w in (text or '')]
+
     # ── 홈 ─────────────────────────────────────────────
     def ticker(db):
         """최근에 실제로 일어난 좋은 소식 한 줄씩: 기업이 답했거나, 제보자가 해결됐다고 알린 고발."""
@@ -107,9 +115,9 @@ def install(S):
         out.sort(key=lambda x: x[0] or '', reverse=True)
         return out[:6]
 
-    def guides(db):
+    def guides(db, limit=3):
         try:
-            rows = db.execute("SELECT id,industry,title,updated FROM buy_guides WHERE status='published' ORDER BY updated DESC LIMIT 3").fetchall()
+            rows = db.execute("SELECT id,industry,title,updated FROM buy_guides WHERE status='published' ORDER BY updated DESC LIMIT ?", (limit,)).fetchall()
         except Exception: return []
         new = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
         emo = app.jinja_env.filters.get('ind_emoji', lambda x: '📦')
@@ -155,13 +163,14 @@ def install(S):
         tab = request.args.get('t', 'hot')
         if tab not in TABS: tab = 'hot'
         with S.conn() as db:
-            data = dict(tick=ticker(db), guides=guides(db), groups=open_groups(db), news=soboru_news(), news_home=NEWS_HOME)
+            data = dict(tick=ticker(db), guides=guides(db), groups=open_groups(db), news=soboru_news()[:5], news_home=NEWS_HOME)
         return render_template('app_home.html', summary=S.report_summary(), tab=tab, tabs=TABS, cases=home_list(tab), **data)
 
     # ── 기업 순위 ────────────────────────────────────────
-    def ranked(db):
+    def ranked(db, since=''):
+        # since: 주간·월간이면 그 기간에 고발이 전달된 기업만 (운영자 2026-11-13: 헤이마오 周榜처럼)
         rows = db.execute("""SELECT co.*,(SELECT c.industry FROM cases c WHERE c.company_id=co.id AND c.industry!='' GROUP BY c.industry ORDER BY COUNT(*) DESC LIMIT 1) AS top_ind
-            FROM companies co WHERE co.status IN ('active','listed') AND EXISTS(SELECT 1 FROM cases c WHERE c.company_id=co.id AND c.forwarded_at!='')""").fetchall()
+            FROM companies co WHERE co.status IN ('active','listed') AND EXISTS(SELECT 1 FROM cases c WHERE c.company_id=co.id AND c.forwarded_at!='' AND c.forwarded_at>=?)""", (since,)).fetchall()
         out = []
         for co in rows:  # 운영자 2026-11-11: 앱 순위는 '5건 이상' 조건 없이 첫 고발부터. 등급 점수가 없으면 답변 비율로 줄 세움
             gr = dict(jebo.company_grade(db, co['id']))
@@ -185,14 +194,28 @@ def install(S):
         ind = request.args.get('ind', '')
         inds = S.report_industries()
         if ind not in inds: ind = ''
-        with S.conn() as db: items = ranked(db)
+        period = request.args.get('p', 'all')
+        if period not in PERIODS: period = 'all'
+        since = (datetime.date.today() - datetime.timedelta(days=PERIODS[period][1])).isoformat() if PERIODS[period][1] else ''
+        with S.conn() as db: items = ranked(db, since)
         picked = rank_pick(items, tab)
         cards = []
         for i in ([ind] if ind else inds):
             rows = [x for x in picked if x[0]['top_ind'] == i][:ONE_IND_N if ind else CARD_N]
             if rows: cards.append((i, rows))
-        return render_template('app_rank.html', cards=cards, tab=tab, tabs=RANK_TABS, ind=ind, inds=inds, n=len(items),
+        return render_template('app_rank.html', cards=cards, tab=tab, tabs=RANK_TABS, ind=ind, inds=inds, n=len(items), period=period, periods=PERIODS,
                                min_n=jebo.MIN_N, days=jebo.ANSWER_DAYS, fmt_hours=jebo.fmt_hours)
+
+    # ── 둘러보기 ─────────────────────────────────────────
+    def app_explore():
+        """헤이마오 发现 배치 (운영자 2026-11-13: 캡처 그대로, 디자인은 토스식).
+        사기 전에 확인(瞄一眼) → AI 상담 카드 → 두 칸 바로가기(분쟁·대응, 소보루 자문단) → 탭 목록(소보루 아티클·공감 많은 고발·대응 방법)"""
+        with S.conn() as db:
+            g5 = guides(db, 5)
+            try: hows = db.execute("SELECT id,emoji,title,topic FROM howto_guides WHERE status='published' ORDER BY sort,id LIMIT 8").fetchall()
+            except Exception: hows = []
+        hot = S.report_rows("public_consent=1 AND published=1 AND title_hidden=0 AND " + S.PUBLIC_VALID, (), 6, 0, S.HOT_ORDER)
+        return render_template('app_explore.html', guides=g5, news=soboru_news(), news_home=NEWS_HOME, hows=hows, cases=hot)
 
     # ── 공동 대응 ────────────────────────────────────────
     def app_groups():
@@ -226,6 +249,7 @@ def install(S):
         app.view_functions[name] = new
 
     wrap('home', app_home)
+    if 'explore' in app.view_functions: wrap('explore', app_explore)
     wrap('companies_rank', app_rank)
     if S.GROUPS_ON: wrap('groups', app_groups)
     S.app_home, S.app_rank = app_home, app_rank

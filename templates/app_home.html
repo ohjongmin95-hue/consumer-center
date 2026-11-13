@@ -13,23 +13,21 @@
     {% for dup in (0, 1) %}{% for at, emo, text, cid, kind in tick %}<a class="k-{{ kind }}" href="{{ url_for('public_case', case_id=cid) }}"{% if dup %} aria-hidden="true" tabindex="-1"{% endif %}><span class="ap-tav" aria-hidden="true">{{ emo }}</span>{{ text }}</a>{% endfor %}{% endfor %}
   </div></div>{% endif %}
 
-  {% if news %}<section class="ap-card">
-    <a class="ap-h" href="{{ news_home }}"><i class="tf" aria-hidden="true">📰</i>{{ ui('app.news', '소보루 기사') }}<span class="ap-more" aria-hidden="true">›</span></a>
-    {% for n in news %}<a class="ap-row ap-news" href="{{ n.link }}"><span class="ap-t"><b>{{ n.title }}</b>{% if n.date %}<small>{{ n.date }}</small>{% endif %}</span></a>{% endfor %}
+  {# 운영자 2026-11-13: 헤이마오 첫 화면 '瞄一眼' 칸처럼. 머리에 이름·한 줄 설명, 아래는 한 줄 제목만 (오늘 기사는 NEW) #}
+  {% if news %}<section class="ap-card ap-mini">
+    <a class="ap-mh" href="{{ news_home }}"><i class="tf" aria-hidden="true">📰</i><b>{{ ui('app.news2', '소보루 아티클') }}</b><small>{{ ui('app.news_sub', '소비자 이슈, 기사로 먼저 봐요') }}</small><span class="ap-more" aria-hidden="true">›</span></a>
+    <ul>{% for n in news %}<li><a href="{{ n.link }}"><span>{{ n.title }}</span>{% if n.new %}<em class="ap-tagn new">NEW</em>{% elif loop.index <= 2 %}<em class="ap-tagn hot">HOT</em>{% endif %}</a></li>{% endfor %}</ul>
   </section>{% endif %}
 
-  {% if guides %}<section class="ap-card">
-    <a class="ap-h" href="{{ url_for('check_list') }}"><i class="tf" aria-hidden="true">🔍</i>{{ ui('app.check', '사기 전에 확인해 보세요') }}<span class="ap-more" aria-hidden="true">›</span></a>
-    {% for g_ in guides %}<a class="ap-row" href="{{ url_for('check_page', gid=g_.id) }}"><span class="ap-tile tf" aria-hidden="true">{{ g_.emo }}</span><span class="ap-t">{{ g_.title }}</span>{% if g_.new %}<em class="ap-badge red">NEW</em>{% endif %}</a>{% endfor %}
+
+  {# 헤이마오 첫 화면 集体投诉 칸처럼: 왼쪽에 큰 이름, 오른쪽에 인원·제목 한 줄씩 (운영자 2026-11-13) #}
+  {% if groups %}<section class="ap-card ap-grp">
+    <a class="ap-grp-h" href="{{ url_for('groups') }}">{{ ui('app.grp1', '공동') }}<em>{{ ui('app.grp2', '대응') }}</em></a>
+    <ul>{% for gr in groups %}<li><a href="{{ url_for('group_page', group_id=gr['id']) }}"><span class="ap-grp-n"><i class="tf" aria-hidden="true">👥</i>{{ gr['n'] }}</span><span class="ap-grp-t">{{ gr['company'] }} {{ gr['title'] }}</span></a></li>{% endfor %}</ul>
   </section>{% endif %}
 
-  {% if groups %}<section class="ap-card">
-    <a class="ap-h" href="{{ url_for('groups') }}"><i class="tf" aria-hidden="true">🤝</i>{{ ui('app.groups', '함께 대응하고 있어요') }}<span class="ap-more" aria-hidden="true">›</span></a>
-    {% for gr in groups %}<a class="ap-row" href="{{ url_for('group_page', group_id=gr['id']) }}"><em class="ap-badge red">{{ gr['n'] }}{{ ui('app.people', '명') }}</em><span class="ap-t">{{ gr['company'] }} {{ gr['title'] }}</span></a>{% endfor %}
-  </section>{% endif %}
-
-  <section class="ap-list ap-feed">
-    <nav class="ap-tabs ap-tabs-out" aria-label="{{ ui('app.list', '고발 목록') }}">{% for k, label in tabs.items() %}<a href="{{ url_for('home', t=k) }}"{% if k == tab %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+  <section class="ap-card ap-list">
+    <nav class="ap-tabs" aria-label="{{ ui('app.list', '고발 목록') }}">{% for k, label in tabs.items() %}<a href="{{ url_for('home', t=k) }}"{% if k == tab %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</nav>
     {% with cases = cases %}{% include 'app_feed.html' %}{% endwith %}
     <a class="ap-all" href="{{ url_for('reports', sort='hot' if tab == 'hot' else None, st=tab if tab in ('answer', 'done') else None) }}">{{ ui('app.all', '전체 고발 보기') }}</a>
   </section>
