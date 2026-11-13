@@ -348,6 +348,8 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-ai-q span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* 운영자 2026-11-13: 타일은 흰 카드 그대로, 색은 아이콘에만 (색 카드·아이콘 칸은 장난 같다고 뺌) */
 .ap-tile2 .tf{font-size:30px}
-/* 운영자 2026-11-13: 헤이마오처럼 타일에 옅은 그라데이션 (글자는 검은색 그대로) */
-.ap-tile2.t1{background:linear-gradient(135deg,#F2F8FF 0%,#DCEBFF 100%)!important}
-.ap-tile2.t2{background:linear-gradient(135deg,#FFF7EE 0%,#FFE6CC 100%)!important}
+/* 운영자 2026-11-13: 헤이마오처럼 타일 그라데이션, 색은 귤색·붉은색 (흰 글자, 아이콘 칸 없음) */
+.ap-tile2.t1{background:linear-gradient(135deg,#FFB547 0%,#EF920E 100%)!important}
+.ap-tile2.t2{background:linear-gradient(135deg,#FF8A6B 0%,#F0623E 100%)!important}
+.ap-tile2.t1,.ap-tile2.t2,.ap-tile2.t1 b,.ap-tile2.t2 b{color:#fff!important}
+.ap-tile2.t1 small,.ap-tile2.t2 small{color:rgba(255,255,255,.9)}
