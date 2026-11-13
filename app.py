@@ -2147,25 +2147,27 @@ def set_review(db,case,review,note=''):
 WAIT_STATUS='기업 답변 대기'
 def set_status(db,case,status):
     """진행 단계 바꾸기 (제보 화면 저장·목록 일괄 처리·줄마다 고르기). 제보자 화면 단계가 바뀔 때만 알림. 관리자에게 보일 문구를 돌려줌.
-    운영자 2026-11-13: '기업 전달'로 바꾸면 그대로 기업에 자동으로 보냄 (검토 결과를 따로 고르지 않음). 못 보내면 단계는 그대로 두고 이유를 알려 줌"""
+    운영자 2026-11-13: '기업 전달'로 바꾸면 그대로 기업에 자동으로 보냄 (검토 결과를 따로 고르지 않음).
+    못 보내도 단계는 바꿈 (기자가 직접 취재·연락하는 경우). 못 보낸 이유를 알려 주고, 연락처를 넣으면 그때 자동으로 보냄"""
     if status==case['status']:return ''
-    if status==WAIT_STATUS and not case['forwarded_at'] and case['share_company'] and case['company_id']!=0:
-        if case['review'] in jebo.NOT_VALID:return '중복·제외로 처리한 제보라 기업에 보내지 않았어요.'
+    fail=''
+    if status==WAIT_STATUS and not case['forwarded_at'] and case['share_company'] and case['company_id']!=0 and case['review'] in jebo.NOT_VALID:
+        fail='중복·제외로 처리한 제보라 기업에 자동으로 보내지 않았어요.'
+    elif status==WAIT_STATUS and not case['forwarded_at'] and case['share_company'] and case['company_id']!=0:
         if case['review']!='ok':set_review(db,case,'ok')
         msg=ops_auto_forward(db,case['id'])
         if db.execute('SELECT forwarded_at FROM cases WHERE id=?',(case['id'],)).fetchone()['forwarded_at']:
             cur=db.execute('SELECT * FROM cases WHERE id=?',(case['id'],)).fetchone()
             if cur['status']!=WAIT_STATUS:set_status(db,cur,WAIT_STATUS)
             return msg
-        msg=msg or '기업에 보내지 못했어요.'
-        if '이메일이나 휴대폰' in msg:return msg+" 단계는 그대로 두고 '연락처 필요' 목록에 올려 뒀어요. 연락처를 넣으면 바로 보내지고 단계도 '기업 전달'로 바뀌어요."
-        return msg+' 단계는 그대로 뒀어요.'
+        fail=msg or '기업에 자동으로 보내지 못했어요.'
+        if '이메일이나 휴대폰' in fail:fail+=" '연락처 필요' 목록에 올려 뒀어요. 연락처를 넣으면 그때 자동으로 보내져요."
     db.execute('UPDATE cases SET status=? WHERE id=?',(status,case['id']))
     log_case(db,case['id'],f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
     if jebo.STATUS_MY.get(status)!=jebo.STATUS_MY.get(case['status']):notify_later(case['id'],'status')
     if status!='접수':jebo.mark(db,case['id'],'reviewed_at')
     if status=='종결':jebo.mark(db,case['id'],'closed_at')
-    return ''
+    return (fail+" 단계는 '기업 전달'로 바꿨어요.") if fail else ''
 BULK_ACTS={'ok':'승인하고 기업에 보내기','forward':'기업에 다시 보내기','duplicate':'중복으로 처리','rejected':'제외로 처리'}
 
 def reports_list():
@@ -2487,7 +2489,7 @@ def admin_reports_bulk():
                 if kind=='st':
                     m=set_status(db,case,val);now_st=db.execute('SELECT status FROM cases WHERE id=?',(cid,)).fetchone()['status']
                     if now_st==val:n+=1
-                    if m and now_st!=val:msgs.append(f"{case['receipt']}: {m}")
+                    if m and ('못' in m or '않았' in m):msgs.append(f"{case['receipt']}: {m}")
                     continue
                 elif val!=(case['assignee'] or ''):db.execute('UPDATE cases SET assignee=? WHERE id=?',(val,cid));log_case(db,cid,f"담당 기자: {val or '미배정'}")
                 n+=1
@@ -2495,7 +2497,7 @@ def admin_reports_bulk():
             return {'status':now_st,'stage':stage_of(now_st) if now_st else 0,'msg':' '.join(msgs)}
         text=f"{n}건의 단계를 '{stage_names()[stage_of(val)-1]}'(으)로 바꿨어요." if kind=='st' else f"{n}건의 담당 기자를 '{val or '미배정'}'(으)로 정했어요."
         if kind=='st' and val==WAIT_STATUS:text+=' 바꾼 제보는 기업에 자동으로 보냈어요.'
-        if msgs:text+=f" 못 바꾼 {len(msgs)}건: "+' / '.join(msgs[:3])+(' 외' if len(msgs)>3 else '')
+        if msgs:text+=f" 자동으로 못 보낸 {len(msgs)}건 (단계는 바꿈): "+' / '.join(msgs[:3])+(' 외' if len(msgs)>3 else '')
         flash(text)
         return redirect(back)
     done=sent=0;skipped=[]
