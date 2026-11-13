@@ -907,3 +907,22 @@ body.jl-bulk-on .jl-wrap{margin-bottom:96px}
   .jl-bulk .cs-btn{flex:1 1 100%}
   body.jl-bulk-on .jl-wrap{margin-bottom:180px}
 }
+/* 연락처 필요 칸 (운영자 2026-11-13): 못 보낸 기업을 따로 모아 하나씩 채움 */
+.jl-need-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;padding:16px 20px;border-radius:16px;background:var(--ad-orange-soft);color:var(--ad-ink);font-size:15px;text-decoration:none}
+.jl-need-bar b{color:var(--ad-orange)}.jl-need-bar em{flex:none;font-style:normal;font-weight:700;color:var(--ad-orange)}
+.jl-need-bar:hover{filter:brightness(.98)}
+.jl-back{display:inline-block;margin:0 0 12px;color:var(--ad-sub);font-weight:600;text-decoration:none}
+.jl-need{display:flex;flex-direction:column;gap:12px}
+.jl-need-lead{margin:0 0 4px;color:var(--ad-sub);font-size:15px}.jl-need-lead b{color:var(--ad-ink)}
+.jl-need-card{display:flex;flex-direction:column;gap:12px;padding:20px 24px;background:#fff;border:1px solid var(--ad-line);border-radius:18px}
+.jl-need-h{display:flex;align-items:center;gap:8px;font-size:17px;color:var(--ad-ink)}
+.jl-need-n{padding:2px 9px;border-radius:999px;background:var(--ad-orange-soft);color:var(--ad-orange);font-size:13px;font-weight:700}
+.jl-need-cases{display:flex;flex-direction:column;gap:4px;margin:0;font-size:14px}
+.jl-need-cases a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ad-sub);text-decoration:none}.jl-need-cases a:hover{color:var(--ad-ink)}
+.jl-need-cases .mono{color:var(--ad-mute);margin-right:4px}.jl-need-cases>span{color:var(--ad-mute)}
+.jl-need-f{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
+.jl-need-f label{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:13px;color:var(--ad-mute);font-weight:600}
+body.console .jl-need-f input{height:46px;box-sizing:border-box;width:100%;padding:0 14px;border:1px solid #e5e8eb;border-radius:12px;background:var(--ad-soft);font:inherit;font-size:15px;color:var(--ad-ink)}
+body.console .jl-need-f input:focus{outline:none;border-color:var(--ad-orange);background:#fff}
+.jl-need-f .cs-btn{height:46px;white-space:nowrap}
+@media(max-width:700px){.jl-need-card{padding:18px}.jl-need-f{grid-template-columns:1fr}.jl-need-f .cs-btn{width:100%}}

@@ -56,6 +56,8 @@ def migrate(db):
     # 기업 답변을 고칠 때 이전 글을 지우지 않고 남김 (원문 보존)
     db.execute('CREATE TABLE IF NOT EXISTS answer_revisions(id INTEGER PRIMARY KEY,message_id INTEGER NOT NULL,body TEXT NOT NULL,was_public INTEGER NOT NULL DEFAULT 0,edited_at TEXT NOT NULL,editor TEXT NOT NULL)')
     db.execute('CREATE INDEX IF NOT EXISTS cases_company ON cases(company_id)')
+    # 정상으로 승인했는데 단계가 '접수'에 남은 제보는 '검토 중'으로 (운영자 2026-11-13: 승인하면 접수가 아니게). 알림은 보내지 않음
+    db.execute("UPDATE cases SET status='검토 중' WHERE review='ok' AND status='접수'")
 
 def now():return datetime.datetime.now().isoformat(timespec='seconds')
 def mark(db,case_id,field):

@@ -1,12 +1,12 @@
 {% extends 'base.html' %}{% block content %}
-{# 기업 1회용 답변 링크 (운영자 2026-11-06): 메일 링크로 로그인 없이 들어와 답변 한 번 남기는 별도 페이지. 로고만, 메뉴·바닥글 없음.
-   답변을 보내면 링크가 닫히고 보낸 답변만 보임. 업체에는 제보자 연락처·첨부·내부 메모를 보여 주지 않음. #}
+{# 기업 답변 링크 (운영자 2026-11-06): 메일 링크로 로그인 없이 들어와 답변을 남기는 별도 페이지. 로고만, 메뉴·바닥글 없음.
+   운영자 2026-11-13: 같은 링크로 답변을 여러 번 보낼 수 있음 (추가 설명·정정). 업체에는 제보자 연락처·첨부·내부 메모를 보여 주지 않음. #}
 <main class="cr-page"><div class="cr-wrap">
-  {% if used %}
+  {% if just_sent %}
   <section class="cr-done">
     <span class="cr-done-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     <h1 class="cr-title">{{ ui('company.done_title', '답변을 보냈어요') }}</h1>
-    <p class="cr-sub">{{ ui('company.done_sub', '제보자에게 바로 전했어요. 이 링크는 한 번만 쓸 수 있어서 이제 닫혔어요.') }}</p>
+    <p class="cr-sub">{{ ui('company.done_sub2', '제보자에게 바로 전했어요. 더 전할 내용이 있으면 아래에서 이어서 보낼 수 있어요.') }}</p>
   </section>
   {% else %}
   <div class="cr-head">
@@ -15,11 +15,10 @@
   </div>
   {% endif %}
 
-  {% if used and responses %}
-  <section class="cr-card cr-sent">
+  {% if responses %}
+  <section class="cr-card cr-sent" id="cr-sent">
     <h2 class="cr-label">{{ ui('company.previous', '보낸 답변') }}</h2>
     {% for r in responses %}<div class="cr-answer"><p>{{ r['body'] }}</p><small>{{ r['created'][:16]|replace('T', ' ')|replace('-', '.') }}</small></div>{% endfor %}
-    <p class="cr-hint">{{ ui('company.more', '더 전할 내용이 있으면 안내 메일에 답장해 주세요.') }}</p>
   </section>
   {% endif %}
 
@@ -34,7 +33,7 @@
     <h3 class="cr-label">{{ ui('company.ai_what', '무슨 일이 있었나요') }}</h3>
     {% for p in ai.paragraphs %}<p class="cr-text">{{ p }}</p>{% endfor %}
     {% if ai.demands %}<h3 class="cr-label">{{ ui('company.ai_want', '제보자가 원하는 것') }}</h3><p class="cr-text">{{ ai.demands }}</p>{% endif %}
-    {% if ai.questions and not used %}<h3 class="cr-label">{{ ui('company.ai_q', '답변에 이 내용을 담아 주세요') }}</h3>
+    {% if ai.questions %}<h3 class="cr-label">{{ ui('company.ai_q', '답변에 이 내용을 담아 주세요') }}</h3>
     <ol class="cr-qs">{% for q in ai.questions %}<li>{{ q }}</li>{% endfor %}</ol>{% endif %}
     <p class="cr-hint">{{ ui('company.ai_note', '제보자의 주장을 AI가 정리한 거예요. 정확한 표현은 아래 원문을 확인해 주세요.') }}</p>
   </section>
@@ -55,14 +54,14 @@
     {% if ai %}</details>{% endif %}
   </section>
 
-  {% if not used %}
+  {% if can_more %}
   <form method="post" class="cr-card cr-form" id="cr-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-    <label class="cr-label" for="cr-resp">{{ ui('company.f_response', '기업의 공식 답변') }}</label>
+    <label class="cr-label" for="cr-resp">{{ ui('company.f_more', '추가 답변') if responses else ui('company.f_response', '기업의 공식 답변') }}</label>
     <textarea id="cr-resp" name="response" maxlength="5000" required rows="8" placeholder="{{ ui('company.placeholder', '확인한 내용과 해결 방안을 적어 주세요.') }}"></textarea>
     <p class="cr-count"><span id="cr-n">0</span> / 5,000</p>
     <p class="cr-note">{{ ui('company.press_note', '제보와 답변 기록은 기사로 다뤄질 수 있어요. 답변을 남기면 기업의 입장도 함께 전달돼요.') }}</p>
-    <button class="cr-cta" type="submit">{{ ui('company.submit', '답변 보내기') }}</button>
-    <p class="cr-hint">{{ ui('company.once', '이 링크로는 답변을 한 번 보낼 수 있어요. 보내기 전에 내용을 확인해 주세요.') }}</p>
+    <button class="cr-cta" type="submit">{{ ui('company.submit_more', '추가 답변 보내기') if responses else ui('company.submit', '답변 보내기') }}</button>
+    <p class="cr-hint">{{ ui('company.many', '이 링크로 답변을 여러 번 보낼 수 있어요. 보낸 답변은 고칠 수 없으니 바로잡을 내용은 추가 답변으로 보내 주세요.') }}</p>
   </form>
   <script>(function(){var t=document.getElementById('cr-resp'),n=document.getElementById('cr-n'),f=document.getElementById('cr-form');t.addEventListener('input',function(){n.textContent=t.value.length.toLocaleString()});f.addEventListener('submit',function(){f.querySelector('.cr-cta').disabled=true})})();</script>
   {% endif %}

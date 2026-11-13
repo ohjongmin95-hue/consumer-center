@@ -858,12 +858,12 @@ class SiteTest(unittest.TestCase):
         token = self.csrf(company, path)
         response = company.post(path, data={'_csrf': token, 'response': '테스트 기업 답변'}, follow_redirects=True)
         self.assertIn('테스트 기업 답변', response.get_data(as_text=True))
-        self.assertIn('답변을 보냈어요', response.get_data(as_text=True))  # 1회용: 한 번 보내면 링크가 닫힘 (OH 2026-11-06)
-        self.assertNotIn('name="response"', response.get_data(as_text=True))
+        self.assertIn('답변을 보냈어요', response.get_data(as_text=True))
+        self.assertIn('추가 답변 보내기', response.get_data(as_text=True))  # 같은 링크로 여러 번 (OH 2026-11-13)
         company.post(path, data={'_csrf': token, 'response': '두 번째 답변'})
         with self.site.conn() as db:
-            self.assertEqual(db.execute("SELECT COUNT(*) FROM messages WHERE case_id=? AND author='기업 답변'", (case_id,)).fetchone()[0], 1)
-        self.assertIn('답변 받음, 링크 닫힘', admin.get('/admin/reports/' + str(case_id)).get_data(as_text=True))
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM messages WHERE case_id=? AND author='기업 답변'", (case_id,)).fetchone()[0], 2)
+        self.assertIn('답변 받음', admin.get('/admin/reports/' + str(case_id)).get_data(as_text=True))
         again = admin.post('/admin/invite/' + str(case_id), data={'_csrf': self.csrf(admin, '/admin/reports/' + str(case_id))})
         fresh = re.search(r'<strong>http://localhost(/company/[^<]+)</strong>', again.get_data(as_text=True))[1]
         self.assertIn('name="response"', company.get(fresh).get_data(as_text=True))  # 다시 만들면 새 링크로 또 답변 가능
@@ -3605,7 +3605,8 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             case = db.execute('SELECT * FROM cases WHERE id=?', (case['id'],)).fetchone()
         self.assertEqual((case['published'], case['review'], case['review_note'], case['subject']), (1, 'ok', '', '원래 제목 홍길동'))
-        self.assertEqual((case['reviewed_at'], case['status']), ('', '접수'))  # 검토 결과는 진행 단계를 바꾸지 않음
+        self.assertEqual(case['status'], '검토 중')  # 정상으로 승인하면 '접수'에서 '검토'로 (운영자 2026-11-13)
+        self.assertTrue(case['reviewed_at'])
         page = self.client.get('/companies/%d' % co['id']).get_data(as_text=True)
         self.assertIn('환불이 한 달째 안 돼요', page)
         self.assertNotIn('홍길동', page)
@@ -3618,7 +3619,7 @@ class SiteTest(unittest.TestCase):
         public = self.client.get('/reports/%d' % case['id']).get_data(as_text=True)
         self.assertNotIn('public-case-notice', public)  # 아래 안내 문구·내 제보 버튼은 뺌
         self.assertNotIn('public-case-mine', public)
-        for text in ('환불이 한 달째 안 돼요', '공식 답변 미등록', 'href="/companies/%d"' % co['id'], 'aria-current="step"><span class="stepper-dot">1</span><span class="stepper-label">접수'):
+        for text in ('환불이 한 달째 안 돼요', '공식 답변 미등록', 'href="/companies/%d"' % co['id'], 'aria-current="step"><span class="stepper-dot">2</span><span class="stepper-label">처리 중'):  # 정상 승인 → 처리 중
             self.assertIn(text, public)
         self.assertNotIn('A-123', public)
         # 답변 링크 발급 = 전달 시도, 기업이 열어 봐야 '전달 확인'
@@ -3968,6 +3969,58 @@ class SiteTest(unittest.TestCase):
         r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'forward', 'id': [str(c)]}, follow_redirects=True)
         self.assertIn('못 보낸 1건', r.get_data(as_text=True)); self.assertFalse(mails)
         self.assertEqual(admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'nope', 'id': [str(a)]}).status_code, 400)
+
+    def test_admin_contact_needed_and_bulk_stage(self):
+        """연락처가 없어 못 보낸 기업은 '연락처 필요' 칸에 모이고, 거기서 넣으면 바로 보냄. 일괄로 단계·담당도 바꿈 (운영자 2026-11-13)"""
+        import company_mail
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        mails = []
+        env = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw'}
+        patcher = patch.dict(os.environ, env); patcher.start(); self.addCleanup(patcher.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        finder = patch.object(company_mail, 'find', return_value=('', '')); finder.start(); self.addCleanup(finder.stop)
+        admin = self.login_admin()
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '연락없는상점', 'description': '환불이 안 돼요',
+                'reporter_name': '김소비', 'phone': '010-7777-5656', 'contact': 'nc@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'use_consent': 'on', 'truth': 'on', 'visibility': 'public', 'share_company': 'on'}
+        for i in range(2):
+            self.post_form(self.client, '/report', dict(base, subject='연락없는상점 환불 %d' % i, phone='010-7777-57%02d' % i))
+        with self.site.conn() as db:
+            a, b = [r['id'] for r in db.execute("SELECT id FROM cases WHERE company='연락없는상점' ORDER BY id")]
+        token = self.csrf(admin, '/admin/reports')
+        r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'ok', 'id': [str(a), str(b)]}, follow_redirects=True)
+        self.assertIn('위 연락처 필요 칸', r.get_data(as_text=True))
+        with self.site.conn() as db:
+            self.assertEqual({r['status'] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)', (a, b))}, {'검토 중'})  # 승인하면 접수 → 검토
+            co = db.execute("SELECT id FROM companies WHERE name='연락없는상점'").fetchone()['id']
+        page = admin.get('/admin/reports').get_data(as_text=True)
+        self.assertIn('못 보낸 제보 <b>2건</b> · 1곳', page)
+        page = admin.get('/admin/reports?view=contact').get_data(as_text=True)
+        self.assertIn('연락없는상점', page); self.assertIn('2건', page); self.assertIn('name="company_id" value="%d"' % co, page)
+        r = admin.post('/admin/reports/contact', data={'_csrf': token, 'company_id': co, 'official_email': 'bad'}, follow_redirects=True)
+        self.assertIn('이메일 주소를 다시', r.get_data(as_text=True))
+        r = admin.post('/admin/reports/contact', data={'_csrf': token, 'company_id': co, 'official_email': 'cs@nc-shop.example'}, follow_redirects=True)
+        self.assertIn('제보 2건을 보냈어요', r.get_data(as_text=True))
+        self.assertEqual(len([m for m in mails if m[0] == 'cs@nc-shop.example']), 2)
+        self.assertIn('연락처가 없어 못 보낸 제보가 없어요', admin.get('/admin/reports?view=contact').get_data(as_text=True))
+        # '기업 연락처'에 넣어 둔 메일도 안내 주소로 씀
+        self.post_form(self.client, '/report', dict(base, company='연락처만상점', subject='연락처만상점 환불', phone='010-7777-5799'))
+        with self.site.conn() as db:
+            d = db.execute("SELECT id FROM cases WHERE company='연락처만상점'").fetchone()['id']
+        admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'ok', 'id': [str(d)]})
+        mails.clear()
+        r = self.post_form(admin, '/admin/contacts', {'name': '연락처만상점', 'cs_email': 'help@contact-only.example'})
+        self.assertEqual(len([m for m in mails if m[0] == 'help@contact-only.example']), 1)  # 연락처를 넣자마자 기다리던 제보가 감
+        # 일괄 단계·담당
+        r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'st:종결', 'id': [str(a)]}, follow_redirects=True)
+        self.assertIn("1건의 단계를", r.get_data(as_text=True))
+        admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'as:', 'id': [str(a), str(b)]})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?', (a,)).fetchone()['status'], '종결')
+        self.assertEqual(admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'st:없는단계', 'id': [str(a)]}).status_code, 400)
+        self.assertEqual(admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'as:모르는사람', 'id': [str(a)]}).status_code, 400)
 
     def test_auto_forward_finds_company_email(self):
         """등록 안 된 기업도 승인하면 이름으로 연결하고, 공정위 통신판매 신고 정보에서 메일을 찾아 자동으로 보냄 (운영자 요청 2026-10-29)"""
