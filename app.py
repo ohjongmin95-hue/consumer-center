@@ -129,7 +129,12 @@ def experts_menu(rows):
         if r.get('page') in ('experts','board','explore'):
             if not seen:out.append({**r,'label':'둘러보기' if r.get('page')!='explore' else r.get('label') or '둘러보기','page':'explore','url':''});seen=True
         else:out.append(r)
-    return howto_menu(help_menu(out))
+    return doumi_menu(howto_menu(help_menu(out)))
+def doumi_menu(rows):
+    """운영자 2026-11-14: 앱에 만든 '해결 도우미'를 웹 상단 메뉴에도 (둘러보기 앞, 저장된 메뉴에도 넣음)."""
+    if any(r.get('page')=='doumi' for r in rows):return rows
+    i=next((n for n,r in enumerate(rows) if r.get('page')=='explore'),len(rows))
+    return rows[:i]+[{'label':'해결 도우미','page':'doumi','url':''}]+rows[i:]
 def howto_menu(rows):
     """운영자 2026-11-04: 둘러보기 옆에 '분쟁·대응' 메뉴 (저장된 메뉴에도 넣음)."""
     if any(r.get('page')=='howto' for r in rows):return rows
@@ -217,6 +222,7 @@ def menu_href(item):
     if page=='explore':return url_for('explore')
     if page=='ask':return url_for('law_ask') if 'law_ask' in app.view_functions else ''  # AI 소비자 상담 (운영자 2026-11-03 제보센터로 옮김)
     if page=='rank':return url_for('companies_rank')
+    if page=='doumi':return url_for('singo_home') if 'singo_home' in app.view_functions else ''
     if page=='check':return url_for('check_list')
     if page=='howto':  # 운영자 2026-11-04: 공개한 글이 생기면 메뉴에 보임
         with conn() as db:return url_for('howto_list') if db.execute("SELECT 1 FROM howto_guides WHERE status='published' LIMIT 1").fetchone() else ''

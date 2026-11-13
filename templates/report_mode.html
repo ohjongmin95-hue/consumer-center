@@ -1,5 +1,14 @@
 {# 운영자 2026-11-03 (밤): 기본은 글쓰기. AI 대화는 한 줄 칸으로 따로 (버튼 두 개를 나란히 두지 않음) #}{% if request.endpoint == 'report_talk' %}
 <a class="rp-alt" href="{{ url_for('report', form=1) }}"><span class="rp-alt-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 20h4L19 9l-4-4L4 16z" fill="currentColor"/><path d="M13.5 6.5l4 4" stroke="#FE9800" stroke-width="1.6"/></svg></span><span class="rp-alt-t"><b>{{ ui('report.mode_form', '글로 직접 쓰기') }}</b><small>{{ ui('report.mode_form_sub', '양식에 차례대로 적어요') }}</small></span><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
 {% else %}
-<a class="rp-alt" href="{{ url_for('report_talk') }}"><span class="rp-alt-ico is-ai" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v8a2.5 2.5 0 01-2.5 2.5H10l-4.6 3.6c-.6.5-1.4 0-1.4-.7z" fill="currentColor"/><circle cx="8.5" cy="9.5" r="1.2" fill="#8b7cf6"/><circle cx="12" cy="9.5" r="1.2" fill="#8b7cf6"/><circle cx="15.5" cy="9.5" r="1.2" fill="#8b7cf6"/></svg></span><span class="rp-alt-t"><b>{{ ui('report.mode_talk', '편하게 대화로 제보하기') }}</b><small>{{ ui('report.mode_talk_sub', 'AI가 물어보며 정리해 줘요') }}</small></span><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+{# 운영자 2026-11-14: 대화 제보 칸이 더 잘 드러나게, 밑에 대화 예시까지 #}
+<a class="rp-alt rp-talk" href="{{ url_for('report_talk') }}">
+  <span class="rp-talk-top"><span class="rp-alt-ico is-ai" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v8a2.5 2.5 0 01-2.5 2.5H10l-4.6 3.6c-.6.5-1.4 0-1.4-.7z" fill="currentColor"/><circle cx="8.5" cy="9.5" r="1.2" fill="#8b7cf6"/><circle cx="12" cy="9.5" r="1.2" fill="#8b7cf6"/><circle cx="15.5" cy="9.5" r="1.2" fill="#8b7cf6"/></svg></span><span class="rp-alt-t"><b>{{ ui('report.mode_talk', '편하게 대화로 제보하기') }}</b><small>{{ ui('report.mode_talk_sub', 'AI가 물어보며 정리해 줘요') }}</small></span></span>
+  <span class="rp-talk-ex" aria-hidden="true">
+    <span class="rp-b ai">{{ ui('report.talk_ex1', '어떤 일이 있었나요? 편하게 말해 주세요.') }}</span>
+    <span class="rp-b me">{{ ui('report.talk_ex2', '소보루몰에서 산 청소기가 일주일 만에 고장 났는데 환불을 안 해 줘요') }}</span>
+    <span class="rp-b ai">{{ ui('report.talk_ex3', '언제 샀는지, 업체에 어떻게 요청했는지 알려 주실래요?') }}</span>
+  </span>
+  <span class="rp-talk-go">{{ ui('report.talk_go', '대화로 제보하기') }}</span>
+</a>
 {% endif %}

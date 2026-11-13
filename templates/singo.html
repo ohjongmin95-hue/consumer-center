@@ -4,17 +4,17 @@
 {% block description %}{{ ui('singo.desc', '피해 유형을 고르면 신고할 기관, 준비할 것, 신고서 문장까지 알려 드려요.') }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ asset('singo.css') }}">{% endblock %}
 {% block content %}
-<main class="sg">
+<main class="sg{% if not t %} sg-wide{% endif %}{% if not sg_app %} sg-web{% endif %}">
 {% if not t %}
   <h1 class="sg-h">{{ ui('singo.q', '어떤 피해를 입었나요?') }}</h1>
   {# 운영자 2026-11-13: 절차·방법 안내도 #}
   <a class="sg-card sg-row sg-guide" href="{{ url_for('singo_guide') }}" style="padding:16px 20px"><span class="sg-ic tf" aria-hidden="true">🗺️</span><span class="sg-tx"><b>{{ ui('singo.guide', '피해구제·분쟁조정 절차 안내') }}</b><small>{{ ui('singo.guide_s', '신청 방법과 순서, 자주 묻는 질문') }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
-  <section class="sg-card">
+  <section class="sg-card sg-types">
     {% for key, emo, name, ex, places, prep, cat in types %}
     <a class="sg-row" href="{{ url_for('singo_type', key=key) }}"><span class="sg-ic tf" aria-hidden="true">{{ emo }}</span><span class="sg-tx"><b>{{ name }}</b><small>{{ ex }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>
     {% endfor %}
   </section>
-  <p class="sg-note">{{ ui('singo.note0', '기관 신고는 본인 인증이 필요해서 직접 접수해야 해요. 어디에, 무엇을, 어떻게 쓰면 되는지는 소보루고발이 알려 드려요.') }}</p>
+  <p class="sg-note">{{ ui('singo.note0', '기관 신고는 본인 인증이 필요해서 직접 접수해야 해요. 어디에, 무엇을, 어떻게 쓰면 되는지는 저희가 알려 드려요.') }}</p>
 {% else %}
   {% set key, emo, name, ex, plist, prep, cat = t %}
   <a class="sg-back" href="{{ url_for('singo_home') }}">‹ {{ ui('singo.other', '다른 피해 고르기') }}</a>
@@ -61,7 +61,7 @@
 
   <div class="sg-bar">
     {% if case %}<a class="sg-go" href="{{ url_for('public_case', case_id=case['id']) }}">{{ ui('singo.my_case', '내 고발 보기') }}</a>
-    {% else %}<a class="sg-go" id="sg-go" href="{{ url_for('report') }}">{{ ui('singo.go', '소보루고발에도 올리기') }}</a>{% endif %}
+    {% else %}<a class="sg-go" id="sg-go" href="{{ url_for('report') }}">{{ ui('singo.go', '소보루고발에도 올리기') if sg_app else ui('singo.go_web', '이 피해 고발하기') }}</a>{% endif %}
   </div>
 <script>
 (function () {

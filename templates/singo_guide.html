@@ -4,7 +4,7 @@
 {% block description %}{{ ui('guide2.desc', '소비자 피해를 입었을 때 업체 요구부터 1372 상담, 피해구제, 분쟁조정까지 순서대로 알려 드려요.') }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ asset('singo.css') }}">{% endblock %}
 {% block content %}
-<main class="sg">
+<main class="sg{% if not sg_app %} sg-web{% endif %}">
   <a class="sg-back" href="{{ url_for('singo_home') }}">‹ {{ ui('singo.t', '해결 도우미') }}</a>
   <h1 class="sg-h">{{ ui('guide2.h', '피해 해결, 이 순서로 진행돼요') }}</h1>
 
