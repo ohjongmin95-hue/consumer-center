@@ -18,7 +18,7 @@
   {# 운영자 2026-11-13: 헤이마오 첫 화면 '瞄一眼' 칸처럼. 머리에 이름·한 줄 설명, 아래는 한 줄 제목만 (오늘 기사는 NEW) #}
   {# 운영자 2026-11-13: 瞄一眼 칸은 늘 보이게. 기사를 못 가져오면 '사기 전에 확인' 글로 #}
   {% if news or guides %}<section class="ap-card ap-mini">
-    <a class="ap-mh" href="{{ news_home }}"><i class="tf" aria-hidden="true">👀</i><b>{{ ui('app.news2', '소보루 아티클') }}</b><span class="ap-more" aria-hidden="true">›</span></a>
+    <a class="ap-mh" href="{{ news_home }}"><i class="tf" aria-hidden="true">👀</i><b>{{ ui('app.news2', '소보루 아티클') }}</b><small>{{ ui('app.news_sub', '알고 사면 안 당해요') }}</small><span class="ap-more" aria-hidden="true">›</span></a>
     <ul>{% if news %}{% for n in news[:5] %}<li><a href="{{ n.link }}"><span>{{ n.title }}</span>{% if n.new %}<em class="ap-tagn new">NEW</em>{% elif loop.index <= 2 %}<em class="ap-tagn hot">HOT</em>{% endif %}</a></li>{% endfor %}
     {% else %}{% for g_ in guides[:5] %}<li><a href="{{ url_for('check_page', gid=g_.id) }}"><span>{{ g_.title }}</span>{% if g_.new %}<em class="ap-tagn new">NEW</em>{% elif loop.index <= 2 %}<em class="ap-tagn hot">HOT</em>{% endif %}</a></li>{% endfor %}{% endif %}</ul>
   </section>{% endif %}

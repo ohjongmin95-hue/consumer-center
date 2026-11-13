@@ -159,6 +159,18 @@ def install(S):
 
     app.jinja_env.globals['app_feed'] = feed
 
+    def app_hot():
+        """운영자 2026-11-13: 검색칸 안내 문구는 헤이마오처럼 지금 많이 고발된 업체 이름 (짧게, 잘리지 않게)."""
+        try:
+            with S.conn() as db:
+                r = db.execute("""SELECT company FROM cases WHERE public_consent=1 AND published=1 AND COALESCE(company_hidden,0)=0
+                    AND COALESCE(company,'')<>'' AND created >= date('now','-30 day') GROUP BY company ORDER BY COUNT(*) DESC, MAX(id) DESC LIMIT 1""").fetchone()
+            name = S.mask_personal(r['company']) if r else ''
+            return name if 0 < len(name) <= 8 else ''
+        except Exception:
+            return ''
+    app.jinja_env.globals['app_hot'] = app_hot
+
     def home_list(tab):
         if tab == 'hot': rows = S.report_rows(order=S.HOT_ORDER, limit=6)
         elif tab in ('answer', 'done'): rows = S.report_rows(S.REPORT_STAGES[tab][1], (), 6)

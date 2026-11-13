@@ -7,9 +7,9 @@
 </header>{% else %}
 <header class="ap-top">
   <a class="ap-logo" href="{{ url_for('home') }}" aria-label="소보루고발 홈"><img src="{{ asset('img/soboru-gobal-logo.png') }}" alt="SOBORU 고발" width="113" height="15"></a>
-  <form class="ap-search" action="{{ url_for('companies') }}" method="get" role="search">
+  <form class="ap-search" action="{{ url_for('companies') }}" method="get" role="search" onsubmit="var i=this.q;if(!i.value.trim()&&i.dataset.hot)i.value=i.dataset.hot">
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-    <input type="search" name="q" value="{{ request.args.get('q', '') if request.endpoint == 'companies' else '' }}" placeholder="{{ ui('app.search3', '업체 찾기') }}" aria-label="{{ ui('app.search3', '업체 찾기') }}" enterkeyhint="search">
+    <input type="search" name="q" value="{{ request.args.get('q', '') if request.endpoint == 'companies' else '' }}" {% set hot = app_hot() %}placeholder="{{ hot or ui('app.search4', '업체 이름') }}" aria-label="{{ ui('app.search3', '업체 찾기') }}" enterkeyhint="search"{% if hot %} data-hot="{{ hot }}"{% endif %}>
     <button type="submit" class="ap-sbtn">{{ ui('app.search_btn', '검색') }}</button>
   </form>
 </header>{% endif %}
