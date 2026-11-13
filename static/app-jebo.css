@@ -166,7 +166,6 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-body .ap-feed{border-radius:24px;overflow:hidden}
 
 /* 앱 홈 소보루 기사 (운영자 2026-11-13) */
-.ap-news{align-items:flex-start;gap:14px;padding:12px 0}
+.ap-news{align-items:flex-start;padding:12px 0}  /* 헤이마오처럼 사진 없이 글만 (운영자 2026-11-13) */
 .ap-news .ap-t b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:600;font-size:16px;line-height:24px;color:#191F28;word-break:keep-all}
 .ap-news .ap-t small{display:block;margin-top:4px;font-size:13px;color:#8B95A1}
-.ap-nimg{flex:none;width:88px;height:64px;border-radius:12px;object-fit:cover;background:#F2F4F6}

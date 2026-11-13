@@ -15,7 +15,7 @@
 
   {% if news %}<section class="ap-card">
     <a class="ap-h" href="{{ news_home }}"><i class="tf" aria-hidden="true">📰</i>{{ ui('app.news', '소보루 기사') }}<span class="ap-more" aria-hidden="true">›</span></a>
-    {% for n in news %}<a class="ap-row ap-news" href="{{ n.link }}"><span class="ap-t"><b>{{ n.title }}</b>{% if n.date %}<small>{{ n.date }}</small>{% endif %}</span>{% if n.img %}<img class="ap-nimg" src="{{ n.img }}" alt="" loading="lazy" width="88" height="64">{% endif %}</a>{% endfor %}
+    {% for n in news %}<a class="ap-row ap-news" href="{{ n.link }}"><span class="ap-t"><b>{{ n.title }}</b>{% if n.date %}<small>{{ n.date }}</small>{% endif %}</span></a>{% endfor %}
   </section>{% endif %}
 
   {% if guides %}<section class="ap-card">
