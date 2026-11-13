@@ -390,15 +390,15 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ac-steps li>a{flex:none;font-size:14px;font-weight:700;color:#F57800;text-decoration:none}
 .ac-ck{width:24px;height:24px;border-radius:12px;border:2px solid #D1D6DB;background:#fff;padding:0;cursor:pointer;display:block}
 .ac-ck[aria-pressed=true]{border-color:#FE9800;background:#FE9800 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.2l2.6 2.6L13 6.4' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat}
-.ap-hco{margin-bottom:-6px;font-size:15px;line-height:22px;font-weight:700;color:#4E5968;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} /* 업체명 (운영자 2026-11-13) */
-/* 운영자 2026-11-14 '저게 TDS야?': 토스 커뮤니티 글처럼 본문은 왼쪽 끝부터 (들여쓰기 없음), 글자는 TDS 크기만 (13·15·17) */
-.ap-hm .ap-hb{padding-left:0;margin-top:8px;gap:4px}
-.ap-who small{font-size:13px;line-height:19.5px}
-.ap-hm .ap-hco{margin-bottom:0}
-.ap-hm .ap-hc{margin-top:6px}
-/* TDS ListRow 두 줄 글자 (위: 13px Grey600, 아래 제목: 17px Bold Grey900) */
-.ap-hm .ap-hco{font-size:13px;line-height:19.5px;font-weight:500;color:#6B7684}
-.ap-hm .ap-ht{font-size:17px;line-height:25.5px;font-weight:700;color:#191F28;margin-top:2px}
-.ap-hm .ap-hb{gap:2px}
-/* 운영자 2026-11-14: 업체명이 잘 보이게 (15px SemiBold Grey800) */
-.ap-hm .ap-hco{font-size:15px;line-height:22.5px;font-weight:600;color:#333D4B}
+/* 운영자 2026-11-14: 헤이마오터우쑤 글 크기처럼 작게 (제목 16 · 본문 14 · 고발 대상/유형 14), 본문은 아바타 이름 줄에 맞춰 들여씀 */
+.ap-hm{gap:8px;padding:16px 0}
+.ap-hm .ap-hb{padding-left:46px;gap:6px}
+.ap-hm .ap-ht{font-size:16px;line-height:24px;font-weight:700;color:#191F28}
+.ap-hm .ap-hx{font-size:14px;line-height:21px;color:#4E5968}
+.ap-hm .ap-hd{gap:6px}
+.ap-hm .ap-hd div{align-items:center;font-size:14px;line-height:21px;gap:12px}
+.ap-hm .ap-hd dt{flex:none;width:62px;white-space:nowrap;color:#8B95A1}
+.ap-hm .ap-hd dd.co{color:#191F28;font-weight:600}
+.ap-chip{display:inline-block;padding:3px 10px;border-radius:12px;background:#FFF3E0;color:#F57800;font-size:13px;line-height:19.5px;font-weight:600}
+.ap-hm .ap-hc{margin-top:2px;font-size:13px}
+.ap-who small{font-size:12px;line-height:18px}
