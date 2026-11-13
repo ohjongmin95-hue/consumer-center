@@ -108,12 +108,26 @@ def install(S):
         return url_for('singo_type', key=FROM_CATEGORY.get(category or '', 'shop'))
     app.jinja_env.globals['singo_for'] = singo_for
 
+    app.jinja_env.globals['singo_types'] = TYPES
+
+    def in_app():
+        return 'SoboruApp/' in (request.headers.get('User-Agent') or '')
+
     @app.route('/doumi')
     def singo_home():
         c = own_case(request.args.get('case', ''))
         if c:
             return redirect(url_for('singo_type', key=FROM_CATEGORY.get(c['category'], 'shop'), case=c['id']))
+        # 운영자 2026-11-14: 웹은 둘러보기를 해결 도우미 안으로 합침 → 피해 유형 + 둘러보기(순위·AI 상담·도구·자문단·안내서) 한 화면
+        if not in_app() and 'explore' in app.view_functions:
+            return app.view_functions['explore']()
         return render_template('singo.html', types=TYPES, t=None)
+
+    @app.before_request
+    def _explore_to_doumi():
+        # 웹의 /explore 는 해결 도우미로 (앱의 둘러보기 탭은 그대로)
+        if request.path == '/explore' and request.method == 'GET' and not in_app() and getattr(S, 'current_face', lambda: 'jebo')() == 'jebo':
+            return redirect(url_for('singo_home'), 301)
 
     @app.route('/doumi/<key>')
     def singo_type(key):

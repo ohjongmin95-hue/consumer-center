@@ -131,10 +131,13 @@ def experts_menu(rows):
         else:out.append(r)
     return doumi_menu(howto_menu(help_menu(out)))
 def doumi_menu(rows):
-    """운영자 2026-11-14: 앱에 만든 '해결 도우미'를 웹 상단 메뉴에도 (둘러보기 앞, 저장된 메뉴에도 넣음)."""
-    if any(r.get('page')=='doumi' for r in rows):return rows
-    i=next((n for n,r in enumerate(rows) if r.get('page')=='explore'),len(rows))
-    return rows[:i]+[{'label':'해결 도우미','page':'doumi','url':''}]+rows[i:]
+    """운영자 2026-11-14: 웹은 '둘러보기'를 '해결 도우미' 하나로 합침 (둘러보기 기능이 다 해결 도우미 안으로). 저장된 메뉴에도 적용."""
+    out=[];seen=False
+    for r in rows:
+        if r.get('page') in ('explore','doumi'):
+            if not seen:out.append({**r,'label':'해결 도우미','page':'doumi','url':''});seen=True
+        else:out.append(r)
+    return out
 def howto_menu(rows):
     """운영자 2026-11-04: 둘러보기 옆에 '분쟁·대응' 메뉴 (저장된 메뉴에도 넣음)."""
     if any(r.get('page')=='howto' for r in rows):return rows

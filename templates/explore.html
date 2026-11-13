@@ -1,11 +1,25 @@
 {% extends 'base.html' %}
 {# 둘러보기 (운영자 2026-11-03): 토스플레이스 스토리 페이지 '풍'으로 (똑같이 배끼지 않음). 맨 위 큰 추천 카드(왼쪽 그림, 오른쪽 큰 제목) →
    섹션 제목 + 카드 3~4열 (도구, 소보루 자문단, 공감 많은 제보, 최신 소식). TDS 값, 우리 색. 바닥글은 우리 것 그대로 #}
-{% block title %}{{ ui('explore.title', '둘러보기') }} | {{ txt('site.name') }}{% endblock %}
+{% set doumi = request.endpoint == 'singo_home' %}
+{% block title %}{% if request.endpoint == 'singo_home' %}{{ ui('doumi.title', '해결 도우미') }}{% else %}{{ ui('explore.title', '둘러보기') }}{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block head %}{% if request.endpoint == 'singo_home' %}<link rel="stylesheet" href="{{ asset('singo.css') }}">{% endif %}{% endblock %}
 {% set go %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>{% endset %}
 {% block content %}
 <main class="xs"><div class="xs-in">
+  {% if request.endpoint == 'singo_home' %}
+  {# 운영자 2026-11-14: 둘러보기를 해결 도우미 안으로. 맨 위는 피해 유형 고르기, 아래는 예전 둘러보기 그대로 #}
+  <h1 class="xh-title xs-title">{{ ui('doumi.title', '해결 도우미') }}</h1>
+  <section class="xs-sec sg-hub" aria-labelledby="xs-sg">
+    <div class="xs-hrow"><h2 class="xs-h" id="xs-sg">{{ ui('singo.q', '어떤 피해를 입었나요?') }}</h2><a class="xs-more" href="{{ url_for('singo_guide') }}">{{ ui('singo.guide', '피해구제·분쟁조정 절차 안내') }}{{ go }}</a></div>
+    <div class="sg-web sg-wide"><div class="sg-types">
+      {% for key, emo, name, ex, places, prep, cat in singo_types %}<a class="sg-row" href="{{ url_for('singo_type', key=key) }}"><span class="sg-ic tf" aria-hidden="true">{{ emo }}</span><span class="sg-tx"><b>{{ name }}</b><small>{{ ex }}</small></span><span class="sg-arr" aria-hidden="true">›</span></a>{% endfor %}
+    </div></div>
+    <p class="sg-note">{{ ui('singo.note0', '기관 신고는 본인 인증이 필요해서 직접 접수해야 해요. 어디에, 무엇을, 어떻게 쓰면 되는지는 저희가 알려 드려요.') }}</p>
+  </section>
+  {% else %}
   <h1 class="xh-title xs-title">{{ ui('explore.title', '둘러보기') }}</h1>
+  {% endif %}
 
   <a class="xs-feat" href="{{ url_for('companies_rank') }}">
     <div class="xs-feat-art" aria-hidden="true">
