@@ -337,6 +337,9 @@ class SiteTest(unittest.TestCase):
             r = self.client.get(path); self.assertEqual(r.status_code, 302); self.assertIn('/login', r.headers['Location'])
         os.environ['REPORT_LOGIN'] = '0'
         self.assertIn('제보 전 꼭 읽어 주세요', self.client.get('/report/talk').get_data(as_text=True))
+        # 운영자 2026-11-13: 앱에서는 로그인해야 고발 (웹은 그대로)
+        r = self.client.get('/report', headers={'User-Agent': 'Mozilla/5.0 SoboruApp/1.5.0 (android)'}); self.assertEqual(r.status_code, 302); self.assertIn('/login', r.headers['Location'])
+        self.assertEqual(self.client.get('/report').status_code, 200)
 
     def test_hero_photos_auto(self):
         # 운영자 2026-11-03: 공개 게시된 제보의 사진은 관리자가 안 골라도 모자이크해서 첫 화면에. 비공개로 바뀌면 바로 빠짐

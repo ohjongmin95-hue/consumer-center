@@ -2295,3 +2295,6 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 .cr-join-ic{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(0,27,55,.08);font-size:20px}
 .cr-join-list b{display:block;font-size:16px;color:#191f28}.cr-join-list p{margin:2px 0 0;font-size:14px;line-height:1.55;color:#4e5968;word-break:keep-all}
 .cr-join-go{display:flex;align-items:center;justify-content:center;text-decoration:none}
+
+/* 앱에서 고발 전 로그인 안내 (운영자 2026-11-13) */
+.auth-note{margin:-4px 0 16px;text-align:center;color:#4e5968;font-size:15px;word-break:keep-all}

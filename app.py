@@ -805,8 +805,10 @@ def file_ok(suffix,head):
 def report_form(status=200):
     return render_template('report.html',scan_on=bool(companydesk.ai_key_for('report_talk')),categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,max_total=MAX_UPLOAD_TOTAL,today=datetime.date.today().isoformat()),status
 def report_login_needed():
-    """운영자 2026-11-04: 로그인 없이도 제보 (11-03 로그인 의무화 뒤 제보가 끊겨 되돌림). REPORT_LOGIN=1이면 다시 로그인해야 제보."""
-    return os.getenv('REPORT_LOGIN','0')=='1' and not g.get('user')
+    """운영자 2026-11-04: 로그인 없이도 제보 (11-03 로그인 의무화 뒤 제보가 끊겨 되돌림). REPORT_LOGIN=1이면 다시 로그인해야 제보. 앱에서는 늘 로그인."""
+    if g.get('user'):return False
+    # 운영자 2026-11-13: 앱(소보루고발)에서는 고발할 때 카카오·네이버·아이디로 로그인 (웹은 그대로 로그인 없이)
+    return os.getenv('REPORT_LOGIN','0')=='1' or 'SoboruApp/' in request.headers.get('User-Agent','')
 app.jinja_env.globals['report_login_needed']=report_login_needed
 @app.route('/report',methods=['GET','POST'])
 def report():
