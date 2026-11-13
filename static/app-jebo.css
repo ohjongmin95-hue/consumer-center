@@ -367,3 +367,7 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-tile2.t2{background:linear-gradient(135deg,#B44BD7 0%,#9128B4 100%)!important}
 /* 아티클 칸 머리: 헤이마오 '猫一眼 + 한 줄'처럼 제목 옆에 짧은 한 줄 */
 .ap-mh b{flex:none}.ap-mh small{flex:1}
+/* 운영자 2026-11-13: 소식 줄 칩에 TDS 색 (새 고발=노랑 100, 기업 답변=청록 100, 해결=초록 100) */
+.ap-tick a.k-new{background:#FFEFBF;color:#333D48}
+.ap-tick a.k-ans{background:#BCE9E9;color:#0C8585}
+.ap-tick a.k-done{background:#AEEFD5;color:#027854}
