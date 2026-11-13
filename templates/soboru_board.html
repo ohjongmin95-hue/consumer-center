@@ -60,9 +60,9 @@
       </div>
       {% if pages > 1 %}
       <nav class="cm-pager" aria-label="page">
-        {% if page > 1 %}<a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page - 1) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}
+        {% if page > 2 %}<a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=1) }}">{{ ui('pager.first', '« 처음') }}</a>{% endif %}{% if page > 1 %}<a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page - 1) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}
         <span>{{ page }} / {{ pages }}</span>
-        {% if page < pages %}<a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page + 1) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}
+        {% if page < pages %}<a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=page + 1) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}{% if page < pages - 1 %}<a href="{{ url_for('board', type=kind or None, rc=rc or None, category=cat or None, q=q or None, sort=sort if sort == 'top' else None, page=pages) }}">{{ ui('pager.last', '끝 »') }}</a>{% endif %}
       </nav>
       {% endif %}
     </div>

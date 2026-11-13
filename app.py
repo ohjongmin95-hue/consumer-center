@@ -2157,7 +2157,9 @@ def set_status(db,case,status):
             cur=db.execute('SELECT * FROM cases WHERE id=?',(case['id'],)).fetchone()
             if cur['status']!=WAIT_STATUS:set_status(db,cur,WAIT_STATUS)
             return msg
-        return (msg or '기업에 보내지 못했어요.')+' 단계는 그대로 뒀어요.'
+        msg=msg or '기업에 보내지 못했어요.'
+        if '이메일이나 휴대폰' in msg:return msg+" 단계는 그대로 두고 '연락처 필요' 목록에 올려 뒀어요. 연락처를 넣으면 바로 보내지고 단계도 '기업 전달'로 바뀌어요."
+        return msg+' 단계는 그대로 뒀어요.'
     db.execute('UPDATE cases SET status=? WHERE id=?',(status,case['id']))
     log_case(db,case['id'],f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
     if jebo.STATUS_MY.get(status)!=jebo.STATUS_MY.get(case['status']):notify_later(case['id'],'status')
