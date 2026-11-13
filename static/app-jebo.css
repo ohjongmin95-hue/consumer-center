@@ -173,7 +173,7 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 /* 첫 화면 소보루 기사: 헤이마오 '瞄一眼'처럼 작게 (운영자 2026-11-13) */
 .ap-mini{padding:18px 20px 12px;background:#fff}
 .ap-mh{display:flex;align-items:center;gap:8px;min-width:0;text-decoration:none}
-.ap-mh .tf{font-size:18px;line-height:1}
+.ap-mh .tf{font-size:22px;line-height:1}
 .ap-mh b{flex:1;font-size:17px;font-weight:700;color:#191F28}
 .ap-mh .ap-more{color:#B0B8C1;font-size:20px}
 .ap-mh small{flex:1;min-width:0;font-size:13px;color:#8B95A1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

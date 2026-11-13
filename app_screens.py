@@ -113,6 +113,10 @@ def install(S):
                 AND COALESCE(c.confirmed_at,'')<>'' ORDER BY c.confirmed_at DESC LIMIT 6"""):
             nick = r['nickname'] or '소비자'
             out.append((r['at'], nick[:1], f"{S.pub_company(r)} 고발 해결됐어요, 고마워요!", r['id'], 'done'))
+        if len(out) < 3:  # 운영자 2026-11-13: 소식 줄은 늘 움직이게. 답변·해결 소식이 적으면 새로 올라온 고발로 채움
+            for r in db.execute("SELECT c.id,c.company,c.company_hidden,c.created AS at FROM cases c "
+                                "WHERE c.public_consent=1 AND c.published=1 ORDER BY c.id DESC LIMIT 6"):
+                out.append((r['at'], '', f"{S.pub_company(r)} 고발이 올라왔어요", r['id'], 'new'))
         out.sort(key=lambda x: x[0] or '', reverse=True)
         return out[:6]
 
