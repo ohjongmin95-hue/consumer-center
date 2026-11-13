@@ -415,12 +415,3 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-chip{padding:3px 7px;border-radius:11px;font-size:12px;line-height:18px;font-weight:600;background:#FFF3E0;color:#F57800}
 .ap-hm .ap-st{padding:3px 7px;border-radius:11px;font-size:12px;line-height:18px;font-weight:600}
 .ap-hm .ap-hc{gap:16px;font-size:13px;line-height:19.5px;color:#8B95A1}
-/* 운영자 2026-11-14 '토스처럼 TDS': List Row(얼굴·닉네임·시간·배지) + 제목 + Table Row(왼쪽 항목 Grey600, 오른쪽 값 오른쪽 정렬 Grey900) */
-.ap-hm .ap-hb{padding-left:0;gap:10px}
-.ap-hm .ap-ht{margin-top:2px}
-.ap-hm .ap-hd{gap:8px;padding:12px 0 0;border-top:1px solid #F2F4F6}
-.ap-hm .ap-hd div{display:flex;justify-content:space-between;align-items:center;gap:16px;font-size:14px;line-height:21px}
-.ap-hm .ap-hd dt{width:auto;color:#6B7684}
-.ap-hm .ap-hd dd{flex:1;min-width:0;text-align:right;color:#191F28;font-weight:500}
-.ap-hm .ap-hd dd.co{font-weight:600}
-.ap-hm .ap-hd{border-top:0;padding-top:4px;gap:6px}
