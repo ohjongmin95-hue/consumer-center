@@ -1740,9 +1740,9 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 case_id = db.execute("SELECT id FROM cases WHERE subject='알림 두번째'").fetchone()['id']
             admin = self.login_admin()
-            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '종결', 'assignee': ''})
             self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T2')
-            self.assertIn('현재 단계: 검토 중', mails[-1][2])
+            self.assertIn('현재 단계: ', mails[-1][2])
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'message', 'message': '확인 중입니다'})
             self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T3')
             self.assertNotIn('확인 중입니다', mails[-1][2])
@@ -1988,6 +1988,8 @@ class SiteTest(unittest.TestCase):
              patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
             mails.clear(); sms.clear()
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
+            self.assertEqual(mails, [])  # 운영자 2026-11-13: 중간 단계(검토 중·기업 답변 대기)는 알리지 않음
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '종결', 'assignee': ''})
         self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
         self.assertIn('단계 변경', mails[0][1])
         self.assertEqual(len(sms), 1)
@@ -3928,7 +3930,7 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, '/admin/reports/%d' % first, {'form': 'review', 'review': 'ok'})
         sent = [m for m in mails if m[0] == 'cs@nudge-shop.example']
         self.assertEqual(len(sent), 1); self.assertIn('/company/%d/' % first, sent[0][2])
-        self.assertTrue(any(m[0] == 'nudge@example.com' and '진행' in m[1] for m in mails))  # 제보자에게 단계 알림
+        self.assertFalse(any(m[0] == 'nudge@example.com' and '진행' in m[1] for m in mails))  # 운영자 2026-11-13: 기업 답변 대기 단계는 제보자에게 알리지 않음
         with self.site.conn() as db:
             row = db.execute('SELECT status,forwarded_at FROM cases WHERE id=?', (first,)).fetchone()
             self.assertEqual(row['status'], '기업 답변 대기'); self.assertTrue(row['forwarded_at'])
