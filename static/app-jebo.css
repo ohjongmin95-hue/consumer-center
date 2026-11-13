@@ -1,5 +1,5 @@
 /* 소보루고발 앱 화면 (app_screens.py, 운영자 2026-11-11): 헤이마오터우쑤 배치 + 토스 TDS 세부. 앱으로 열었을 때만 불러옴.
-   이모지: 토스페이스 (© Viva Republica, https://toss.im/tossface/copyright), 앱 바닥글에 출처 표시. 버튼 #F69431. */
+   이모지: 토스페이스 (© Viva Republica, https://toss.im/tossface/copyright), 앱 바닥글에 출처 표시. 버튼 #FE9800. */
 @font-face{font-family:Tossface;src:url(/static/fonts/tossface-soboru.woff2?v=6) format('woff2');font-display:swap;unicode-range:U+200D,U+23F0,U+23F3,U+2600,U+260E,U+2615,U+2696,U+26A0,U+26A1,U+2705,U+2708,U+2709,U+270D,U+270F,U+2728,U+2744,U+274C,U+2753,U+2757,U+2B50,U+FE0F,U+1F327,U+1F331,U+1F333,U+1F34E,U+1F354,U+1F355,U+1F35C,U+1F35E,U+1F369,U+1F36A,U+1F36F,U+1F370,U+1F371,U+1F373,U+1F381,U+1F382,U+1F389,U+1F393,U+1F3AE,U+1F3AF,U+1F3C6,U+1F3D8,U+1F3DB,U+1F3E0,U+1F3E2,U+1F3E5,U+1F3E6,U+1F3EA,U+1F3F7,U+1F431,U+1F436,U+1F437,U+1F440,U+1F44D,U+1F44F,U+1F455,U+1F457,U+1F45F,U+1F484,U+1F48A,U+1F490,U+1F4A1,U+1F4A7,U+1F4AA,U+1F4AC,U+1F4AF,U+1F4B0,U+1F4B3,U+1F4B8,U+1F4BB,U+1F4BC,U+1F4C4,U+1F4C5,U+1F4C8,U+1F4C9,U+1F4CA,U+1F4CB,U+1F4CC,U+1F4CD,U+1F4DA,U+1F4DC,U+1F4DD,U+1F4DE,U+1F4E2,U+1F4E3,U+1F4E6,U+1F4E8,U+1F4EE,U+1F4F0,U+1F4F1,U+1F4FA,U+1F50C,U+1F50D,U+1F510,U+1F511,U+1F512,U+1F514,U+1F525,U+1F5D1,U+1F60A,U+1F621,U+1F622,U+1F64B,U+1F64F,U+1F68C,U+1F697,U+1F6A8,U+1F6BF,U+1F6CD,U+1F6CF,U+1F6D2,U+1F6E0,U+1F6E1,U+1F914,U+1F916,U+1F91D,U+1F950,U+1F956,U+1F957,U+1F95B,U+1F95E,U+1F96F,U+1F9C1,U+1F9C8,U+1F9CA,U+1F9EA,U+1F9EE,U+1F9EF,U+1F9F4,U+1F9F8,U+1F9F9,U+1F9FC,U+1F9FE,U+1FA7A,U+1FA91}
 html:has(.ap-body),body.ap-body{font-family:'Pretendard Variable',Pretendard,Tossface,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;letter-spacing:0;background:#F2F4F6!important}
 .ap-body{color:#191F28;word-break:keep-all;-webkit-font-smoothing:antialiased}
@@ -35,8 +35,8 @@ html:has(.ap-body),body.ap-body{font-family:'Pretendard Variable',Pretendard,Tos
 .ap-num+.ap-num{border-left:1px solid #F2F4F6;padding-left:14px}
 .ap-num small{font-size:13px;color:#8B95A1}
 .ap-num b{font-size:22px;line-height:31px;font-weight:700;font-variant-numeric:tabular-nums}
-.ap-go{flex:none;display:flex;align-items:center;justify-content:center;width:104px;height:56px;border-radius:16px;background:#F69431;color:#fff!important;font-size:17px;font-weight:700}
-.ap-go,.ap-join{background:linear-gradient(135deg,#FFAE45 0%,#F69431 100%)!important;box-shadow:0 6px 14px rgba(246,148,49,.28)}
+.ap-go{flex:none;display:flex;align-items:center;justify-content:center;width:104px;height:56px;border-radius:16px;background:#FE9800;color:#fff!important;font-size:17px;font-weight:700}
+.ap-go,.ap-join{background:linear-gradient(135deg,#FFAE45 0%,#FE9800 100%)!important;box-shadow:0 6px 14px rgba(254,152,0,.28)}
 .ap-go:active,.ap-join:active{background:linear-gradient(135deg,#F7A23A,#E58A0C)!important}
 /* 운영자 2026-11-11: 헤이마오 띠처럼 '어딘가에는' 귤색 그라데이션 → 고발하기 버튼·기업 순위 띠 (맨 위 바탕은 토스 회색 그대로) */
 /* 홈: 최근 소식 한 줄 (천천히 흘러감) */
@@ -75,7 +75,7 @@ html:has(.ap-body),body.ap-body{font-family:'Pretendard Variable',Pretendard,Tos
 .ap-gh{display:flex;justify-content:space-between;font-size:16px;font-weight:700;margin-bottom:6px}
 .ap-gh span{color:#B0B8C1;font-weight:500}
 .ap-r{display:flex;align-items:center;gap:6px;padding:6px 0;font-size:14px;color:#333D48;white-space:nowrap}
-.ap-r i{width:14px;flex:none;font-style:normal;font-weight:700;color:#F69431}
+.ap-r i{width:14px;flex:none;font-style:normal;font-weight:700;color:#FE9800}
 .ap-r s{flex:1;min-width:0;text-decoration:none;overflow:hidden;text-overflow:ellipsis}
 .ap-r em{flex:none;font-style:normal;font-size:12px;font-weight:700;color:#029359}
 .ap-r em.bad{color:#E42939}
@@ -97,7 +97,7 @@ span.ap-lg.c0{background:#3182F6}span.ap-lg.c1{background:#F04452}span.ap-lg.c2{
 .ap-nums b{font-size:17px;font-weight:700;color:#191F28}
 .ap-gc h2{font-size:18px;line-height:27px;font-weight:700;color:#191F28;margin:0}
 .ap-gc p{font-size:16px;line-height:25px;color:#333D48;margin:0;letter-spacing:0}  /* 운영자 2026-11-11: 글이라 더 잘 읽히게 (Grey800, 16/25) */
-.ap-join{display:flex;align-items:center;justify-content:center;height:52px;border-radius:16px;background:#F69431;color:#fff!important;font-size:16px;font-weight:700}
+.ap-join{display:flex;align-items:center;justify-content:center;height:52px;border-radius:16px;background:#FE9800;color:#fff!important;font-size:16px;font-weight:700}
 .ap-link{font-size:15px;font-weight:600;color:#4E5968!important}
 /* 바닥글 사업자 정보: 접어 두고 눌러서 펼침 (소보루CX처럼, 운영자 2026-11-11) */
 .ap-ftd{margin-top:0}
@@ -112,7 +112,7 @@ span.ap-lg.c0{background:#3182F6}span.ap-lg.c1{background:#F04452}span.ap-lg.c2{
 .ap-gc p,.ap-case p,.ap-how,.ap-none p{text-wrap:pretty}
 /* ── 운영자 2026-11-11 (2): 헤이마오처럼 빈 곳 채우기 ── */
 /* 검색 버튼 */
-.ap-sbtn{flex:none;border:0;background:none;font:inherit;font-size:15px;font-weight:700;color:#F69431;padding:0 0 0 4px;cursor:pointer}
+.ap-sbtn{flex:none;border:0;background:none;font:inherit;font-size:15px;font-weight:700;color:#FE9800;padding:0 0 0 4px;cursor:pointer}
 /* 소식 줄: 얼굴 + 말풍선 */
 .ap-tav{flex:none;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:#3182F6}
 .ap-tick a.k-done .ap-tav{background:#03B26C}
@@ -211,10 +211,10 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-ai-h small{font-size:14px;color:#C9760A}
 .ap-ai-pic{position:absolute;right:18px;top:16px;font-size:54px;line-height:1;font-style:normal}
 .ap-ai-q{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(0,27,55,.06);color:#333D48;text-decoration:none;font-size:15px}
-.ap-ai-q span{flex:1;min-width:0}.ap-ai-q b{color:#F69431;font-size:20px}
+.ap-ai-q span{flex:1;min-width:0}.ap-ai-q b{color:#FE9800;font-size:20px}
 .ap-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ap-tile2{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px;min-height:92px;padding:18px 16px;border-radius:20px;color:#fff;text-decoration:none}
-.ap-tile2.t1{background:linear-gradient(135deg,#FFB547,#F69431)}.ap-tile2.t2{background:linear-gradient(135deg,#FF8A6B,#F0623E)}
+.ap-tile2.t1{background:linear-gradient(135deg,#FFB547,#FE9800)}.ap-tile2.t2{background:linear-gradient(135deg,#FF8A6B,#F0623E)}
 .ap-tile2 b{font-size:19px;font-weight:800}.ap-tile2 small{font-size:13px;opacity:.9;word-break:keep-all}
 .ap-tile2 .tf{position:absolute;right:-6px;bottom:-10px;font-size:52px;opacity:.28}
 .ap-xt .ap-tabs button{border:0;background:none;padding:0;font:inherit;cursor:pointer}
@@ -241,13 +241,13 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .al-s{margin:6px 0 32px;font-size:15px;color:#6B7684}
 .al-f{display:flex;flex-direction:column;gap:12px}
 .al-row{display:flex;align-items:center;gap:10px;height:58px;padding:0 16px;border-radius:14px;background:#fff;border:1.5px solid #E5E8EB}
-.al-row:focus-within{border-color:#F69431}
+.al-row:focus-within{border-color:#FE9800}
 .al-row input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:17px;color:#191F28}
 .al-cc{font-size:17px;font-weight:600;color:#333D48}
 .al-get{flex:none;border:0;border-radius:10px;background:#FFF0D6;color:#E07B00;font:inherit;font-size:14px;font-weight:700;padding:9px 12px}
 .al-get:disabled{background:#F2F4F6;color:#8B95A1}
 .al-msg{margin:0;font-size:14px;color:#3182F6}.al-msg.bad{color:#F04452}
-.al-go{margin-top:8px;height:56px;border:0;border-radius:16px;background:#F69431;color:#fff;font:inherit;font-size:17px;font-weight:700}
+.al-go{margin-top:8px;height:56px;border:0;border-radius:16px;background:#FE9800;color:#fff;font:inherit;font-size:17px;font-weight:700}
 .al-go:disabled{background:#FFD8A3;color:#fff;opacity:1;cursor:default}
 .al-other{display:flex;align-items:center;gap:12px;margin:44px 0 20px;color:#8B95A1;font-size:14px}
 .al-other::before,.al-other::after{content:"";flex:1;height:1px;background:#E5E8EB}
@@ -256,7 +256,7 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .al-sn svg{width:24px;height:24px}
 .al-sn.sn-kakao{background:#FEE500;color:#191600}.al-sn.sn-naver{background:#03C75A;color:#fff}.al-sn.sn-apple{background:#191F28;color:#fff}.al-sn.sn-google{background:#fff;border:1px solid #E5E8EB;color:#333}
 .al-agree{display:flex;align-items:flex-start;justify-content:center;gap:8px;margin:28px 0 0;font-size:13px;line-height:20px;color:#6B7684}
-.al-agree input{margin-top:3px;accent-color:#F69431;width:16px;height:16px}
+.al-agree input{margin-top:3px;accent-color:#FE9800;width:16px;height:16px}
 .al-agree a{color:#E07B00}
 .al-agree.need{color:#F04452}
 .al-id{margin:18px 0 0;text-align:center;font-size:13px}.al-id a{color:#8B95A1}
@@ -270,14 +270,14 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ac{display:grid;gap:10px;padding:4px 12px 110px;max-width:640px;margin:0 auto}
 .ac-card{background:#fff;border-radius:20px;padding:20px}
 .ac-co-h{display:flex;align-items:center;gap:12px;text-decoration:none}
-.ac-co-lg{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#FFF1DC;color:#F69431;display:grid;place-items:center;font-weight:800;font-size:20px;flex:none;border:1px solid #F2F4F6}
+.ac-co-lg{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#FFF1DC;color:#FE9800;display:grid;place-items:center;font-weight:800;font-size:20px;flex:none;border:1px solid #F2F4F6}
 .ac-co-h b{font-size:19px;font-weight:700;color:#E07B00}
 .ac-kv{margin:14px 0 0;display:grid;gap:10px}
 .ac-kv div{display:flex;align-items:flex-start;gap:12px}
 .ac-kv dt{flex:none;width:72px;white-space:nowrap;padding-top:5px;font-size:15px;color:#8B95A1}
 .ac-kv dd{margin:0;display:flex;flex-wrap:wrap;gap:6px;font-size:15px;line-height:32px;color:#191F28}
 .ac-chip{display:inline-block;background:#F2F4F6;border-radius:999px;padding:0 12px;font-size:14px;line-height:30px;color:#333D4B;font-weight:500}
-.ac-grp{display:table;margin:14px 0 0 auto;border:1.5px solid #F69431;color:#E07B00;border-radius:999px;padding:7px 16px;font-size:14px;font-weight:600;text-decoration:none}
+.ac-grp{display:table;margin:14px 0 0 auto;border:1.5px solid #FE9800;color:#E07B00;border-radius:999px;padding:7px 16px;font-size:14px;font-weight:600;text-decoration:none}
 .ac-t{margin:0;font-size:20px;line-height:1.45;font-weight:700;color:#191F28;word-break:keep-all;text-wrap:pretty}
 .ac-st{display:inline-block;vertical-align:3px;margin-right:6px;border:1px solid #F7C37A;background:#FFF6E6;color:#E07B00;border-radius:6px;padding:0 6px;font-size:13px;line-height:22px;font-style:normal;font-weight:600}
 .ac-st.s7{border-color:#B9E3C6;background:#EEF9F1;color:#1A9E4B}
@@ -295,10 +295,10 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ac-ic{display:grid;justify-items:center;gap:0;min-width:48px;border:0;background:none;padding:2px 4px;color:#4E5968;text-decoration:none;font:inherit}
 .ac-ic i{font-size:22px;line-height:26px;font-style:normal}.ac-ic small{font-size:11px;line-height:14px}
 .ac-ic.on small{color:#E07B00;font-weight:700}
-.ac-go{flex:1;margin-left:6px;display:block;text-align:center;border-radius:16px;padding:14px 0;font-size:17px;font-weight:700;color:#fff;text-decoration:none;background:linear-gradient(135deg,#F5A623,#F69431)}
+.ac-go{flex:1;margin-left:6px;display:block;text-align:center;border-radius:16px;padding:14px 0;font-size:17px;font-weight:700;color:#fff;text-decoration:none;background:linear-gradient(135deg,#F5A623,#FE9800)}
 .ap-body:has(.ac) .site-footer{padding-bottom:90px}
 .ac-talk #talk-heading{font-size:17px;margin:0 0 12px}
-.ac-talk .primary,.ac-talk button[type=submit].primary{background:#F69431}
+.ac-talk .primary,.ac-talk button[type=submit].primary{background:#FE9800}
 .ap-body:has(.ac) .to-top{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 
 /* 첫 화면 위 (운영자 2026-11-13: 헤이마오 首页처럼 숫자 카드 + 큰 고발하기 타일) */
@@ -306,7 +306,7 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-hero .ap-stat{padding:18px 16px}
 .ap-hero .ap-num small{color:#E07B00;font-weight:600}
 .ap-hero .ap-num b{font-size:24px}
-.ap-go2{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border-radius:24px;background:linear-gradient(135deg,#FFB547 0%,#F69431 100%);box-shadow:0 6px 14px rgba(246,148,49,.28);text-decoration:none}
+.ap-go2{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border-radius:24px;background:linear-gradient(135deg,#FFB547 0%,#FE9800 100%);box-shadow:0 6px 14px rgba(254,152,0,.28);text-decoration:none}
 .ap-go2 b{position:relative;font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px}
 .ap-go2 .tf{position:absolute;right:-6px;bottom:-8px;font-size:58px;opacity:.28;transform:rotate(-12deg)}
 .ap-go2:active{filter:brightness(.96)}
@@ -320,15 +320,15 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 
 /* ── TDS 정리 (운영자 2026-11-13: 배치는 헤이마오, 느낌은 토스 TDS) ──
    그라데이션·흐린 큰 이모지·그림자 빼고: 회색 바탕 #F2F4F6 + 흰 카드(20px), 단색 귤색 버튼, 글자 색은 TDS 회색 단계 */
-.ap-go,.ap-join,.ap-go:active,.ap-join:active{background:#F69431!important;box-shadow:none}
-.ap-go:active,.ap-join:active,.ap-go2:active,.ac-go:active{background:#E08600!important}
-.ap-go2{background:#F69431;box-shadow:none;border-radius:20px}
+.ap-go,.ap-join,.ap-go:active,.ap-join:active{background:#FE9800!important;box-shadow:none}
+.ap-go:active,.ap-join:active,.ap-go2:active,.ac-go:active{background:#FB8800!important}
+.ap-go2{background:#FE9800;box-shadow:none;border-radius:20px}
 .ap-go2 .tf{display:none}
 .ap-go2 b{font-size:20px;font-weight:700;letter-spacing:0}
 .ap-hero .ap-stat{border-radius:20px}
 .ap-hero .ap-num small{color:#6B7684;font-weight:500}
 .ap-hero .ap-num b{font-weight:700;color:#191F28}
-.ac-go{background:#F69431}
+.ac-go{background:#FE9800}
 .ap-ban{background:#fff}
 .ap-ai{background:#fff}
 .ap-ai-pic{font-size:44px;top:20px}
@@ -349,7 +349,7 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 /* 운영자 2026-11-13: 타일은 흰 카드 그대로, 색은 아이콘에만 (색 카드·아이콘 칸은 장난 같다고 뺌) */
 .ap-tile2 .tf{font-size:30px}
 /* 운영자 2026-11-13: 헤이마오처럼 타일 그라데이션, 색은 귤색·붉은색 (흰 글자, 아이콘 칸 없음) */
-.ap-tile2.t1{background:linear-gradient(135deg,#FFB547 0%,#F69431 100%)!important}
+.ap-tile2.t1{background:linear-gradient(135deg,#FFB547 0%,#FE9800 100%)!important}
 .ap-tile2.t2{background:linear-gradient(135deg,#FF8A6B 0%,#F0623E 100%)!important}
 .ap-tile2.t1,.ap-tile2.t2,.ap-tile2.t1 b,.ap-tile2.t2 b{color:#fff!important}
 .ap-tile2.t1 small,.ap-tile2.t2 small{color:rgba(255,255,255,.9)}

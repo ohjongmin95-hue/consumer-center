@@ -6,7 +6,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 export type Tab = { key: string; label: string; path: string };
 
-export const ORANGE = '#F69431'; // 운영자 2026-11-13: 버튼·강조 색은 토스 파랑의 오렌지판 (로고만 #EF920E)
+export const ORANGE = '#FE9800'; // 운영자 2026-11-13: 버튼·강조 색은 TDS 오렌지 500 (로고만 #EF920E)
 const INK = '#1F1A17';
 const MUTE = '#9A918A';
 
