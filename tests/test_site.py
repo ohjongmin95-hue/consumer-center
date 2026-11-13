@@ -864,6 +864,21 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM messages WHERE case_id=? AND author='기업 답변'", (case_id,)).fetchone()[0], 2)
         self.assertIn('답변 받음', admin.get('/admin/reports/' + str(case_id)).get_data(as_text=True))
+        # 답변 링크에서 기업 회원 가입: 사업자번호 없이 이메일이나 연락처만, 바로 열림 (OH 2026-11-13)
+        self.site.BIZ_ON = True; self.addCleanup(setattr, self.site, 'BIZ_ON', False)
+        join = re.search(r'href="(/biz/signup\?[^"]+)"', company.get(path).get_data(as_text=True))[1].replace('&amp;', '&')
+        page = company.get(join).get_data(as_text=True)
+        self.assertNotIn('name="biz_no"', page); self.assertIn('테스트 업체', page)
+        jt = self.csrf(company, join); q = dict(x.split('=', 1) for x in join.split('?', 1)[1].split('&'))
+        bad = company.post('/biz/signup', data={'_csrf': jt, 'case': q['case'], 't': q['t'], 'login_id': 'testco', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'})
+        self.assertEqual(bad.status_code, 400)  # 이메일·연락처 둘 다 없으면 안 됨
+        self.assertEqual(company.post('/biz/signup', data={'_csrf': jt, 'case': q['case'], 't': 'wrong', 'contact_email': 'cs@test.co.kr', 'login_id': 'testco', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'}).status_code, 400)  # 토큰 틀리면 일반 가입(사업자번호 필요)
+        ok = company.post('/biz/signup', data={'_csrf': jt, 'case': q['case'], 't': q['t'], 'contact_email': 'cs@test.co.kr', 'login_id': 'testco', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'})
+        self.assertEqual(ok.status_code, 302)
+        with self.site.conn() as db:
+            co = db.execute('SELECT co.* FROM companies co JOIN cases c ON c.company_id=co.id WHERE c.id=?', (case_id,)).fetchone()
+            self.assertEqual((co['status'], co['contact_email']), ('active', 'cs@test.co.kr'))
+            self.assertEqual(db.execute('SELECT company_id FROM company_users WHERE login_id=?', ('testco',)).fetchone()[0], co['id'])
         again = admin.post('/admin/invite/' + str(case_id), data={'_csrf': self.csrf(admin, '/admin/reports/' + str(case_id))})
         fresh = re.search(r'<strong>http://localhost(/company/[^<]+)</strong>', again.get_data(as_text=True))[1]
         self.assertIn('name="response"', company.get(fresh).get_data(as_text=True))  # 다시 만들면 새 링크로 또 답변 가능

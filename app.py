@@ -1259,7 +1259,7 @@ def company_access(case_id,token):
         objections=ops_company_requests(db,case_id)
         ai=company_ai_summary(db,case)
     # 업체에는 제보자의 연락처, 첨부파일, 내부 메모를 공개하지 않음.
-    return render_template('company.html',ai=ai,case=case,responses=responses,objections=objections,token=token,used=invite['used_at'],just_sent=request.args.get('sent')=='1',can_more=len(responses)<COMPANY_LINK_MAX,company_name=invite['company_name'] or case['company'])
+    return render_template('company.html',ai=ai,case=case,responses=responses,objections=objections,token=token,used=invite['used_at'],just_sent=request.args.get('sent')=='1',can_more=len(responses)<COMPANY_LINK_MAX,company_name=invite['company_name'] or case['company'],join_url=url_for('biz_signup',case=case_id,t=token))
 
 @app.route('/case/logout',methods=['POST'])
 def case_logout():
@@ -2757,10 +2757,51 @@ def biz_active(f):
         return f(*a,**kw)
     return wrapped
 
+def signup_invite(db):
+    """답변 링크에서 온 가입이면 (제보, 기업 이름). 링크 토큰이 맞을 때만"""
+    cid=request.values.get('case',type=int);tok=request.values.get('t','')
+    if not cid or not tok or len(tok)>150:return None
+    inv=db.execute('SELECT * FROM company_invites WHERE case_id=?',(cid,)).fetchone()
+    case=db.execute('SELECT * FROM cases WHERE id=? AND share_company=1',(cid,)).fetchone()
+    if not inv or not case or not hmac.compare_digest(inv['token_hash'],hashlib.sha256(tok.encode()).hexdigest()):return None
+    return case,(inv['company_name'] or case['company'])
+
+def biz_signup_invite(db,case,name):
+    """답변 링크로 가입 (운영자 2026-11-13: 그 주소로 받은 링크라 사업자번호 없이, 이메일이나 공식 연락처만). 바로 열림"""
+    f={k:request.form.get(k,'').strip() for k in ('contact_email','contact_phone','login_id')};f['login_id']=f['login_id'].lower();pw=request.form.get('password','')
+    errors=[]
+    if not f['contact_email'] and not f['contact_phone']:errors.append('이메일이나 공식 연락처 중 하나는 적어 주세요.')
+    if f['contact_email'] and (len(f['contact_email'])>120 or not MEMBER_EMAIL_RE.match(f['contact_email'])):errors.append('이메일을 확인해 주세요.')
+    if f['contact_phone'] and not PHONE_INPUT.match(f['contact_phone']):errors.append('연락처를 확인해 주세요.')
+    if not LOGIN_ID_RE.match(f['login_id']):errors.append('아이디는 영문 소문자·숫자·밑줄로 4~20자로 정해 주세요.')
+    if not strong_password(pw):errors.append('비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
+    elif pw!=request.form.get('password2',''):errors.append('비밀번호 확인이 일치하지 않아요.')
+    if not request.form.get('agree'):errors.append('기업 회원 이용약관에 동의해 주세요.')
+    co=db.execute('SELECT * FROM companies WHERE id=?',(case['company_id'],)).fetchone() if case['company_id'] else None
+    if co and co['status']=='active' and db.execute('SELECT 1 FROM company_users WHERE company_id=?',(co['id'],)).fetchone():errors.append('이미 가입한 기업이에요. 로그인해 주세요. 담당자를 더 넣으려면 센터로 문의해 주세요.')
+    if not errors and (db.execute('SELECT 1 FROM company_users WHERE login_id=?',(f['login_id'],)).fetchone() or f['login_id']==admin_setting('biz_master_id')):errors.append('이미 있는 아이디예요.')
+    if errors:
+        for e in errors:flash(e)
+        return render_template('biz_signup.html',invite_name=name),400
+    if co:
+        db.execute("UPDATE companies SET status='active',contact_name=CASE WHEN contact_name='' THEN '담당자' ELSE contact_name END,contact_phone=?,contact_email=? WHERE id=?",(f['contact_phone'] or co['contact_phone'] or '',f['contact_email'] or co['contact_email'] or '',co['id']))
+        co_id=co['id']
+    else:
+        co_id=db.execute("INSERT INTO companies(name,biz_no,contact_name,contact_phone,contact_email,status,created) VALUES(?,'','담당자',?,?,'active',?)",(name,f['contact_phone'],f['contact_email'],now())).lastrowid
+        db.execute('UPDATE cases SET company_id=? WHERE id=?',(co_id,case['id']))
+    uid=db.execute('INSERT INTO company_users(company_id,login_id,pw_hash,name,created) VALUES(?,?,?,?,?)',(co_id,f['login_id'],generate_password_hash(pw),'담당자',now())).lastrowid
+    log_case(db,case['id'],f"기업 회원 가입 (답변 링크): {name}")
+    session['biz_uid']=uid;session['biz_v']=1
+    flash('가입했어요. 새 제보가 오면 바로 알려 드릴게요.')
+    return redirect(url_for('biz_home'))
+
 @app.route('/biz/signup',methods=['GET','POST'])
 def biz_signup():
     if g.biz_user:return redirect(url_for('biz_home'))
-    if request.method=='GET':return render_template('biz_signup.html')
+    with conn() as db:
+        inv=signup_invite(db)
+        if inv and request.method=='POST':return biz_signup_invite(db,*inv)
+    if request.method=='GET':return render_template('biz_signup.html',invite_name=inv[1] if inv else '')
     f={k:request.form.get(k,'').strip() for k in ('company_name','biz_no','contact_name','contact_phone','contact_email','login_id')}
     f['login_id']=f['login_id'].lower();biz=re.sub(r'\D','',f['biz_no']);pw=request.form.get('password','')
     errors=[]

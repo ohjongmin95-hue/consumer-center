@@ -75,7 +75,7 @@
       <li><span class="cr-join-ic" aria-hidden="true">📋</span><div><b>{{ ui('company.join_b2', '우리 회사 제보를 한 화면에서') }}</b><p>{{ ui('company.join_d2', '받은 제보와 보낸 답변을 모아 보고, 처리 상황을 한눈에 챙길 수 있어요.') }}</p></div></li>
       <li><span class="cr-join-ic" aria-hidden="true">💬</span><div><b>{{ ui('company.join_b3', '공식 입장을 먼저 알릴 수 있어요') }}</b><p>{{ ui('company.join_d3', '기업 페이지에 공식 입장을 올리면 소비자가 제보와 함께 봐요.') }}</p></div></li>
     </ul>
-    <a class="cr-cta cr-join-go" href="{{ url_for('biz_signup', company=company_name) }}">{{ ui('company.join_cta', '무료로 기업 회원 가입하기') }}</a>
-    <p class="cr-hint">{{ ui('company.join_note', '사업자등록번호로 가입해요. 확인이 끝나면 담당자 화면이 열려요.') }}</p>
+    <a class="cr-cta cr-join-go" href="{{ join_url }}">{{ ui('company.join_cta', '무료로 기업 회원 가입하기') }}</a>
+    <p class="cr-hint">{{ ui('company.join_note', '이메일이나 연락처만 넣으면 바로 가입돼요.') }}</p>
   </section>{% endif %}
 </div></main>{% endblock %}
