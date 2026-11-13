@@ -1,5 +1,5 @@
 /* 대화로 제보하기 (/report/talk, 운영자 2026-11-03): 토스처럼 깔끔한 말풍선 + 버튼 고르기 */
-.tk-page{--tk-o:#EF920E;--tk-ink:#191f28;--tk-sub:#4e5968;--tk-mute:#8b95a1;--tk-line:#e5e8eb;--tk-soft:#f2f4f6;max-width:640px;margin:0 auto;padding:20px 16px 150px}
+.tk-page{--tk-o:#FE9800;--tk-ink:#191f28;--tk-sub:#4e5968;--tk-mute:#8b95a1;--tk-line:#e5e8eb;--tk-soft:#f2f4f6;max-width:640px;margin:0 auto;padding:20px 16px 150px}
 .tk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 20px}
 .tk-head h1{font-size:22px;letter-spacing:-.03em;margin:0}
 .tk-head a{font-size:14px;color:var(--tk-mute);text-decoration:none;white-space:nowrap}
@@ -50,10 +50,10 @@ body:has(.tk-page) .site-footer,body:has(.tk-page) .sb-chips,body:has(.tk-page) 
 /* 운영자 2026-11-03: 제보 전 안내가 회색이라 안 보임 → 토스처럼 또렷하게 */
 .tk-msg.tk-notice{background:#fff8ef;border:1px solid #ffe0b8;color:#191f28;padding:18px 20px}
 .tk-notice .tk-notice-t{display:flex;align-items:center;gap:6px;font-size:17px;font-weight:800;color:#191f28;margin-bottom:12px}
-.tk-notice .tk-notice-t::before{content:"!";display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#ef920e;color:#fff;font-size:13px;font-weight:800}
+.tk-notice .tk-notice-t::before{content:"!";display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#FE9800;color:#fff;font-size:13px;font-weight:800}
 .tk-notice ul{list-style:none;padding:0;gap:10px;font-size:15px;line-height:1.6;color:#333d4b}
 .tk-notice li{position:relative;padding-left:16px;word-break:keep-all}
-.tk-notice li::before{content:"";position:absolute;left:2px;top:.68em;width:6px;height:6px;border-radius:50%;background:#ef920e}
+.tk-notice li::before{content:"";position:absolute;left:2px;top:.68em;width:6px;height:6px;border-radius:50%;background:#FE9800}
 /* 운영자 2026-11-03: 처음에 무엇을 말하면 좋은지 안내 */
 .tk-msg.tk-guide{max-width:min(560px,100%);background:#f2f4f6;padding:16px 18px}
 .tk-guide .tk-guide-t{font-weight:800;font-size:16px;margin:0 0 10px;color:#191f28}
@@ -61,7 +61,7 @@ body:has(.tk-page) .site-footer,body:has(.tk-page) .sb-chips,body:has(.tk-page) 
 .tk-guide li b{color:#191f28;font-weight:700;margin-right:2px}
 .tk-guide .tk-guide-ex{margin:16px 0 0;padding:14px;border-radius:16px;background:#fff;display:grid;gap:10px}
 .tk-guide-ex-t{font-size:13px;font-weight:700;color:#8b95a1}
-.tk-guide-ex p{justify-self:end;max-width:92%;margin:0;padding:12px 14px;border-radius:18px 18px 4px 18px;background:#ef920e;color:#fff;font-size:14px;line-height:1.6;word-break:keep-all}
+.tk-guide-ex p{justify-self:end;max-width:92%;margin:0;padding:12px 14px;border-radius:18px 18px 4px 18px;background:#FE9800;color:#fff;font-size:14px;line-height:1.6;word-break:keep-all}
 .tk-compose textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tk-guide .tk-guide-ex p{color:#fff}
 .tk-guide-ex .tk-guide-ex-t + .tk-guide-ai,.tk-guide-ex p + .tk-guide-ex-t{margin-top:4px}

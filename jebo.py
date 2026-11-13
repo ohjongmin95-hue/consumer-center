@@ -367,11 +367,13 @@ def install(S):
         if outcome not in OUTCOMES:abort(400)
         rating=request.form.get('rating',type=int)
         if rating is not None and not 1<=rating<=5:rating=None
+        note=' '.join(request.form.get('note','').split())[:30]  # 한마디 (30자, 공개 소식 줄에 나옴)
         with conn() as db:
             case=db.execute('SELECT id,outcome FROM cases WHERE id=?',(case_id,)).fetchone()
             if not case:abort(404)
             if not db.execute("SELECT 1 FROM messages WHERE case_id=? AND author='기업 답변'",(case_id,)).fetchone():abort(400)
             db.execute('UPDATE cases SET outcome=?,rating=COALESCE(?,rating) WHERE id=?',(outcome,rating,case_id));mark(db,case_id,'confirmed_at')
+            if note:db.execute('UPDATE cases SET rating_note=? WHERE id=?',(note,case_id))
             if outcome!=case['outcome']:db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,'제보자',f'처리 결과 확인: {OUTCOMES[outcome]}',now()))
         flash('알려 주셔서 고마워요. 센터와 기업에 전달돼요.')
         return redirect(url_for('case_detail')+'#outcome')

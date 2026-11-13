@@ -27,7 +27,7 @@ export function toSiteUrl(link: string): string {
 }
 
 export function openOutside(url: string) {
-  WebBrowser.openBrowserAsync(url, { controlsColor: '#EF920E', dismissButtonStyle: 'close' }).catch(() => Linking.openURL(url).catch(() => {}));
+  WebBrowser.openBrowserAsync(url, { controlsColor: '#FE9800', dismissButtonStyle: 'close' }).catch(() => Linking.openURL(url).catch(() => {}));
 }
 
 /** 안드로이드 intent:// (카카오톡 로그인 등): 앱을 열고, 없으면 browser_fallback_url → 스토어 */

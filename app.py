@@ -65,6 +65,7 @@ with conn() as db:
     if 'use_consent' not in cols: db.execute('ALTER TABLE cases ADD COLUMN use_consent INTEGER NOT NULL DEFAULT 0')
     if 'user_id' not in cols: db.execute('ALTER TABLE cases ADD COLUMN user_id INTEGER')
     if 'rating' not in cols: db.execute('ALTER TABLE cases ADD COLUMN rating INTEGER')  # 제보자가 처리 결과를 확인하며 남긴 만족도 1~5
+    if 'rating_note' not in cols: db.execute("ALTER TABLE cases ADD COLUMN rating_note TEXT NOT NULL DEFAULT ''")  # 운영자 2026-11-13: 해결 확인 때 남긴 한마디 (헤이마오 만족도 한마디, 앱 첫 화면 소식 줄)
     if 'title_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN title_hidden INTEGER NOT NULL DEFAULT 0')
     if 'company_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN company_hidden INTEGER NOT NULL DEFAULT 0')  # 운영자가 업체명을 공개 화면에서 가림 (2026-11-10)  # 비밀글 제목·업체명을 목록에서 숨김(운영자)
     for col in ('article_url','article_title','article_sent_at'):  # 제보가 기사로 나가면 기사 주소·제목 (운영자 2026-11-10: 제보자에게 알림톡으로 기사 보내기)
@@ -2311,9 +2312,9 @@ def report_detail(case_id):
                     db.execute('UPDATE cases SET company_id=0 WHERE id=?',(case_id,));log_case(db,case_id,'기업 연결 해제')  # 0 = 운영자가 일부러 뗌 (자동 연결이 다시 붙이지 않음);flash('기업 연결을 해제했어요.')
             elif form=='answer_public':
                 mid=request.form.get('message_id',type=int);public=int(request.form.get('public')=='1')
-                msg=db.execute("SELECT id,author FROM messages WHERE id=? AND case_id=? AND author IN ('기업 답변','제보자','센터')",(mid,case_id)).fetchone()
+                msg=db.execute("SELECT id,author FROM messages WHERE id=? AND case_id=? AND author IN ('기업 답변','제보자')",(mid,case_id)).fetchone()
                 if not msg or (public and not case['public_consent']):abort(400)
-                who={'기업 답변':'기업 답변','센터':'담당자 안내 댓글'}.get(msg['author'],'제보자 추가 의견')
+                who='기업 답변' if msg['author']=='기업 답변' else '제보자 추가 의견'
                 db.execute('UPDATE messages SET public=? WHERE id=?',(public,mid));log_case(db,case_id,f'{who} 사이트 공개' if public else f'{who} 공개 취소')
             elif form=='email_answer':
                 # 가입하지 않은 기업이 이메일로 보낸 답변: 받은 글을 고치지 않고 그대로 붙여 넣어 등록
@@ -2343,9 +2344,8 @@ def report_detail(case_id):
             elif form=='message':
                 msg=request.form.get('message','').strip()
                 if not msg or len(msg)>3000:abort(400)
-                pub=int(bool(case['public_consent']) and request.form.get('as_comment')=='1')  # 운영자 2026-11-13: 담당자 안내는 공개 제보에 댓글로도 (끄면 제보자만 봄)
-                db.execute('INSERT INTO messages(case_id,author,body,created,sender,public) VALUES(?,?,?,?,?,?)',(case_id,'센터',msg,now(),staff_sender(),pub))
-                log_case(db,case_id,'제보자에게 메시지 보냄'+(' · 공개 댓글로 달림' if pub else ''));notify_later(case_id,'message')
+                db.execute('INSERT INTO messages(case_id,author,body,created,sender) VALUES(?,?,?,?,?)',(case_id,'센터',msg,now(),staff_sender()))
+                log_case(db,case_id,'제보자에게 메시지 보냄');notify_later(case_id,'message')
             elif form in DESK_FORMS:desk_handle_form(db,case,form)
             elif form in TRIAGE_FORMS:triage_handle_form(db,case,form)
             elif form in OPS_FORMS:ops_handle_form(db,case,form)

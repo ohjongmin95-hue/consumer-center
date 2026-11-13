@@ -1,6 +1,6 @@
 /* 소비자고발제보센터: 계산기·사전·법령 찾기 (운영자 2026-11-03 "토스처럼"). soboru.css를 안 쓰는 제보센터 전용, 토스 TDS 기준.
    폭·여백은 둘러보기(.xs-in)와 같게: 최대 1168, 좌우 24 (휴대폰 20). 큰 제목·부제 없음, 목록은 TDS 리스트 줄. */
-body:not(.sb){--sb-orange:#EF920E;--sb-ease:cubic-bezier(.2,.8,.2,1)}
+body:not(.sb){--sb-orange:#FE9800;--sb-ease:cubic-bezier(.2,.8,.2,1)}
 body:not(.sb) main.tl{max-width:1168px;margin:0 auto;padding:40px 24px 96px;box-sizing:border-box;color:#191f28;word-break:keep-all;letter-spacing:0}
 body:not(.sb) main.tl :is(h1,h2,b,p,small,a,dt,dd){letter-spacing:0}
 .tl .tf{font-family:'TossFace',system-ui,sans-serif}
@@ -41,13 +41,13 @@ body:not(.sb) main.tl :is(h1,h2,b,p,small,a,dt,dd){letter-spacing:0}
 .tl-in input,.tl-f input[type=date]{flex:1;min-width:0;height:56px;border:0;background:transparent;padding:0 16px;font:inherit;font-size:20px;font-weight:700;color:#191f28;text-align:right;font-variant-numeric:tabular-nums}
 .tl-f input[type=date]{width:100%;border-radius:16px;box-shadow:inset 0 0 0 1px #d1d6db;text-align:left;box-sizing:border-box;font-size:17px}
 .tl-in span{flex:none;color:#6b7684;font-size:17px;font-weight:600}
-.tl-in:focus-within,.tl-f input[type=date]:focus{outline:0;box-shadow:inset 0 0 0 2px #EF920E}
+.tl-in:focus-within,.tl-f input[type=date]:focus{outline:0;box-shadow:inset 0 0 0 2px #FE9800}
 .tl-in input:focus{outline:0}
 .tl-pick{display:flex;flex-direction:column;gap:8px}
 .tl-pick label{position:relative;cursor:pointer}
 .tl-pick input{position:absolute;opacity:0}
 .tl-pick span{display:block;padding:15px 16px;border-radius:16px;box-shadow:inset 0 0 0 1px #e5e8eb;font-size:16px;line-height:22px;font-weight:600;color:#333d4b}
-.tl-pick input:checked+span{background:#fff7ef;color:#CE6719;box-shadow:inset 0 0 0 2px #EF920E}
+.tl-pick input:checked+span{background:#fff7ef;color:#CE6719;box-shadow:inset 0 0 0 2px #FE9800}
 .tl-pick input:focus-visible+span{outline:2px solid #191f28}
 .tl-out{position:sticky;top:96px;padding:28px;border-radius:24px;background:#fff7ef;min-height:180px}
 .tc-wait{margin:0;font-size:15px;color:#6b7684}
@@ -69,9 +69,9 @@ body:not(.sb) main.tl :is(h1,h2,b,p,small,a,dt,dd){letter-spacing:0}
 .tl-dict,.tl-law{max-width:none}
 .tl-search{display:flex;gap:8px}
 .tl-search input,.tl-search select{flex:1;min-width:0;height:56px;padding:0 16px;border:0;border-radius:16px;box-shadow:inset 0 0 0 1px #d1d6db;background:#fff;font:inherit;font-size:17px;color:#191f28}
-.tl-search input:focus,.tl-search select:focus{outline:0;box-shadow:inset 0 0 0 2px #EF920E}
+.tl-search input:focus,.tl-search select:focus{outline:0;box-shadow:inset 0 0 0 2px #FE9800}
 .tl-search select{flex:none;width:auto;max-width:220px}
-.tl-search button{flex:none;height:56px;padding:0 24px;border:0;border-radius:16px;background:#EF920E;color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer}
+.tl-search button{flex:none;height:56px;padding:0 24px;border:0;border-radius:16px;background:#FE9800;color:#fff;font:inherit;font-weight:700;font-size:17px;cursor:pointer}
 .tl-samples{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
 .tl-samples a{font-size:15px;color:#CE6719;background:#fff7ef;border-radius:999px;padding:8px 14px;text-decoration:none;font-weight:600}
 .tl .cm-rcs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:20px 0 0}
@@ -96,7 +96,7 @@ body:not(.sb) main.tl :is(h1,h2,b,p,small,a,dt,dd){letter-spacing:0}
 .tl-law-more{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:20px}
 .tl .cm-empty{padding:56px 0;text-align:center;color:#6b7684;font-size:16px}
 .tl .cm-empty p{margin:0 0 16px}
-.tl .cm-btn{display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 20px;border-radius:14px;background:#EF920E;color:#fff;font-weight:700;text-decoration:none}
+.tl .cm-btn{display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 20px;border-radius:14px;background:#FE9800;color:#fff;font-weight:700;text-decoration:none}
 @media(max-width:860px){
   body:not(.sb) main.tl{padding:24px 20px 72px}
   .tl-grid,.tl-words{grid-template-columns:minmax(0,1fr)}

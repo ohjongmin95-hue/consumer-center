@@ -41,13 +41,8 @@ def install(S):
             mine = {r['kind'] for r in db.execute('SELECT kind FROM board_votes WHERE target=? AND voter=?', ('case:%d' % case_id, voter))}
             rows = db.execute('SELECT * FROM case_comments WHERE case_id=? AND hidden=0 ORDER BY id', (case_id,)).fetchall()
             pros = experts.labels(db, [r['user_id'] for r in rows])  # 승인된 전문가 (experts.py)
-            staff = db.execute("SELECT id,body,created,sender FROM messages WHERE case_id=? AND author='센터' AND public=1 ORDER BY id", (case_id,)).fetchall()
         comments = [dict(id=r['id'], nickname=r['nickname'], body=S.mask_personal(r['body']), created=r['created'], by_reporter=bool(r['by_reporter']),
                          own=bool(g.get('user') and r['user_id'] == g.user['id']), member=bool(r['user_id']), expert=(pros.get(r['user_id']) or {}).get('field', ''), expert_photo=(pros.get(r['user_id']) or {}).get('photo', ''), expert_label=(pros.get(r['user_id']) or {}).get('label', '전문가')) for r in rows]
-        # 운영자 2026-11-13: 담당자가 제보자에게 보낸 안내도 댓글로 (관리자 '공개 제보에 담당자 댓글로도 달기')
-        comments += [dict(id='s%d' % r['id'], nickname=S.txt('site.name'), sender=r['sender'] or '', body=S.mask_personal(r['body']), created=r['created'], staff=True,
-                          by_reporter=False, own=False, member=False, expert='', expert_photo='', expert_label='') for r in staff]
-        comments.sort(key=lambda c: c['created'] or '')
         return {'counts': counts, 'mine': mine, 'comments': comments, 'kinds': KINDS, 'reporter': session.get('case_id') == case_id}
 
     def talk_counts(ids):
@@ -57,8 +52,7 @@ def install(S):
         with conn() as db:
             me = {int(r[0][5:]): r[1] for r in db.execute(f"SELECT target,COUNT(*) FROM board_votes WHERE kind='metoo' AND target IN ({q}) GROUP BY target", ['case:%d' % i for i in ids])}
             cm = {r[0]: r[1] for r in db.execute(f'SELECT case_id,COUNT(*) FROM case_comments WHERE hidden=0 AND case_id IN ({q}) GROUP BY case_id', list(ids))}
-            st = {r[0]: r[1] for r in db.execute(f"SELECT case_id,COUNT(*) FROM messages WHERE author='센터' AND public=1 AND case_id IN ({q}) GROUP BY case_id", list(ids))}
-        return {i: (me.get(i, 0), cm.get(i, 0) + st.get(i, 0)) for i in ids}
+        return {i: (me.get(i, 0), cm.get(i, 0)) for i in ids}
 
     @app.route('/reports/<int:case_id>/react', methods=['POST'])
     def case_react(case_id):

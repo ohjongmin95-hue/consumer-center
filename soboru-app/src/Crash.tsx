@@ -64,6 +64,6 @@ const s = StyleSheet.create({
   body: { fontSize: 15, color: '#6B625B', marginBottom: 16 },
   box: { flex: 1, backgroundColor: '#F6F3F0', borderRadius: 12, padding: 12, marginBottom: 16 },
   code: { fontSize: 12, color: '#3A332E', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  btn: { backgroundColor: '#EF920E', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 24 },
+  btn: { backgroundColor: '#FE9800', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 24 },
   btnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

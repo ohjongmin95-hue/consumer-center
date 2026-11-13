@@ -17,16 +17,16 @@
     <div class="talk-ev"><span><b>{{ r.e[0] }}</b>{% if r.e[1] %}<time datetime="{{ r.e[1] }}">{{ r.e[1][5:16]|replace('T', ' ')|replace('-', '.') }}</time>{% endif %}</span>{% if r.e[2] %}<small>{{ r.e[2] }}</small>{% endif %}</div>
   {% else %}{% set c = r.c %}
     <div class="talk-c{% if c.expert %} is-expert{% endif %}" id="k{{ c.id }}">
-      {% if c.staff %}<img class="talk-av talk-av-img" src="{{ url_for('static', filename='img/jebo-app-icon-96.png') }}" alt="" width="36" height="36">{% elif c.expert_photo %}<img class="talk-av talk-av-img" src="{{ c.expert_photo }}" alt="" width="36" height="36">{% elif soboru_av is defined %}<img class="talk-av talk-av-img" src="{{ soboru_av(c.nickname) }}" alt="" width="36" height="36">{% else %}<div class="talk-av" aria-hidden="true">{{ c.nickname[:1] }}</div>{% endif %}
+      {% if c.expert_photo %}<img class="talk-av talk-av-img" src="{{ c.expert_photo }}" alt="" width="36" height="36">{% elif soboru_av is defined %}<img class="talk-av talk-av-img" src="{{ soboru_av(c.nickname) }}" alt="" width="36" height="36">{% else %}<div class="talk-av" aria-hidden="true">{{ c.nickname[:1] }}</div>{% endif %}
       <div class="talk-main">
-        <p class="talk-head"><b>{{ c.nickname }}</b>{% if c.staff %}<span class="talk-tag t-expert">{{ (c.sender ~ ' ') if c.sender }}{{ ui('case.staff_tag', '담당자') }}</span>{% elif c.expert %}<span class="talk-tag t-expert">{{ c.expert_label }} · {{ c.expert }}</span>{% elif c.by_reporter %}<span class="talk-tag t-rep">{{ ui('case.by_reporter', '제보자') }}</span>{% elif c.member %}<span class="talk-tag">{{ ui('board.member_badge', '회원') }}</span>{% endif %}<time datetime="{{ c.created }}">{{ c.created|ago }}</time></p>
+        <p class="talk-head"><b>{{ c.nickname }}</b>{% if c.expert %}<span class="talk-tag t-expert">{{ c.expert_label }} · {{ c.expert }}</span>{% elif c.by_reporter %}<span class="talk-tag t-rep">{{ ui('case.by_reporter', '제보자') }}</span>{% elif c.member %}<span class="talk-tag">{{ ui('board.member_badge', '회원') }}</span>{% endif %}<time datetime="{{ c.created }}">{{ c.created|ago }}</time></p>
         <p class="talk-body">{{ c.body }}</p>
-        {% if not c.staff %}<div class="talk-tools">
+        <div class="talk-tools">
           <form method="post" action="{{ url_for('case_comment_flag', comment_id=c.id) }}" onsubmit="return confirm({{ ui_text('board.flag_c_confirm', '이 댓글이 부적절하다고 알릴까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.flag_comment', '알리기') }}</button></form>
           {% if c.own %}<form method="post" action="{{ url_for('case_comment_delete', comment_id=c.id) }}" onsubmit="return confirm({{ ui_text('board.delete_c_confirm', '이 댓글을 지울까요?')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="text-btn" type="submit">{{ ui('board.delete', '삭제') }}</button></form>
           {% elif not c.member %}<details class="delete-box"><summary class="text-btn">{{ ui('board.delete', '삭제') }}</summary><form method="post" action="{{ url_for('case_comment_delete', comment_id=c.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="password" name="password" placeholder="{{ ui('board.comment_pw', '댓글 비밀번호') }}" required aria-label="{{ ui('board.comment_pw', '댓글 비밀번호') }}"><button class="secondary" type="submit">{{ ui('board.delete', '삭제') }}</button></form></details>{% endif %}
           {{ admin_delete('k', c.id) }}
-        </div>{% endif %}
+        </div>
       </div>
     </div>
   {% endif %}{% endfor %}

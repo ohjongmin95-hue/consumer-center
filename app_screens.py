@@ -75,7 +75,8 @@ def soboru_news():
     """앱 홈 '소보루 기사' (운영자 2026-11-13). 화면을 기다리게 하지 않게 뒤에서 새로 가져오고, 그동안은 가져온 목록을 씀"""
     if time.time() - _news['at'] > NEWS_TTL and not _news['busy']:
         _news['busy'] = True
-        threading.Thread(target=refresh_news, daemon=True).start()
+        th = threading.Thread(target=refresh_news, daemon=True); th.start()
+        if not _news['items']: th.join(4)  # 서버를 막 켰을 때 첫 화면부터 기사가 보이게 (최대 4초)
     return _news['items']
 
 
@@ -94,9 +95,9 @@ def install(S):
     app.jinja_env.globals['app_jebo'] = in_app
 
     def soboru_av(seed):
-        # 운영자 2026-11-13: 프로필 사진이 없으면 소보루 5가지(기본·초코·녹차·딸기·치즈) 중 하나. 같은 사람은 늘 같은 얼굴
+        # 운영자 2026-11-13: 프로필 사진이 없으면 토스처럼 단순한 새 5가지 중 하나 (고발 = 알리는 역할). 같은 사람은 늘 같은 새
         n = seed if isinstance(seed, int) else sum(ord(ch) * (i + 1) for i, ch in enumerate(str(seed or '')))
-        return url_for('static', filename='img/av/soboru-%d.svg' % (n % 5 + 1))
+        return url_for('static', filename='img/av/bird-%d.svg' % (n % 5 + 1))
     app.jinja_env.globals['soboru_av'] = soboru_av
     app.jinja_env.globals['app_wants'] = lambda text: [w for w in WANTS if w in (text or '')]
 
@@ -107,11 +108,16 @@ def install(S):
         for r in db.execute("""SELECT c.id,c.company,c.company_hidden,c.company_id,MAX(m.created) AS at FROM messages m JOIN cases c ON c.id=m.case_id
                 WHERE m.author='기업 답변' AND m.public=1 AND c.public_consent=1 AND c.published=1 GROUP BY c.id ORDER BY at DESC LIMIT 6"""):
             co = S.pub_company(r); out.append((r['at'], co[:1], f"{co}이(가) 고발에 답했어요", r['id'], 'ans'))
-        for r in db.execute("""SELECT c.id,c.company,c.company_hidden,c.confirmed_at AS at,u.nickname FROM cases c LEFT JOIN users u ON u.id=c.user_id AND u.status='active'
+        for r in db.execute("""SELECT c.id,c.company,c.company_hidden,c.confirmed_at AS at,c.rating_note,u.nickname FROM cases c LEFT JOIN users u ON u.id=c.user_id AND u.status='active'
                 WHERE c.outcome='resolved' AND c.public_consent=1 AND c.published=1
                 AND COALESCE(c.confirmed_at,'')<>'' ORDER BY c.confirmed_at DESC LIMIT 6"""):
             nick = r['nickname'] or '소비자'
-            out.append((r['at'], nick[:1], f"{S.pub_company(r)} 고발 해결됐어요, 고마워요!", r['id'], 'done'))
+            note = S.mask_personal(r['rating_note'] or '')  # 운영자 2026-11-13: 해결한 사람이 남긴 한마디 (헤이마오 만족도 한마디)
+            out.append((r['at'], nick[:1], note or f"{S.pub_company(r)} 고발 해결됐어요, 고마워요!", r['id'], 'done'))
+        if len(out) < 3:  # 운영자 2026-11-13: 소식 줄은 늘 움직이게. 답변·해결 소식이 적으면 새로 올라온 고발로 채움
+            for r in db.execute("SELECT c.id,c.company,c.company_hidden,c.created AS at FROM cases c "
+                                "WHERE c.public_consent=1 AND c.published=1 ORDER BY c.id DESC LIMIT 6"):
+                out.append((r['at'], '', f"{S.pub_company(r)} 고발이 올라왔어요", r['id'], 'new'))
         out.sort(key=lambda x: x[0] or '', reverse=True)
         return out[:6]
 
@@ -163,7 +169,7 @@ def install(S):
         tab = request.args.get('t', 'hot')
         if tab not in TABS: tab = 'hot'
         with S.conn() as db:
-            data = dict(tick=ticker(db), guides=guides(db), groups=open_groups(db), news=soboru_news()[:5], news_home=NEWS_HOME)
+            data = dict(tick=ticker(db), guides=guides(db, 5), groups=open_groups(db), news=soboru_news()[:5], news_home=NEWS_HOME)
         return render_template('app_home.html', summary=S.report_summary(), tab=tab, tabs=TABS, cases=home_list(tab), **data)
 
     # ── 기업 순위 ────────────────────────────────────────
@@ -214,8 +220,12 @@ def install(S):
             g5 = guides(db, 5)
             try: hows = db.execute("SELECT id,emoji,title,topic FROM howto_guides WHERE status='published' ORDER BY sort,id LIMIT 8").fetchall()
             except Exception: hows = []
+            try: scams = db.execute("SELECT id,kind,title,region,created FROM scam_reports WHERE status='public' ORDER BY id DESC LIMIT 8").fetchall()
+            except Exception: scams = []
+            try: g10 = guides(db, 10)
+            except Exception: g10 = []
         hot = S.report_rows("public_consent=1 AND published=1 AND title_hidden=0 AND " + S.PUBLIC_VALID, (), 6, 0, S.HOT_ORDER)
-        return render_template('app_explore.html', guides=g5, news=soboru_news(), news_home=NEWS_HOME, hows=hows, cases=hot)
+        return render_template('app_explore.html', guides=g5, guides_all=g10, scams=scams, news=soboru_news(), news_home=NEWS_HOME, hows=hows, cases=hot)
 
     # ── 공동 대응 ────────────────────────────────────────
     def app_groups():
