@@ -2105,6 +2105,15 @@ def log_case(db,case_id,action):
     db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,actor_name(),action,now()))
 def strong_password(pw):return 8<=len(pw)<=64 and re.search(r'[A-Za-z]',pw) and re.search(r'\d',pw)
 
+def set_review(db,case,review,note=''):
+    """검토 결과 저장 (제보 화면 한 건·목록 일괄 처리 같이 씀). 사유는 중복·제외일 때만 받음 (관리자 내부 기록용). 정상·미검토로 바꿔도 예전 사유는 지우지 않음"""
+    case_id=case['id']
+    if review in jebo.NOT_VALID:db.execute('UPDATE cases SET review=?,review_note=? WHERE id=?',(review,(note or '').strip()[:500],case_id))
+    else:db.execute('UPDATE cases SET review=? WHERE id=?',(review,case_id))
+    if review in jebo.NOT_VALID and case['published']:db.execute('UPDATE cases SET published=0 WHERE id=?',(case_id,));log_case(db,case_id,'비공개로 전환')
+    if review!=case['review']:log_case(db,case_id,f"검토 결과: {jebo.REVIEWS[case['review']]} → {jebo.REVIEWS[review]}")
+BULK_ACTS={'ok':'정상으로 승인','forward':'기업에 전달','duplicate':'중복으로 처리','rejected':'제외로 처리'}
+
 def reports_list():
     ep=AREAS[g.area]
     status=request.args.get('status','');q=request.args.get('q','').strip()[:60];mine=request.args.get('mine')=='1' and g.area=='reporter'
@@ -2202,11 +2211,7 @@ def report_detail(case_id):
             elif form=='review':
                 review=request.form.get('review','')
                 if review not in jebo.REVIEWS:abort(400)
-                # 사유는 중복·제외일 때만 받음 (관리자 내부 기록용). 정상·미검토로 바꿔도 예전 사유는 지우지 않음
-                if review in jebo.NOT_VALID:db.execute('UPDATE cases SET review=?,review_note=? WHERE id=?',(review,request.form.get('review_note','').strip()[:500],case_id))
-                else:db.execute('UPDATE cases SET review=? WHERE id=?',(review,case_id))
-                if review in jebo.NOT_VALID and case['published']:db.execute('UPDATE cases SET published=0 WHERE id=?',(case_id,));log_case(db,case_id,'비공개로 전환')
-                if review!=case['review']:log_case(db,case_id,f"검토 결과: {jebo.REVIEWS[case['review']]} → {jebo.REVIEWS[review]}")
+                set_review(db,case,review,request.form.get('review_note',''))
                 flash(f"검토 결과를 '{jebo.REVIEWS[review]}'(으)로 저장했어요."+(' 공개 목록에서 빠져요.' if review in jebo.NOT_VALID else ''))
                 if review=='ok':(lambda m:m and flash(m))(ops_auto_forward(db,case_id))  # 승인하면 기업에 자동 전달 (운영자 결정 2026-10-21)
             elif form=='company_new':
@@ -2399,6 +2404,36 @@ def admin_publish_pending():
             db.execute('UPDATE cases SET published=1 WHERE id=?',(i,));log_case(db,i,'게시 (예전 승인 대기 공개 제보 한 번에 게시)');art_later(i)
     flash(f'승인을 기다리던 공개 제보 {len(ids)}건을 게시했어요.')
     return redirect(url_for('admin_reports'))
+@app.route('/admin/reports/bulk',methods=['POST'])
+@admin_area
+def admin_reports_bulk():
+    """목록에서 여러 제보를 골라 한 번에 검토·기업 전달 (운영자 요청 2026-11-13: 하나하나 들어가지 않게).
+    정상 승인은 제보 화면과 똑같이 기업 자동 전달까지 하고, '기업에 전달'은 이미 정상인 제보 중 아직 안 보낸 것만 보냄."""
+    act=request.form.get('act','');ids=list(dict.fromkeys(request.form.getlist('id',type=int)))[:100]
+    back=request.form.get('next','')
+    back=back if back.startswith('/admin/reports') and '//' not in back else url_for('admin_reports')
+    if act not in BULK_ACTS:abort(400)
+    if not ids:flash('제보를 먼저 골라 주세요.');return redirect(back)
+    done=sent=0;skipped=[]
+    with conn() as db:
+        for cid in ids:
+            case=db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
+            if not case:continue
+            if act in ('ok','duplicate','rejected'):
+                set_review(db,case,act,'목록에서 일괄 처리' if act!='ok' else '');done+=1
+                if act!='ok':continue
+            elif case['review']!='ok':skipped.append(case['receipt']);continue
+            if act=='forward' or act=='ok':
+                before=db.execute('SELECT forwarded_at FROM cases WHERE id=?',(cid,)).fetchone()['forwarded_at']
+                msg=ops_auto_forward(db,cid)
+                if msg and not msg.startswith('기업 자동 전달은 못') and not msg.startswith('기업 안내 메일을 보내지 못'):sent+=1
+                elif msg:skipped.append(case['receipt'])
+                elif act=='forward' and not before:skipped.append(case['receipt'])
+    parts=[]
+    if act!='forward':parts.append(f"{done}건을 '{jebo.REVIEWS[act]}'(으)로 바꿨어요."+(' 공개 목록에서 빠져요.' if act in jebo.NOT_VALID else ''))
+    if act in ('ok','forward'):parts.append(f'기업에 {sent}건 보냈어요.')
+    if skipped:parts.append(f"못 보낸 {len(skipped)}건은 제보를 열어 확인해 주세요 ({', '.join(skipped[:5])}{' 외' if len(skipped)>5 else ''}).")
+    flash(' '.join(parts));return redirect(back)
 @app.route('/admin/reports/<int:case_id>',methods=['GET','POST'])
 @admin_area
 def admin_report(case_id):return report_detail(case_id)

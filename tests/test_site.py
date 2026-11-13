@@ -3932,6 +3932,43 @@ class SiteTest(unittest.TestCase):
         reporter.post('/case/nudge', data={'_csrf': self.csrf(reporter, '/case')})
         self.assertFalse([m for m in mails if m[0] == 'cs@nudge-shop.example'])
 
+    def test_admin_bulk_review_and_forward(self):
+        """목록에서 여러 제보를 골라 한 번에 정상 승인(기업 자동 전달)·중복 처리·기업 전달 (운영자 요청 2026-11-13)"""
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        mails = []
+        env = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'ops@example.com'}
+        patcher = patch.dict(os.environ, env); patcher.start(); self.addCleanup(patcher.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/companies', {'action': 'create', 'name': '일괄상점', 'official_email': 'cs@bulk-shop.example'})
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '일괄상점', 'description': '환불이 안 돼요',
+                'reporter_name': '김소비', 'phone': '010-7777-5656', 'contact': 'bulk@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'use_consent': 'on', 'truth': 'on', 'visibility': 'public', 'share_company': 'on'}
+        for i in range(3):
+            self.post_form(self.client, '/report', dict(base, subject='일괄상점 환불 %d' % i, phone='010-7777-56%02d' % i))
+        with self.site.conn() as db:
+            a, b, c = [r['id'] for r in db.execute("SELECT id FROM cases WHERE company='일괄상점' ORDER BY id")]
+        page = admin.get('/admin/reports').get_data(as_text=True)
+        self.assertIn('id="bulk"', page); self.assertIn('name="id" value="%d" form="bulk"' % a, page)
+        token = self.csrf(admin, '/admin/reports')
+        mails.clear()
+        r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'ok', 'id': [str(a), str(b)], 'next': '/admin/reports?review=new'})
+        self.assertEqual(r.status_code, 302); self.assertTrue(r.location.endswith('/admin/reports?review=new'))
+        self.assertEqual(len([m for m in mails if m[0] == 'cs@bulk-shop.example']), 2)
+        r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'duplicate', 'id': [str(c)], 'next': 'https://evil.example/'})
+        self.assertTrue(r.location.endswith('/admin/reports'))  # 다른 사이트로는 안 돌아감
+        with self.site.conn() as db:
+            rows = {r['id']: r for r in db.execute('SELECT id,review,forwarded_at,published FROM cases WHERE id IN (?,?,?)', (a, b, c))}
+        self.assertEqual((rows[a]['review'], rows[b]['review'], rows[c]['review']), ('ok', 'ok', 'duplicate'))
+        self.assertTrue(rows[a]['forwarded_at'] and rows[b]['forwarded_at']); self.assertFalse(rows[c]['forwarded_at']); self.assertEqual(rows[c]['published'], 0)
+        # 기업에 전달: 정상이 아닌 제보는 건너뜀
+        mails.clear()
+        r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'forward', 'id': [str(c)]}, follow_redirects=True)
+        self.assertIn('못 보낸 1건', r.get_data(as_text=True)); self.assertFalse(mails)
+        self.assertEqual(admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'nope', 'id': [str(a)]}).status_code, 400)
+
     def test_auto_forward_finds_company_email(self):
         """등록 안 된 기업도 승인하면 이름으로 연결하고, 공정위 통신판매 신고 정보에서 메일을 찾아 자동으로 보냄 (운영자 요청 2026-10-29)"""
         import company_mail, tempfile
