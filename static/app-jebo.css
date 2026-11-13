@@ -402,3 +402,16 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-chip{display:inline-block;padding:3px 10px;border-radius:12px;background:#FFF3E0;color:#F57800;font-size:13px;line-height:19.5px;font-weight:600}
 .ap-hm .ap-hc{margin-top:2px;font-size:13px}
 .ap-who small{font-size:12px;line-height:18px}
+/* 운영자 2026-11-14 'TDS에 맞게': TDS 값만 씀. 줄 간격 L16, 아이콘·글자 간격 12, Badge(작게) 3×7 r11 12/18, 글자 색 Grey900/800/500 */
+.ap-hm{padding:16px 0;gap:10px}
+.ap-hm .ap-who{gap:12px}
+.ap-hm .ap-who b{font-size:15px;line-height:22.5px;font-weight:600;color:#333D4B}
+.ap-hm .ap-who small{font-size:12px;line-height:18px;color:#8B95A1}
+.ap-hm .ap-hb{padding-left:48px;gap:8px}
+.ap-hm .ap-hd{gap:4px}
+.ap-hm .ap-hd div{font-size:14px;line-height:21px}
+.ap-hm .ap-hd dd{color:#333D4B}
+.ap-hm .ap-hd dd.co{color:#191F28;font-weight:600}
+.ap-chip{padding:3px 7px;border-radius:11px;font-size:12px;line-height:18px;font-weight:600;background:#FFF3E0;color:#F57800}
+.ap-hm .ap-st{padding:3px 7px;border-radius:11px;font-size:12px;line-height:18px;font-weight:600}
+.ap-hm .ap-hc{gap:16px;font-size:13px;line-height:19.5px;color:#8B95A1}
