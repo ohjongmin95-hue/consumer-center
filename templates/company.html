@@ -65,4 +65,17 @@
   </form>
   <script>(function(){var t=document.getElementById('cr-resp'),n=document.getElementById('cr-n'),f=document.getElementById('cr-form');t.addEventListener('input',function(){n.textContent=t.value.length.toLocaleString()});f.addEventListener('submit',function(){f.querySelector('.cr-cta').disabled=true})})();</script>
   {% endif %}
+
+  {# 기업 회원 가입 안내 (운영자 2026-11-13): 답변하면서 앞으로 가입하게. 새 제보 알림 → 바로 대응 #}
+  {% if biz_on() %}<section class="cr-card cr-join">
+    <p class="cr-join-tag">{{ ui('company.join_tag', '기업 회원 · 무료') }}</p>
+    <h2 class="cr-join-title">{{ ui('company.join_title', '다음 제보부터는 바로 알려 드릴게요') }}</h2>
+    <ul class="cr-join-list">
+      <li><span class="cr-join-ic" aria-hidden="true">🔔</span><div><b>{{ ui('company.join_b1', '새 제보가 오면 바로 알림') }}</b><p>{{ ui('company.join_d1', '메일과 카카오톡으로 알려 드려요. 링크를 기다리지 않고 즉시 대응할 수 있어요.') }}</p></div></li>
+      <li><span class="cr-join-ic" aria-hidden="true">📋</span><div><b>{{ ui('company.join_b2', '우리 회사 제보를 한 화면에서') }}</b><p>{{ ui('company.join_d2', '받은 제보와 보낸 답변을 모아 보고, 처리 상황을 한눈에 챙길 수 있어요.') }}</p></div></li>
+      <li><span class="cr-join-ic" aria-hidden="true">💬</span><div><b>{{ ui('company.join_b3', '공식 입장을 먼저 알릴 수 있어요') }}</b><p>{{ ui('company.join_d3', '기업 페이지에 공식 입장을 올리면 소비자가 제보와 함께 봐요.') }}</p></div></li>
+    </ul>
+    <a class="cr-cta cr-join-go" href="{{ join_url }}">{{ ui('company.join_cta', '무료로 기업 회원 가입하기') }}</a>
+    <p class="cr-hint">{{ ui('company.join_note', '이메일이나 연락처만 넣으면 바로 가입돼요.') }}</p>
+  </section>{% endif %}
 </div></main>{% endblock %}

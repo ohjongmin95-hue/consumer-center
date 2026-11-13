@@ -118,9 +118,9 @@
   {% endif %}
   {% if pages > 1 %}
   <nav class="pager" aria-label="페이지">
-    {% if page > 1 %}<a href="{{ qs(page=page - 1) }}">← 이전</a>{% endif %}
+    {% if page > 2 %}<a href="{{ qs(page=1) }}">{{ ui('pager.first', '« 처음') }}</a>{% endif %}{% if page > 1 %}<a href="{{ qs(page=page - 1) }}">← 이전</a>{% endif %}
     <span>{{ page }} / {{ pages }}</span>
-    {% if page < pages %}<a href="{{ qs(page=page + 1) }}">다음 →</a>{% endif %}
+    {% if page < pages %}<a href="{{ qs(page=page + 1) }}">다음 →</a>{% endif %}{% if page < pages - 1 %}<a href="{{ qs(page=pages) }}">{{ ui('pager.last', '끝 »') }}</a>{% endif %}
   </nav>
   {% endif %}
   {% endif %}

@@ -16,7 +16,7 @@
   {% elif blk == 'list' %}
   {% if rows %}
   <div class="sb-grid">{% for a in rows %}<a href="{{ url_for('life_article', article_id=a['id']) }}">{{ thumb(a, 'wide') }}<h3>{{ a['title'] }}</h3>{{ meta(a) }}</a>{% endfor %}</div>
-  {% if pages > 1 %}<nav class="sb-pager" aria-label="쪽">{% if page > 1 %}<a href="{{ url_for('life', category=cat or None, page=page - 1) }}">{{ ui('life.prev', '‹ 이전') }}</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a href="{{ url_for('life', category=cat or None, page=page + 1) }}">{{ ui('life.next', '다음 ›') }}</a>{% endif %}</nav>{% endif %}
+  {% if pages > 1 %}<nav class="sb-pager" aria-label="쪽">{% if page > 2 %}<a href="{{ url_for('life', category=cat or None, page=1) }}">{{ ui('pager.first', '« 처음') }}</a>{% endif %}{% if page > 1 %}<a href="{{ url_for('life', category=cat or None, page=page - 1) }}">{{ ui('life.prev', '‹ 이전') }}</a>{% endif %}<span>{{ page }} / {{ pages }}</span>{% if page < pages %}<a href="{{ url_for('life', category=cat or None, page=page + 1) }}">{{ ui('life.next', '다음 ›') }}</a>{% endif %}{% if page < pages - 1 %}<a href="{{ url_for('life', category=cat or None, page=pages) }}">{{ ui('pager.last', '끝 »') }}</a>{% endif %}</nav>{% endif %}
   {% else %}<p class="sb-empty">{{ ui('life.empty', '아직 올라온 글이 없어요. 곧 채워 둘게요.') }}</p>{% endif %}
   {% elif blk == 'news' %}
   {% if not cat and page == 1 %}{% set news = naver_news() %}{% if news %}

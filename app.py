@@ -251,8 +251,8 @@ app.jinja_env.globals['GROUP_STATUSES']=None  # 아래 공동 대응 부분에�
 # 공동 대응(집단 피해 모집)은 기본으로 꺼 둠. 다시 켜려면 서버 설정에 ENABLE_GROUPS=1
 GROUPS_ON=os.getenv('ENABLE_GROUPS')=='1'
 app.jinja_env.globals['groups_on']=lambda:GROUPS_ON
-# 기업 회원(업체 가입·로그인)도 기본으로 꺼 둠. 업체 답변은 센터가 보내는 답변 링크(/company/...)로 받음. 다시 켜려면 ENABLE_BIZ_MEMBERS=1
-BIZ_ON=os.getenv('ENABLE_BIZ_MEMBERS')=='1'
+# 기업 회원(업체 가입·로그인). 운영자 2026-11-13: 답변 링크에서 가입하게 기본으로 켬. 끄려면 ENABLE_BIZ_MEMBERS=0
+BIZ_ON=os.getenv('ENABLE_BIZ_MEMBERS','1')!='0'
 app.jinja_env.globals['biz_on']=lambda:BIZ_ON
 # 대표 주소. soboru.co.kr로 옮길 때 서버 설정에 CANONICAL_HOST=soboru.co.kr (deploy/soboru-main.sh --make-main)
 CANONICAL_HOST=(os.getenv('CANONICAL_HOST') or 'consumerjebo.co.kr').strip().lower()
@@ -805,8 +805,10 @@ def file_ok(suffix,head):
 def report_form(status=200):
     return render_template('report.html',scan_on=bool(companydesk.ai_key_for('report_talk')),categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,max_total=MAX_UPLOAD_TOTAL,today=datetime.date.today().isoformat()),status
 def report_login_needed():
-    """운영자 2026-11-04: 로그인 없이도 제보 (11-03 로그인 의무화 뒤 제보가 끊겨 되돌림). REPORT_LOGIN=1이면 다시 로그인해야 제보."""
-    return os.getenv('REPORT_LOGIN','0')=='1' and not g.get('user')
+    """운영자 2026-11-04: 로그인 없이도 제보 (11-03 로그인 의무화 뒤 제보가 끊겨 되돌림). REPORT_LOGIN=1이면 다시 로그인해야 제보. 앱에서는 늘 로그인."""
+    if g.get('user'):return False
+    # 운영자 2026-11-13: 앱(소보루고발)에서는 고발할 때 카카오·네이버·아이디로 로그인 (웹은 그대로 로그인 없이)
+    return os.getenv('REPORT_LOGIN','0')=='1' or 'SoboruApp/' in request.headers.get('User-Agent','')
 app.jinja_env.globals['report_login_needed']=report_login_needed
 @app.route('/report',methods=['GET','POST'])
 def report():
@@ -901,6 +903,7 @@ def link_all_cases():
         with conn() as db:
             for r in db.execute("SELECT id,company FROM cases WHERE company_id IS NULL AND company!='' ORDER BY id").fetchall():link_company(db,r['id'],r['company'])
     except Exception as e:print('제보 기업 연결을 못 했어요:',e)
+STATUS_ALERT=('기업 답변 도착','종결')
 def notify_later(case_id,event):
     # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 새 제보면 운영자에게도. 설정이 없으면 아무것도 안 함.
     link=url_for('lookup',_external=True)
@@ -910,6 +913,8 @@ def notify_later(case_id,event):
     seen.add((case_id,event))
     def send(resp):
         with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+        # 운영자 2026-11-13: 단계 알림은 '기업 답변 도착'·'종결'만 (검토 중·기업 답변 대기 같은 중간 단계는 알리지 않음)
+        if case and event=='status' and case['status'] not in STATUS_ALERT:return resp
         if case:notify.dispatch(conn,case,event,link,admin_link);case_alert(case,event)  # 회원 제보면 알림함·푸시에도
         return resp
     after_this_request(send)
@@ -1259,7 +1264,7 @@ def company_access(case_id,token):
         objections=ops_company_requests(db,case_id)
         ai=company_ai_summary(db,case)
     # 업체에는 제보자의 연락처, 첨부파일, 내부 메모를 공개하지 않음.
-    return render_template('company.html',ai=ai,case=case,responses=responses,objections=objections,token=token,used=invite['used_at'],just_sent=request.args.get('sent')=='1',can_more=len(responses)<COMPANY_LINK_MAX,company_name=invite['company_name'] or case['company'])
+    return render_template('company.html',ai=ai,case=case,responses=responses,objections=objections,token=token,used=invite['used_at'],just_sent=request.args.get('sent')=='1',can_more=len(responses)<COMPANY_LINK_MAX,company_name=invite['company_name'] or case['company'],join_url=url_for('biz_signup',case=case_id,t=token))
 
 @app.route('/case/logout',methods=['POST'])
 def case_logout():
@@ -2147,23 +2152,27 @@ def set_review(db,case,review,note=''):
 WAIT_STATUS='기업 답변 대기'
 def set_status(db,case,status):
     """진행 단계 바꾸기 (제보 화면 저장·목록 일괄 처리·줄마다 고르기). 제보자 화면 단계가 바뀔 때만 알림. 관리자에게 보일 문구를 돌려줌.
-    운영자 2026-11-13: '기업 전달'로 바꾸면 그대로 기업에 자동으로 보냄 (검토 결과를 따로 고르지 않음). 못 보내면 단계는 그대로 두고 이유를 알려 줌"""
+    운영자 2026-11-13: '기업 전달'로 바꾸면 그대로 기업에 자동으로 보냄 (검토 결과를 따로 고르지 않음).
+    못 보내도 단계는 바꿈 (기자가 직접 취재·연락하는 경우). 못 보낸 이유를 알려 주고, 연락처를 넣으면 그때 자동으로 보냄"""
     if status==case['status']:return ''
-    if status==WAIT_STATUS and not case['forwarded_at'] and case['share_company'] and case['company_id']!=0:
-        if case['review'] in jebo.NOT_VALID:return '중복·제외로 처리한 제보라 기업에 보내지 않았어요.'
+    fail=''
+    if status==WAIT_STATUS and not case['forwarded_at'] and case['share_company'] and case['company_id']!=0 and case['review'] in jebo.NOT_VALID:
+        fail='중복·제외로 처리한 제보라 기업에 자동으로 보내지 않았어요.'
+    elif status==WAIT_STATUS and not case['forwarded_at'] and case['share_company'] and case['company_id']!=0:
         if case['review']!='ok':set_review(db,case,'ok')
         msg=ops_auto_forward(db,case['id'])
         if db.execute('SELECT forwarded_at FROM cases WHERE id=?',(case['id'],)).fetchone()['forwarded_at']:
             cur=db.execute('SELECT * FROM cases WHERE id=?',(case['id'],)).fetchone()
             if cur['status']!=WAIT_STATUS:set_status(db,cur,WAIT_STATUS)
             return msg
-        return (msg or '기업에 보내지 못했어요.')+' 단계는 그대로 뒀어요.'
+        fail=msg or '기업에 자동으로 보내지 못했어요.'
+        if '이메일이나 휴대폰' in fail:fail+=" '연락처 필요' 목록에 올려 뒀어요. 연락처를 넣으면 그때 자동으로 보내져요."
     db.execute('UPDATE cases SET status=? WHERE id=?',(status,case['id']))
     log_case(db,case['id'],f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
     if jebo.STATUS_MY.get(status)!=jebo.STATUS_MY.get(case['status']):notify_later(case['id'],'status')
     if status!='접수':jebo.mark(db,case['id'],'reviewed_at')
     if status=='종결':jebo.mark(db,case['id'],'closed_at')
-    return ''
+    return (fail+" 단계는 '기업 전달'로 바꿨어요.") if fail else ''
 BULK_ACTS={'ok':'승인하고 기업에 보내기','forward':'기업에 다시 보내기','duplicate':'중복으로 처리','rejected':'제외로 처리'}
 
 def reports_list():
@@ -2485,7 +2494,7 @@ def admin_reports_bulk():
                 if kind=='st':
                     m=set_status(db,case,val);now_st=db.execute('SELECT status FROM cases WHERE id=?',(cid,)).fetchone()['status']
                     if now_st==val:n+=1
-                    if m and now_st!=val:msgs.append(f"{case['receipt']}: {m}")
+                    if m and ('못' in m or '않았' in m):msgs.append(f"{case['receipt']}: {m}")
                     continue
                 elif val!=(case['assignee'] or ''):db.execute('UPDATE cases SET assignee=? WHERE id=?',(val,cid));log_case(db,cid,f"담당 기자: {val or '미배정'}")
                 n+=1
@@ -2493,7 +2502,7 @@ def admin_reports_bulk():
             return {'status':now_st,'stage':stage_of(now_st) if now_st else 0,'msg':' '.join(msgs)}
         text=f"{n}건의 단계를 '{stage_names()[stage_of(val)-1]}'(으)로 바꿨어요." if kind=='st' else f"{n}건의 담당 기자를 '{val or '미배정'}'(으)로 정했어요."
         if kind=='st' and val==WAIT_STATUS:text+=' 바꾼 제보는 기업에 자동으로 보냈어요.'
-        if msgs:text+=f" 못 바꾼 {len(msgs)}건: "+' / '.join(msgs[:3])+(' 외' if len(msgs)>3 else '')
+        if msgs:text+=f" 자동으로 못 보낸 {len(msgs)}건 (단계는 바꿈): "+' / '.join(msgs[:3])+(' 외' if len(msgs)>3 else '')
         flash(text)
         return redirect(back)
     done=sent=0;skipped=[]
@@ -2753,10 +2762,51 @@ def biz_active(f):
         return f(*a,**kw)
     return wrapped
 
+def signup_invite(db):
+    """답변 링크에서 온 가입이면 (제보, 기업 이름). 링크 토큰이 맞을 때만"""
+    cid=request.values.get('case',type=int);tok=request.values.get('t','')
+    if not cid or not tok or len(tok)>150:return None
+    inv=db.execute('SELECT * FROM company_invites WHERE case_id=?',(cid,)).fetchone()
+    case=db.execute('SELECT * FROM cases WHERE id=? AND share_company=1',(cid,)).fetchone()
+    if not inv or not case or not hmac.compare_digest(inv['token_hash'],hashlib.sha256(tok.encode()).hexdigest()):return None
+    return case,(inv['company_name'] or case['company'])
+
+def biz_signup_invite(db,case,name):
+    """답변 링크로 가입 (운영자 2026-11-13: 그 주소로 받은 링크라 사업자번호 없이, 이메일이나 공식 연락처만). 바로 열림"""
+    f={k:request.form.get(k,'').strip() for k in ('contact_email','contact_phone','login_id')};f['login_id']=f['login_id'].lower();pw=request.form.get('password','')
+    errors=[]
+    if not f['contact_email'] and not f['contact_phone']:errors.append('이메일이나 공식 연락처 중 하나는 적어 주세요.')
+    if f['contact_email'] and (len(f['contact_email'])>120 or not MEMBER_EMAIL_RE.match(f['contact_email'])):errors.append('이메일을 확인해 주세요.')
+    if f['contact_phone'] and not PHONE_INPUT.match(f['contact_phone']):errors.append('연락처를 확인해 주세요.')
+    if not LOGIN_ID_RE.match(f['login_id']):errors.append('아이디는 영문 소문자·숫자·밑줄로 4~20자로 정해 주세요.')
+    if not strong_password(pw):errors.append('비밀번호는 영문과 숫자를 섞어 8자 이상으로 정해 주세요.')
+    elif pw!=request.form.get('password2',''):errors.append('비밀번호 확인이 일치하지 않아요.')
+    if not request.form.get('agree'):errors.append('기업 회원 이용약관에 동의해 주세요.')
+    co=db.execute('SELECT * FROM companies WHERE id=?',(case['company_id'],)).fetchone() if case['company_id'] else None
+    if co and co['status']=='active' and db.execute('SELECT 1 FROM company_users WHERE company_id=?',(co['id'],)).fetchone():errors.append('이미 가입한 기업이에요. 로그인해 주세요. 담당자를 더 넣으려면 센터로 문의해 주세요.')
+    if not errors and (db.execute('SELECT 1 FROM company_users WHERE login_id=?',(f['login_id'],)).fetchone() or f['login_id']==admin_setting('biz_master_id')):errors.append('이미 있는 아이디예요.')
+    if errors:
+        for e in errors:flash(e)
+        return render_template('biz_signup.html',invite_name=name),400
+    if co:
+        db.execute("UPDATE companies SET status='active',contact_name=CASE WHEN contact_name='' THEN '담당자' ELSE contact_name END,contact_phone=?,contact_email=? WHERE id=?",(f['contact_phone'] or co['contact_phone'] or '',f['contact_email'] or co['contact_email'] or '',co['id']))
+        co_id=co['id']
+    else:
+        co_id=db.execute("INSERT INTO companies(name,biz_no,contact_name,contact_phone,contact_email,status,created) VALUES(?,'','담당자',?,?,'active',?)",(name,f['contact_phone'],f['contact_email'],now())).lastrowid
+        db.execute('UPDATE cases SET company_id=? WHERE id=?',(co_id,case['id']))
+    uid=db.execute('INSERT INTO company_users(company_id,login_id,pw_hash,name,created) VALUES(?,?,?,?,?)',(co_id,f['login_id'],generate_password_hash(pw),'담당자',now())).lastrowid
+    log_case(db,case['id'],f"기업 회원 가입 (답변 링크): {name}")
+    session['biz_uid']=uid;session['biz_v']=1
+    flash('가입했어요. 새 제보가 오면 바로 알려 드릴게요.')
+    return redirect(url_for('biz_home'))
+
 @app.route('/biz/signup',methods=['GET','POST'])
 def biz_signup():
     if g.biz_user:return redirect(url_for('biz_home'))
-    if request.method=='GET':return render_template('biz_signup.html')
+    with conn() as db:
+        inv=signup_invite(db)
+        if inv and request.method=='POST':return biz_signup_invite(db,*inv)
+    if request.method=='GET':return render_template('biz_signup.html',invite_name=inv[1] if inv else '')
     f={k:request.form.get(k,'').strip() for k in ('company_name','biz_no','contact_name','contact_phone','contact_email','login_id')}
     f['login_id']=f['login_id'].lower();biz=re.sub(r'\D','',f['biz_no']);pw=request.form.get('password','')
     errors=[]

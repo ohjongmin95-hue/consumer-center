@@ -1,9 +1,9 @@
 {# 소보루 커뮤니티(soboru_cm.py) 조각: 후기 한 줄 · 골라주세요 카드 · 수다방 한 줄 · 쪽 넘기기 #}
 {% macro pager(endpoint, page, pages, qs) %}{% if pages > 1 %}
 <nav class="cm-pager" aria-label="page">
-  {% if page > 1 %}<a href="{{ url_for(endpoint, page=page - 1, **qs) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}
+  {% if page > 2 %}<a href="{{ url_for(endpoint, page=1, **qs) }}">{{ ui('pager.first', '« 처음') }}</a>{% endif %}{% if page > 1 %}<a href="{{ url_for(endpoint, page=page - 1, **qs) }}">{{ ui('reports.prev', '← 이전') }}</a>{% endif %}
   <span>{{ page }} / {{ pages }}</span>
-  {% if page < pages %}<a href="{{ url_for(endpoint, page=page + 1, **qs) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}
+  {% if page < pages %}<a href="{{ url_for(endpoint, page=page + 1, **qs) }}">{{ ui('reports.next', '다음 →') }}</a>{% endif %}{% if page < pages - 1 %}<a href="{{ url_for(endpoint, page=pages, **qs) }}">{{ ui('pager.last', '끝 »') }}</a>{% endif %}
 </nav>{% endif %}{% endmacro %}
 
 {# 내돈내산 후기 한 줄: 사진(없으면 분류 이모지) · 분류 · 영수증 인증 · 구매한지 +N일 · 제목 · 상품·가격 · 재구매 의사 · 별점 #}

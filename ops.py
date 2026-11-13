@@ -98,7 +98,21 @@ def install(S):
         """가입한 기업 담당자에게 알림 메일. 수신 거부했거나 같은 알림을 방금 보냈으면 건너뜀."""
         if not case['company_id'] or not case['share_company'] or not case['forwarded_at']: return
         co = db.execute("SELECT * FROM companies WHERE id=? AND status='active'", (case['company_id'],)).fetchone()
-        if not co or co['notice_optout'] or not co['contact_email'] or not notify.email_ready(): return
+        if not co or co['notice_optout']: return
+        # 새 제보는 담당자 휴대폰(010)으로도 카카오톡(템플릿 심사 전이면 문자) (운영자 2026-11-13: 가입하면 바로 알림)
+        mobile = next((p for p in (notify.digits(co['contact_phone'] or ''), notice_phone(co)) if re.fullmatch(r'01[016789]\d{7,8}', p or '')), '')
+        if event == 'company_new' and mobile and (notify.kakao_ready('company_notice') or notify.sms_ready()):
+            link, optout = url_for('biz_case', case_id=case['id'], _external=True), optout_url(db, co)
+            vals = {'#{업체}': co['name'], '#{접수번호}': case['receipt'], '#{분야}': case['category'], '#{링크}': link, '#{수신거부}': optout}
+            text = (f"[{notify.CENTER}] {co['name']} 담당자님, 새 제보가 전달됐습니다.\n\n■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n\n"
+                    f"기업 회원 화면에서 바로 확인하고 답변할 수 있습니다.\n{link}\n\n알림을 그만 받으려면: {optout}")
+            def send_phone():
+                try:
+                    if notify.kakao_ready('company_notice'): notify.bizmsg.alimtalk(mobile, notify.bizmsg.template(notify.KAKAO_TEMPLATE_ENV['company_notice']), vals, fallback=True)
+                    else: notify.send_sms(mobile, text)
+                except Exception: app.logger.exception('member phone alert failed')
+            later(send_phone)
+        if not co['contact_email'] or not notify.email_ready(): return
         if db.execute("SELECT 1 FROM notifications WHERE case_id=? AND event=? AND channel='company_email' AND created>=?", (case['id'], event, ago(minutes=ALERT_GAP_MINUTES))).fetchone(): return
         what = {'company_new': '새 제보가 전달됐습니다', 'company_opinion': '제보자가 추가 의견을 남겼습니다', 'company_files': '제보자가 추가 자료를 냈습니다',
                 'company_nudge': '제보자가 답변을 기다리고 있습니다'}[event]

@@ -2285,3 +2285,16 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 
 /* 제보자 제보 고치기 (운영자 2026-11-13) */
 .case-edit{margin:16px 0 20px;padding:14px 16px;border-radius:14px;background:#f7f8fa}.case-edit summary{cursor:pointer;font-weight:700}.case-edit form{margin-top:12px}
+
+/* 기업 답변 링크 화면의 기업 회원 가입 안내 (운영자 2026-11-13) */
+.cr-join{gap:14px;background:linear-gradient(180deg,#FFF6EA 0%,#fff 60%);border-color:#F8E3C4}
+.cr-join-tag{margin:0;color:#C9760A;font-size:13px;font-weight:700}
+.cr-join-title{margin:0;font-size:21px;line-height:1.4;font-weight:800;color:#191f28;word-break:keep-all;text-wrap:balance}
+.cr-join-list{list-style:none;margin:4px 0 4px;padding:0;display:flex;flex-direction:column;gap:14px}
+.cr-join-list li{display:flex;gap:12px;align-items:flex-start}
+.cr-join-ic{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(0,27,55,.08);font-size:20px}
+.cr-join-list b{display:block;font-size:16px;color:#191f28}.cr-join-list p{margin:2px 0 0;font-size:14px;line-height:1.55;color:#4e5968;word-break:keep-all}
+.cr-join-go{display:flex;align-items:center;justify-content:center;text-decoration:none}
+
+/* 앱에서 고발 전 로그인 안내 (운영자 2026-11-13) */
+.auth-note{margin:-4px 0 16px;text-align:center;color:#4e5968;font-size:15px;word-break:keep-all}

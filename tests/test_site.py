@@ -337,6 +337,9 @@ class SiteTest(unittest.TestCase):
             r = self.client.get(path); self.assertEqual(r.status_code, 302); self.assertIn('/login', r.headers['Location'])
         os.environ['REPORT_LOGIN'] = '0'
         self.assertIn('제보 전 꼭 읽어 주세요', self.client.get('/report/talk').get_data(as_text=True))
+        # 운영자 2026-11-13: 앱에서는 로그인해야 고발 (웹은 그대로)
+        r = self.client.get('/report', headers={'User-Agent': 'Mozilla/5.0 SoboruApp/1.5.0 (android)'}); self.assertEqual(r.status_code, 302); self.assertIn('/login', r.headers['Location'])
+        self.assertEqual(self.client.get('/report').status_code, 200)
 
     def test_hero_photos_auto(self):
         # 운영자 2026-11-03: 공개 게시된 제보의 사진은 관리자가 안 골라도 모자이크해서 첫 화면에. 비공개로 바뀌면 바로 빠짐
@@ -864,6 +867,21 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM messages WHERE case_id=? AND author='기업 답변'", (case_id,)).fetchone()[0], 2)
         self.assertIn('답변 받음', admin.get('/admin/reports/' + str(case_id)).get_data(as_text=True))
+        # 답변 링크에서 기업 회원 가입: 사업자번호 없이 이메일이나 연락처만, 바로 열림 (OH 2026-11-13)
+        self.site.BIZ_ON = True; self.addCleanup(setattr, self.site, 'BIZ_ON', False)
+        join = re.search(r'href="(/biz/signup\?[^"]+)"', company.get(path).get_data(as_text=True))[1].replace('&amp;', '&')
+        page = company.get(join).get_data(as_text=True)
+        self.assertNotIn('name="biz_no"', page); self.assertIn('테스트 업체', page)
+        jt = self.csrf(company, join); q = dict(x.split('=', 1) for x in join.split('?', 1)[1].split('&'))
+        bad = company.post('/biz/signup', data={'_csrf': jt, 'case': q['case'], 't': q['t'], 'login_id': 'testco', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'})
+        self.assertEqual(bad.status_code, 400)  # 이메일·연락처 둘 다 없으면 안 됨
+        self.assertEqual(company.post('/biz/signup', data={'_csrf': jt, 'case': q['case'], 't': 'wrong', 'contact_email': 'cs@test.co.kr', 'login_id': 'testco', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'}).status_code, 400)  # 토큰 틀리면 일반 가입(사업자번호 필요)
+        ok = company.post('/biz/signup', data={'_csrf': jt, 'case': q['case'], 't': q['t'], 'contact_email': 'cs@test.co.kr', 'login_id': 'testco', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'})
+        self.assertEqual(ok.status_code, 302)
+        with self.site.conn() as db:
+            co = db.execute('SELECT co.* FROM companies co JOIN cases c ON c.company_id=co.id WHERE c.id=?', (case_id,)).fetchone()
+            self.assertEqual((co['status'], co['contact_email']), ('active', 'cs@test.co.kr'))
+            self.assertEqual(db.execute('SELECT company_id FROM company_users WHERE login_id=?', ('testco',)).fetchone()[0], co['id'])
         again = admin.post('/admin/invite/' + str(case_id), data={'_csrf': self.csrf(admin, '/admin/reports/' + str(case_id))})
         fresh = re.search(r'<strong>http://localhost(/company/[^<]+)</strong>', again.get_data(as_text=True))[1]
         self.assertIn('name="response"', company.get(fresh).get_data(as_text=True))  # 다시 만들면 새 링크로 또 답변 가능
@@ -1722,9 +1740,9 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 case_id = db.execute("SELECT id FROM cases WHERE subject='알림 두번째'").fetchone()['id']
             admin = self.login_admin()
-            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '종결', 'assignee': ''})
             self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T2')
-            self.assertIn('현재 단계: 검토 중', mails[-1][2])
+            self.assertIn('현재 단계: ', mails[-1][2])
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'message', 'message': '확인 중입니다'})
             self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T3')
             self.assertNotIn('확인 중입니다', mails[-1][2])
@@ -1970,6 +1988,8 @@ class SiteTest(unittest.TestCase):
              patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a + (k.get("html"),))):
             mails.clear(); sms.clear()
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
+            self.assertEqual(mails, [])  # 운영자 2026-11-13: 중간 단계(검토 중·기업 답변 대기)는 알리지 않음
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '종결', 'assignee': ''})
         self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
         self.assertIn('단계 변경', mails[0][1])
         self.assertEqual(len(sms), 1)
@@ -1979,15 +1999,17 @@ class SiteTest(unittest.TestCase):
         notify.ASYNC = True
 
     def test_company_members(self):
-        # 기업 회원은 기본으로 꺼져 있음: 화면은 404, 하단 링크 없음
+        # 기업 회원을 끄면(ENABLE_BIZ_MEMBERS=0) 화면은 404, 하단 링크 없음
+        self.site.BIZ_ON = False
         self.assertEqual(self.client.get('/biz/login').status_code, 404)
         self.assertNotIn('/biz/login', self.client.get('/').get_data(as_text=True))
         self.site.BIZ_ON = True
         self.addCleanup(setattr, self.site, 'BIZ_ON', False)
         notify = self.site.notify
         notify.ASYNC = False
-        # 1) 기업 가입: 사업자번호 검증번호가 틀리면 거절
+        # 1) 기업 가입: 답변 링크의 가입 버튼에서 오면 회사 이름이 채워져 있음. 사업자번호 검증번호가 틀리면 거절
         biz = self.site.app.test_client()
+        self.assertIn('value="주식회사 테스트몰"', biz.get('/biz/signup?company=주식회사 테스트몰').get_data(as_text=True))
         form = {'company_name': '주식회사 테스트몰', 'biz_no': '123-45-67890', 'contact_name': '김담당', 'contact_phone': '02-123-4567',
                 'contact_email': 'cs@testmall.co.kr', 'login_id': 'testmall', 'password': 'abcd1234', 'password2': 'abcd1234', 'agree': 'on'}
         self.assertEqual(self.post_form(biz, '/biz/signup', form).status_code, 400)
@@ -3908,7 +3930,7 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, '/admin/reports/%d' % first, {'form': 'review', 'review': 'ok'})
         sent = [m for m in mails if m[0] == 'cs@nudge-shop.example']
         self.assertEqual(len(sent), 1); self.assertIn('/company/%d/' % first, sent[0][2])
-        self.assertTrue(any(m[0] == 'nudge@example.com' and '진행' in m[1] for m in mails))  # 제보자에게 단계 알림
+        self.assertFalse(any(m[0] == 'nudge@example.com' and '진행' in m[1] for m in mails))  # 운영자 2026-11-13: 기업 답변 대기 단계는 제보자에게 알리지 않음
         with self.site.conn() as db:
             row = db.execute('SELECT status,forwarded_at FROM cases WHERE id=?', (first,)).fetchone()
             self.assertEqual(row['status'], '기업 답변 대기'); self.assertTrue(row['forwarded_at'])
