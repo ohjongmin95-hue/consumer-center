@@ -277,7 +277,8 @@ def install(S):
                     db.execute('DELETE FROM company_contacts WHERE id=?',(cid,));flash('연락처를 지웠어요.')
                     return redirect(url_for('admin_contacts'))
                 saved,msg=save_contact(db,request.form,cid)
-                flash(msg);return redirect(url_for('admin_contacts',edit=saved or cid or '')+('#c%d'%saved if saved else ''))
+                n=S.ops_contact_saved(db,saved) if saved else 0
+                flash(msg+(f' 기다리던 제보 {n}건을 기업에 보냈어요.' if n else ''));return redirect(url_for('admin_contacts',edit=saved or cid or '')+('#c%d'%saved if saved else ''))
             q=request.args.get('q','').strip()[:60]
             rows=db.execute('SELECT * FROM company_contacts ORDER BY name').fetchall()
             if q:rows=[r for r in rows if S.norm_company(q) in S.norm_company(r['name']+','+r['aliases'])]
@@ -342,7 +343,8 @@ def install(S):
         elif form=='desk_contact':
             contact=find_contact(db,case)
             saved,msg=save_contact(db,request.form,contact['id'] if contact else None,case['company_id'])
-            flash(msg)
+            n=S.ops_contact_saved(db,saved) if saved else 0  # 넣은 메일로 기업 안내까지 바로 (운영자 2026-11-13)
+            flash(msg+(f' 기업에 안내를 {n}건 보냈어요.' if n else ''))
         elif form=='desk_answer':
             add_answer(db,case)
     S.desk_handle_form=handle_form

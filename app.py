@@ -903,6 +903,9 @@ def notify_later(case_id,event):
     # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 새 제보면 운영자에게도. 설정이 없으면 아무것도 안 함.
     link=url_for('lookup',_external=True)
     admin_link=url_for('admin_report',case_id=case_id,_external=True) if event in ('received','status') else None  # 접수·단계 변경은 운영자에게도 (2026-11-08)
+    seen=g.setdefault('notify_seen',set())  # 한 요청에서 같은 알림은 한 번만 (승인→검토→기업 전달이 한꺼번에 일어나도 마지막 단계로 한 통)
+    if (case_id,event) in seen:return
+    seen.add((case_id,event))
     def send(resp):
         with conn() as db:case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if case:notify.dispatch(conn,case,event,link,admin_link);case_alert(case,event)  # 회원 제보면 알림함·푸시에도
@@ -1203,6 +1206,7 @@ def company_ai_summary(db,case):
     return None
 _CO_AI_RUNNING=set()
 
+COMPANY_LINK_MAX=20
 @app.route('/company/<int:case_id>/<token>',methods=['GET','POST'])
 def company_access(case_id,token):
     if len(token)>150:abort(404)
@@ -1214,21 +1218,24 @@ def company_access(case_id,token):
             ops_company_objection(db,case,(invite['company_name'] or '기업')+' (답변 링크)')
             return redirect(url_for('company_access',case_id=case_id,token=token)+'#objection')
         if request.method=='POST':
-            if invite['used_at']:return redirect(url_for('company_access',case_id=case_id,token=token))  # 이미 답변한 링크: 다시 받지 않음
+            # 운영자 2026-11-13: 같은 링크로 답변을 여러 번 (추가 답변·정정). 너무 많이는 못 받게 링크당 20번까지
+            if db.execute("SELECT COUNT(*) FROM messages WHERE case_id=? AND author='기업 답변' AND source='link'",(case_id,)).fetchone()[0]>=COMPANY_LINK_MAX:
+                return redirect(url_for('company_access',case_id=case_id,token=token))
             body=request.form.get('response','').strip()
             if not body or len(body)>5000:abort(400)
+            more=bool(invite['used_at'])
             db.execute("INSERT INTO messages(case_id,author,body,created,source) VALUES(?,?,?,?,'link')",(case_id,'기업 답변',body,now()))
-            db.execute('UPDATE company_invites SET used_at=? WHERE id=?',(now(),invite['id']))
-            db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,(invite['company_name'] or '기업')+' (답변 링크)','기업 답변 등록',now()))
+            db.execute("UPDATE company_invites SET used_at=? WHERE id=? AND COALESCE(used_at,'')=''",(now(),invite['id']))
+            db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,(invite['company_name'] or '기업')+' (답변 링크)','기업 추가 답변 등록' if more else '기업 답변 등록',now()))
             answer_arrived(db,case)
             notify_later(case_id,'company');ops_answer_alert(case)
-            return redirect(url_for('company_access',case_id=case_id,token=token))
+            return redirect(url_for('company_access',case_id=case_id,token=token,sent=1)+'#cr-sent')
         responses=db.execute("SELECT author,body,created FROM messages WHERE case_id=? AND author='기업 답변' ORDER BY id",(case_id,)).fetchall()
         if not case['seen_at'] and not admin_active() and not g.get('staff'):jebo.mark(db,case_id,'seen_at');log_case(db,case_id,'기업이 답변 링크를 열어 봄');notify_later(case_id,'seen')
         objections=ops_company_requests(db,case_id)
         ai=company_ai_summary(db,case)
     # 업체에는 제보자의 연락처, 첨부파일, 내부 메모를 공개하지 않음.
-    return render_template('company.html',ai=ai,case=case,responses=responses,objections=objections,token=token,used=invite['used_at'],company_name=invite['company_name'] or case['company'])
+    return render_template('company.html',ai=ai,case=case,responses=responses,objections=objections,token=token,used=invite['used_at'],just_sent=request.args.get('sent')=='1',can_more=len(responses)<COMPANY_LINK_MAX,company_name=invite['company_name'] or case['company'])
 
 @app.route('/case/logout',methods=['POST'])
 def case_logout():
@@ -2112,6 +2119,15 @@ def set_review(db,case,review,note=''):
     else:db.execute('UPDATE cases SET review=? WHERE id=?',(review,case_id))
     if review in jebo.NOT_VALID and case['published']:db.execute('UPDATE cases SET published=0 WHERE id=?',(case_id,));log_case(db,case_id,'비공개로 전환')
     if review!=case['review']:log_case(db,case_id,f"검토 결과: {jebo.REVIEWS[case['review']]} → {jebo.REVIEWS[review]}")
+    if review=='ok' and case['status']=='접수':set_status(db,case,'검토 중')  # 정상으로 승인하면 '접수'에서 '검토'로 (운영자 2026-11-13)
+def set_status(db,case,status):
+    """진행 단계 바꾸기 (제보 화면 저장·목록 일괄 처리). 제보자 화면 단계가 바뀔 때만 알림"""
+    if status==case['status']:return
+    db.execute('UPDATE cases SET status=? WHERE id=?',(status,case['id']))
+    log_case(db,case['id'],f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
+    if jebo.STATUS_MY.get(status)!=jebo.STATUS_MY.get(case['status']):notify_later(case['id'],'status')
+    if status!='접수':jebo.mark(db,case['id'],'reviewed_at')
+    if status=='종결':jebo.mark(db,case['id'],'closed_at')
 BULK_ACTS={'ok':'정상으로 승인','forward':'기업에 전달','duplicate':'중복으로 처리','rejected':'제외로 처리'}
 
 def reports_list():
@@ -2136,7 +2152,10 @@ def reports_list():
     if assignee=='-':where.append("COALESCE(assignee,'')=''")
     elif assignee:where.append('assignee=?');args.append(assignee)
     cond=' AND '.join(where)
+    view='contact' if request.args.get('view')=='contact' and g.area=='admin' else ''
     with conn() as db:
+        need=ops_contact_needed(db) if g.area=='admin' else []
+        staff_names=[r['name'] for r in db.execute('SELECT name FROM staff WHERE active=1 ORDER BY name')] if g.area=='admin' else []
         counts={}
         for r in db.execute('SELECT status,COUNT(*) AS n FROM cases GROUP BY status'):counts[STAGE_STATUS[stage_of(r['status'])-1]]=counts.get(STAGE_STATUS[stage_of(r['status'])-1],0)+r['n']  # 모르는 값은 접수로 셈
         total=db.execute('SELECT COUNT(*) FROM cases WHERE '+cond,args).fetchone()[0]
@@ -2149,7 +2168,7 @@ def reports_list():
         assignee_counts=db.execute("SELECT COALESCE(assignee,'') AS name,COUNT(*) AS n FROM cases GROUP BY 1 ORDER BY name=''").fetchall()
     return render_template('reports_list.html',layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
                            review=review,sort=sort,review_counts={k:review_counts.get(v,0) for k,v in jebo.REVIEW_KEYS.items()},reviews=jebo.REVIEWS,review_keys=jebo.REVIEW_KEYS,legacy_pending=legacy_pending,
-                           track=track,track_counts=track_counts,track_of=track_of,assignee=assignee,assignee_counts=assignee_counts)
+                           track=track,track_counts=track_counts,track_of=track_of,assignee=assignee,assignee_counts=assignee_counts,view=view,need=need,need_cases=sum(len(c) for _,c in need),staff_names=staff_names,statuses=STATUSES)
 
 def report_detail(case_id):
     ep=AREAS[g.area]
@@ -2412,8 +2431,23 @@ def admin_reports_bulk():
     act=request.form.get('act','');ids=list(dict.fromkeys(request.form.getlist('id',type=int)))[:100]
     back=request.form.get('next','')
     back=back if back.startswith('/admin/reports') and '//' not in back else url_for('admin_reports')
-    if act not in BULK_ACTS:abort(400)
+    kind,_,val=act.partition(':')
+    if kind not in ('st','as') and act not in BULK_ACTS:abort(400)
+    if kind=='st' and val not in STATUSES:abort(400)
     if not ids:flash('제보를 먼저 골라 주세요.');return redirect(back)
+    if kind in ('st','as'):
+        # 단계·담당 기자를 한 번에 (운영자 2026-11-13: 쌓이면 하나하나 들어가기 힘듦)
+        with conn() as db:
+            if kind=='as' and val and not db.execute('SELECT 1 FROM staff WHERE name=? AND active=1',(val,)).fetchone():abort(400)
+            n=0
+            for cid in ids:
+                case=db.execute('SELECT * FROM cases WHERE id=?',(cid,)).fetchone()
+                if not case:continue
+                if kind=='st':set_status(db,case,val)
+                elif val!=(case['assignee'] or ''):db.execute('UPDATE cases SET assignee=? WHERE id=?',(val,cid));log_case(db,cid,f"담당 기자: {val or '미배정'}")
+                n+=1
+        flash(f"{n}건의 단계를 '{stage_names()[stage_of(val)-1]}'(으)로 바꿨어요." if kind=='st' else f"{n}건의 담당 기자를 '{val or '미배정'}'(으)로 정했어요.")
+        return redirect(back)
     done=sent=0;skipped=[]
     with conn() as db:
         for cid in ids:
@@ -2433,7 +2467,28 @@ def admin_reports_bulk():
     if act!='forward':parts.append(f"{done}건을 '{jebo.REVIEWS[act]}'(으)로 바꿨어요."+(' 공개 목록에서 빠져요.' if act in jebo.NOT_VALID else ''))
     if act in ('ok','forward'):parts.append(f'기업에 {sent}건 보냈어요.')
     if skipped:parts.append(f"못 보낸 {len(skipped)}건은 제보를 열어 확인해 주세요 ({', '.join(skipped[:5])}{' 외' if len(skipped)>5 else ''}).")
+    with conn() as db:need=ops_contact_needed(db)
+    if need and act in ('ok','forward'):parts.append(f"연락처가 없는 기업 {len(need)}곳은 위 연락처 필요 칸에서 넣으면 바로 보내져요.")
     flash(' '.join(parts));return redirect(back)
+@app.route('/admin/reports/contact',methods=['POST'])
+@admin_area
+def admin_reports_contact():
+    """'연락처 필요' 칸에서 기업 이메일·휴대폰을 넣고, 그 기업의 못 보낸 정상 제보를 바로 보냄 (운영자 2026-11-13)"""
+    company_id=request.form.get('company_id',type=int)
+    email=request.form.get('official_email','').strip()[:150];phone=notice_phone_in()
+    back=url_for('admin_reports',view='contact')
+    if email and not EMAIL_RE.fullmatch(email):flash('이메일 주소를 다시 확인해 주세요.');return redirect(back)
+    if phone is None:flash('휴대폰 번호는 010으로 시작하는 번호만 넣을 수 있어요.');return redirect(back)
+    if not email and not phone:flash('이메일이나 휴대폰 번호 중 하나는 넣어 주세요.');return redirect(back)
+    with conn() as db:
+        co=db.execute('SELECT * FROM companies WHERE id=?',(company_id,)).fetchone()
+        if not co:abort(404)
+        if email:db.execute("UPDATE companies SET official_email=?,email_source='운영자 입력' WHERE id=?",(email,co['id']))
+        if phone:db.execute('UPDATE companies SET notice_phone=? WHERE id=?',(phone,co['id']))
+        sent=ops_send_pending(db,co['id'])
+        left=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND review='ok' AND COALESCE(forwarded_at,'')='' AND share_company=1",(co['id'],)).fetchone()[0]
+    flash(f"{co['name']} 연락처를 저장하고 제보 {sent}건을 보냈어요."+(f" {left}건은 아직 못 보냈어요. 제보를 열어 처리 기록을 확인해 주세요." if left else ''))
+    return redirect(back)
 @app.route('/admin/reports/<int:case_id>',methods=['GET','POST'])
 @admin_area
 def admin_report(case_id):return report_detail(case_id)
@@ -2844,7 +2899,8 @@ def admin_companies():
                 if 'notice_phone' in request.form:db.execute('UPDATE companies SET notice_phone=? WHERE id=?',(phone,cid))
                 if email!=company['official_email']:db.execute("UPDATE companies SET email_source='' WHERE id=?",(cid,))
                 if 'domain' in request.form:company_set_domain(db,cid,request.form.get('domain',''))  # 홈페이지 주소 → 로고 자동  # 직접 고친 메일은 '자동 찾음' 표시를 뗌
-                flash(f'{name} 정보를 저장했어요.');return redirect(url_for('admin_companies'))
+                n=ops_send_pending(db,cid) if (email or phone) else 0  # 연락처가 생기면 기다리던 정상 제보를 바로 보냄 (운영자 2026-11-13)
+                flash(f'{name} 정보를 저장했어요.'+(f' 기다리던 제보 {n}건을 기업에 보냈어요.' if n else ''));return redirect(url_for('admin_companies'))
             if action=='approve' and company['status']=='pending':
                 # 공식 이메일 확인 + 운영자 승인. 메일을 못 보낸 경우엔 운영자가 직접 확인했다고 표시해야 승인돼요.
                 if not company['email_verified_at']:
@@ -3062,7 +3118,7 @@ _jebo=types.SimpleNamespace(**globals());jebo.install(_jebo)
 send_company_verify=_jebo.send_company_verify
 # 3차 운영 자동화: 심사 보조·기업 통지·알림·정정·삭제·이의·운영 통계 (ops.py)
 _ops=types.SimpleNamespace(**globals());ops.install(_ops)
-for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras','ops_auto_forward'):globals()[_k]=getattr(_ops,_k)
+for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras','ops_auto_forward','ops_contact_needed','ops_send_pending','ops_contact_saved'):globals()[_k]=getattr(_ops,_k)
 # 기업 대응 관리: AI 기업 입장 요청서, 기업 연락처, 전달 기록, 기업 답변 등록 (companydesk.py)
 _desk=types.SimpleNamespace(**globals());companydesk.install(_desk)
 for _k in ('desk_context','desk_handle_form','DESK_FORMS','desk_after_submit','desk_generate'):globals()[_k]=getattr(_desk,_k)

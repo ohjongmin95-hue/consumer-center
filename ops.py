@@ -134,7 +134,7 @@ def install(S):
                 if S.norm_company(r['subject']) == S.norm_company(case['subject']): why.append('같은 업체·같은 제목')
                 elif why: why.append('같은 업체')
             if why: dups.append((r, why))
-        company = db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone() if case['company_id'] else None
+        company = from_contacts(db, db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone() if case['company_id'] else None, case['company'])
         notices = db.execute('SELECT * FROM company_notices WHERE case_id=? ORDER BY id DESC', (case['id'],)).fetchall()
         reqs = db.execute('SELECT * FROM case_requests WHERE case_id=? ORDER BY id DESC', (case['id'],)).fetchall()
         return dict(risks=risks(case['subject'], case['description'], case['request_text']),
@@ -146,6 +146,19 @@ def install(S):
     def notice_target(company):
         if not company: return ''
         return company['official_email'] or (company['contact_email'] if company['status'] == 'active' else '')
+
+    def from_contacts(db, company, case_company=''):
+        """'기업 연락처'에 넣어 둔 메일을 기업 안내 메일 주소로 씀 (운영자 2026-11-13: 연락처에 넣었는데 안내가 안 됨).
+        기업 공식 이메일이 비어 있을 때만 채움. 바뀐 기업 줄을 돌려줌."""
+        if not company or company['official_email'] or company['notice_optout']: return company
+        try: rows = db.execute('SELECT * FROM company_contacts ORDER BY updated DESC').fetchall()
+        except Exception: return company
+        names = {S.norm_company(n) for n in [company['name'], case_company] + [a.strip() for a in (company['aliases'] or '').split(',')] if n and S.norm_company(n)}
+        hit = next((r for r in rows if r['company_id'] == company['id'] and (r['cs_email'] or r['main_email'])), None) or next(
+            (r for r in rows if (r['cs_email'] or r['main_email']) and names & {S.norm_company(n) for n in [r['name']] + (r['aliases'] or '').split(',') if n.strip()}), None)
+        if not hit: return company
+        db.execute("UPDATE companies SET official_email=?,email_source='기업 연락처' WHERE id=?", (hit['cs_email'] or hit['main_email'], company['id']))
+        return db.execute('SELECT * FROM companies WHERE id=?', (company['id'],)).fetchone()
 
     def notice_phone(company):
         # 기업 안내를 카카오톡 채널(알림톡, 안 되면 문자)로 받을 휴대폰. 010 같은 휴대폰 번호만
@@ -164,7 +177,7 @@ def install(S):
         if case['review'] in jebo.NOT_VALID: return '반려·중복 처리된 제보예요.'
         if not company: return '먼저 이 제보를 기업에 연결해 주세요.'
         if company['notice_optout']: return f"{company['name']}이(가) 안내 메일 수신을 거부했어요 ({company['notice_optout'][:10]})."
-        if not notice_target(company) and not notice_phone(company): return '기업 공식 이메일이나 휴대폰 번호가 없어요. 기업 화면에서 넣어 주세요.'
+        if not notice_target(company) and not notice_phone(company): return '기업 이메일이나 휴대폰 번호가 없어요. 아래 \u2018기업 연락처\u2019에 메일을 넣으면 바로 보내져요.'
         sent = db.execute("SELECT created FROM company_notices WHERE case_id=? AND kind IN ('first','remind') AND status='보냄' ORDER BY id DESC", (case['id'],)).fetchall()
         if len(sent) >= NOTICE_MAX_PER_CASE: return f'이 제보로는 안내 메일을 {NOTICE_MAX_PER_CASE}번까지 보낼 수 있어요.'
         if sent and sent[0]['created'] > ago(hours=NOTICE_GAP_HOURS): return f'마지막 안내 메일 뒤 {NOTICE_GAP_HOURS}시간이 지나야 다시 보낼 수 있어요.'
@@ -186,7 +199,7 @@ def install(S):
             S.log_case(db, cid, '제보자에게 보완 요청'); S.notify_later(cid, 'supplement')
             flash('보완 요청을 보냈어요. 제보자 조회 화면에 보이고, 연락처가 있으면 알림이 가요.')
         elif form == 'notice':
-            company = db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone() if case['company_id'] else None
+            company = from_contacts(db, db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone() if case['company_id'] else None, case['company'])
             block = notice_block(db, case, company)
             if block: flash(block); return
             send_notice(db, case, company)
@@ -272,7 +285,7 @@ def install(S):
         if not case['company_id']:  # 기업 연결 전이면 제보에 적힌 이름으로 연결 (같은 이름이 없으면 새로 등록)
             if not S.link_company(db, cid, case['company']): return ''
             S.log_case(db, cid, '기업 자동 연결'); case = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
-        company = db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone()
+        company = from_contacts(db, db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone(), case['company'])
         if company['status'] != 'active' and not notice_target(company) and not company['notice_optout']:
             # 유명 기업은 메일을 일일이 넣지 않아도: 공정위 통신판매 신고 정보에서 찾아 채움 (운영자 요청 2026-10-29)
             email, src = company_mail.find([company['name'], company['brand'], company['biz_name']] + [a for a in (company['aliases'] or '').split(',')], company['biz_no'])
@@ -290,6 +303,47 @@ def install(S):
         if send_notice(db, case, company, quiet=True, actor='자동 전달'): return f"{company['name']}에 안내를 자동으로 보냈어요."
         return '기업 안내 메일을 보내지 못했어요. 처리 기록을 확인해 주세요.'
     S.ops_auto_forward = auto_forward
+
+    def contact_needed(db):
+        """정상으로 승인됐는데 기업 이메일·휴대폰이 없어 못 보낸 제보를 기업별로 (운영자 요청 2026-11-13: 따로 모아 하나씩 채우게).
+        [(기업, [제보...])], 제보 많은 기업부터. 수신 거부한 기업과 가입 기업은 뺌."""
+        rows = db.execute("SELECT c.id,c.receipt,c.subject,c.created,c.company_id,c.company FROM cases c JOIN companies co ON co.id=c.company_id "
+                          "WHERE c.review='ok' AND COALESCE(c.forwarded_at,'')='' AND c.share_company=1 AND co.status!='active' AND COALESCE(co.notice_optout,'')='' ORDER BY c.id DESC").fetchall()
+        by = {}
+        for r in rows: by.setdefault(r['company_id'], []).append(r)
+        out = []
+        for co_id, cases in by.items():
+            co = from_contacts(db, db.execute('SELECT * FROM companies WHERE id=?', (co_id,)).fetchone(), cases[0]['company'])
+            if not notice_target(co) and not notice_phone(co): out.append((co, cases))
+        return sorted(out, key=lambda x: (-len(x[1]), x[0]['name']))
+    S.ops_contact_needed = contact_needed
+
+    def send_pending(db, company_id):
+        """기업 연락처가 새로 들어오면, 그 기업의 정상 승인됐지만 못 보낸 제보를 바로 보냄 (운영자 2026-11-13: 어디서 넣든 서로 이어지게).
+        보낸 건수를 돌려줌."""
+        sent = 0
+        for r in db.execute("SELECT id,company FROM cases WHERE company_id=? AND review='ok' AND COALESCE(forwarded_at,'')='' AND share_company=1 ORDER BY id", (company_id,)).fetchall():
+            if db.execute('SELECT forwarded_at FROM cases WHERE id=?', (r['id'],)).fetchone()['forwarded_at']: continue
+            msg = auto_forward(db, r['id'])
+            if msg and not msg.startswith('기업 자동 전달은 못') and not msg.startswith('기업 안내 메일을 보내지 못'): sent += 1
+        return sent
+
+    def contact_saved(db, contact_id):
+        """'기업 연락처'(제보 화면·기업 연락처 메뉴)를 저장하면: 같은 기업의 안내 메일 주소를 채우고(비었거나 연락처에서 온 주소일 때) 못 보낸 제보를 보냄."""
+        c = db.execute('SELECT * FROM company_contacts WHERE id=?', (contact_id,)).fetchone()
+        email = c and (c['cs_email'] or c['main_email'])
+        if not email: return 0
+        names = {S.norm_company(n) for n in [c['name']] + (c['aliases'] or '').split(',') if n.strip() and S.norm_company(n)}
+        sent = 0
+        for co in db.execute('SELECT * FROM companies').fetchall():
+            hit = co['id'] == c['company_id'] or names & {S.norm_company(n) for n in [co['name']] + (co['aliases'] or '').split(',') if n.strip()}
+            if not hit or co['notice_optout']: continue
+            if not co['official_email'] or (co['email_source'] == '기업 연락처' and co['official_email'] != email):
+                db.execute("UPDATE companies SET official_email=?,email_source='기업 연락처' WHERE id=?", (email, co['id']))
+            sent += send_pending(db, co['id'])
+        return sent
+    S.ops_send_pending = send_pending
+    S.ops_contact_saved = contact_saved
 
     # ---- 제보자: 기업 답변 독촉 -------------------------------------------------------
     def nudges(db, cid):
