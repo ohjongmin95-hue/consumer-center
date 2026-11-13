@@ -313,7 +313,7 @@ class SiteTest(unittest.TestCase):
             cid = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
                              ('ac1', 'x', '배송·교환·환불', '가게', '택배가 안 와요', '본문입니다', '환불해 주세요', '2026-11-13T10:00:00', 1, 1)).lastrowid
         page = self.client.get('/reports/%d' % cid, base_url=jebo, headers=ua).get_data(as_text=True)
-        for text in ('ac-co', '고발 번호 %d' % cid, '환불', 'img/av/soboru-', '나도 고발하기'):
+        for text in ('ac-co', '고발 번호 %d' % cid, '환불', 'img/av/bird-', '나도 고발하기'):
             self.assertIn(text, page)
         self.assertNotIn('ac-co', self.client.get('/reports/%d' % cid, base_url=jebo).get_data(as_text=True))
 

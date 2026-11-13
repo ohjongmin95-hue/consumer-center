@@ -95,9 +95,9 @@ def install(S):
     app.jinja_env.globals['app_jebo'] = in_app
 
     def soboru_av(seed):
-        # 운영자 2026-11-13: 프로필 사진이 없으면 소보루 5가지(기본·초코·녹차·딸기·치즈) 중 하나. 같은 사람은 늘 같은 얼굴
+        # 운영자 2026-11-13: 프로필 사진이 없으면 토스처럼 단순한 새 5가지 중 하나 (고발 = 알리는 역할). 같은 사람은 늘 같은 새
         n = seed if isinstance(seed, int) else sum(ord(ch) * (i + 1) for i, ch in enumerate(str(seed or '')))
-        return url_for('static', filename='img/av/soboru-%d.png' % (n % 5 + 1))
+        return url_for('static', filename='img/av/bird-%d.svg' % (n % 5 + 1))
     app.jinja_env.globals['soboru_av'] = soboru_av
     app.jinja_env.globals['app_wants'] = lambda text: [w for w in WANTS if w in (text or '')]
 
