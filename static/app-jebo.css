@@ -100,7 +100,7 @@ span.ap-lg.c0{background:#3182F6}span.ap-lg.c1{background:#F04452}span.ap-lg.c2{
 .ap-join{display:flex;align-items:center;justify-content:center;height:52px;border-radius:16px;background:#EF920E;color:#fff!important;font-size:16px;font-weight:700}
 .ap-link{font-size:15px;font-weight:600;color:#4E5968!important}
 /* 바닥글 사업자 정보: 접어 두고 눌러서 펼침 (소보루CX처럼, 운영자 2026-11-11) */
-.ap-ftd{margin-top:14px}
+.ap-ftd{margin-top:0}
 .ap-ftd summary{list-style:none;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:#6B7684;cursor:pointer;padding:6px 0}
 .ap-ftd summary::-webkit-details-marker{display:none}
 .ap-ftd summary:after{content:'';width:7px;height:7px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg) translate(-2px,-2px);margin-left:4px;transition:transform .2s}
@@ -313,3 +313,7 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-mh-pic{width:36px;height:auto;flex:none}
 .ap-tick img.ap-tav{width:24px;height:24px;border-radius:50%;flex:none}
 .ap-tick a{padding:6px 14px 6px 6px}
+.ap-xt .ap-tabs{display:flex;gap:18px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:0 -20px;padding:0 20px}
+.ap-xt .ap-tabs::-webkit-scrollbar{display:none}
+.ap-xt .ap-tabs button{flex:none;white-space:nowrap}
+.ap-sub{display:block;font-size:13px;color:#8B95A1;font-weight:400;margin-top:2px}

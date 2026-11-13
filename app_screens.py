@@ -215,8 +215,12 @@ def install(S):
             g5 = guides(db, 5)
             try: hows = db.execute("SELECT id,emoji,title,topic FROM howto_guides WHERE status='published' ORDER BY sort,id LIMIT 8").fetchall()
             except Exception: hows = []
+            try: scams = db.execute("SELECT id,kind,title,region,created FROM scam_reports WHERE status='public' ORDER BY id DESC LIMIT 8").fetchall()
+            except Exception: scams = []
+            try: g10 = guides(db, 10)
+            except Exception: g10 = []
         hot = S.report_rows("public_consent=1 AND published=1 AND title_hidden=0 AND " + S.PUBLIC_VALID, (), 6, 0, S.HOT_ORDER)
-        return render_template('app_explore.html', guides=g5, news=soboru_news(), news_home=NEWS_HOME, hows=hows, cases=hot)
+        return render_template('app_explore.html', guides=g5, guides_all=g10, scams=scams, news=soboru_news(), news_home=NEWS_HOME, hows=hows, cases=hot)
 
     # ── 공동 대응 ────────────────────────────────────────
     def app_groups():

@@ -63,6 +63,7 @@
 {% block content %}{% endblock %}
 {% if not auth_screen and not company_screen and not letter_alone() %}{# 운영자 2026-11-04: 레터 구독 페이지는 바닥글 없음 #}<footer class="site-footer">
   <div class="ft-inner">
+    {% if app_jebo() %}<details class="ap-ftd"><summary>{{ ui('app.ft_info2', '소보루고발 정보·약관') }}</summary>{% endif %}{# 운영자 2026-11-13: 앱 바닥글은 상호·링크까지 통째로 접어 둠 #}
     <div class="ft-top">
       {% if is_soboru() %}<a class="ft-logo sb-ft-logo" href="{{ url_for('home') }}"><img src="{{ asset('img/soboru-logo.png') }}" alt="{{ txt('site.name') }}" width="127" height="30"></a><span class="sb-ft-why">{{ ui_rich('common.ft_why', '**소**비자 권익 **보**호를 위한 **루**트') }}</span>{% else %}<a class="ft-logo" href="{{ url_for('home') }}">{% if txt('site.logo_accent') %}<span>{{ txt('site.logo_accent') }}</span>{% endif %}{{ txt('site.logo_rest') }}{% set by = txt('site.logo_by') %}{% if by %}<small class="brand-by">by<img src="{{ asset('img/soboru-wordmark.png') }}" alt="SOBORU" width="62" height="12"></small>{% endif %}</a>{% endif %}
       <nav class="ft-links" aria-label="정책 및 안내">
@@ -75,7 +76,6 @@
         {% if biz_on() %}<a href="{{ url_for('biz_login') }}">{{ ui('common.ft_biz', '기업 회원') }}</a>{% endif %}{% endif %}{# 레터 따로 페이지는 약관·개인정보만 #}
       </nav>
     </div>
-    {% if app_jebo() %}<details class="ap-ftd"><summary>{{ ui('app.ft_info', '사업자 정보') }}</summary>{% endif %}{# 운영자 2026-11-11: 앱 바닥글은 소보루CX처럼 접어 두고 눌러서 펼침 #}
     {% set rows = footer_rows() %}
     {% if rows %}<div class="ft-info">{% for row in rows %}<ul class="ft-row">{% for key, label, value in row %}<li{{ ed_attr(key) }}>{{ label }}. {% if key == 'operator.manager' %}{# 관리자 이름 첫 글자: 관리자 로그인으로 가는 숨은 링크 #}<a class="ft-quiet" href="{{ url_for('admin_login') }}" rel="nofollow">{{ value[:1] }}</a>{{ value[1:] }}{% else %}{{ value }}{% endif %}</li>{% endfor %}</ul>{% endfor %}</div>{% endif %}
     <div class="ft-bottom">
