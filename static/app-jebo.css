@@ -171,14 +171,15 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-news .ap-t small{display:block;margin-top:4px;font-size:13px;color:#8B95A1}
 
 /* 첫 화면 소보루 기사: 헤이마오 '瞄一眼'처럼 작게 (운영자 2026-11-13) */
-.ap-mini{padding:18px 20px 10px;background:linear-gradient(180deg,#FFF4E0 0,#fff 72px)}
-.ap-mh{display:flex;align-items:center;gap:8px;min-width:0}
-.ap-mh .tf{font-size:22px;line-height:1}
-.ap-mh b{flex:none;font-size:19px;font-weight:800;color:#E07B00}
+.ap-mini{padding:18px 20px 12px;background:#fff}
+.ap-mh{display:flex;align-items:center;gap:8px;min-width:0;text-decoration:none}
+.ap-mh .tf{font-size:18px;line-height:1}
+.ap-mh b{flex:1;font-size:17px;font-weight:700;color:#191F28}
+.ap-mh .ap-more{color:#B0B8C1;font-size:20px}
 .ap-mh small{flex:1;min-width:0;font-size:13px;color:#8B95A1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ap-mini ul{list-style:none;margin:8px 0 0;padding:0}
-.ap-mini li a{display:flex;align-items:center;gap:8px;padding:7px 0;color:#191F28;text-decoration:none}
-.ap-mini li span{flex:1;min-width:0;font-size:16px;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap-mini ul{list-style:none;margin:10px 0 0;padding:0}
+.ap-mini li a{display:flex;align-items:center;gap:8px;padding:9px 0;color:#191F28;text-decoration:none}
+.ap-mini li span{flex:1;min-width:0;font-size:15px;line-height:22px;color:#333D4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ap-tagn{flex:none;font-style:normal;font-size:11px;font-weight:700;line-height:18px;padding:0 5px;border-radius:5px}
 .ap-tagn.new{background:#FFF0D6;color:#E07B00}.ap-tagn.hot{background:#FFE5E7;color:#F04452}
 
@@ -208,7 +209,7 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-ai-h{display:flex;flex-direction:column;gap:4px;padding-right:72px;color:#191F28;text-decoration:none}
 .ap-ai-h b{font-size:19px;line-height:27px;font-weight:800}
 .ap-ai-h small{font-size:14px;color:#C9760A}
-.ap-ai-pic{position:absolute;right:18px;top:14px;font-size:56px;line-height:1}
+.ap-ai-pic{position:absolute;right:14px;top:16px;width:84px;height:auto}
 .ap-ai-q{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(0,27,55,.06);color:#333D48;text-decoration:none;font-size:15px}
 .ap-ai-q span{flex:1;min-width:0}.ap-ai-q b{color:#EF920E;font-size:20px}
 .ap-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -299,3 +300,16 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ac-talk #talk-heading{font-size:17px;margin:0 0 12px}
 .ac-talk .primary,.ac-talk button[type=submit].primary{background:#EF920E}
 .ap-body:has(.ac) .to-top{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+
+/* 첫 화면 위 (운영자 2026-11-13: 헤이마오 首页처럼 숫자 카드 + 큰 고발하기 타일) */
+.ap-hero{display:grid;grid-template-columns:minmax(0,1fr) 128px;gap:10px}
+.ap-hero .ap-stat{padding:18px 16px}
+.ap-hero .ap-num small{color:#E07B00;font-weight:600}
+.ap-hero .ap-num b{font-size:24px}
+.ap-go2{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border-radius:24px;background:linear-gradient(135deg,#FFB547 0%,#EF920E 100%);box-shadow:0 6px 14px rgba(239,146,14,.28);text-decoration:none}
+.ap-go2 b{position:relative;font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.ap-go2 .tf{position:absolute;right:-6px;bottom:-8px;font-size:58px;opacity:.28;transform:rotate(-12deg)}
+.ap-go2:active{filter:brightness(.96)}
+.ap-mh-pic{width:36px;height:auto;flex:none}
+.ap-tick img.ap-tav{width:24px;height:24px;border-radius:50%;flex:none}
+.ap-tick a{padding:6px 14px 6px 6px}

@@ -10,7 +10,7 @@
 
   <section class="ap-card ap-ai">
     <a class="ap-ai-h" href="{{ url_for('law_ask') }}"><b>{{ ui('app.ai_t', '안녕하세요, AI 상담이에요') }}</b><small>{{ ui('app.ai_s', '소비자 법률 상담, 24시간 바로 답해요') }} ›</small></a>
-    <i class="ap-ai-pic tf" aria-hidden="true">🧑‍⚖️</i>
+    <img class="ap-ai-pic" src="{{ asset('img/soboru-character.png') }}" alt="" width="84" height="65">{# 운영자 2026-11-13: 판사 이모지 말고 소보루 캐릭터 #}
     <a class="ap-ai-q" href="{{ url_for('law_ask') }}"><i class="tf" aria-hidden="true">💬</i><span>{{ ui('app.ai_q', '어떤 일이 있었나요? 물어보세요') }}</span><b aria-hidden="true">→</b></a>
   </section>
 

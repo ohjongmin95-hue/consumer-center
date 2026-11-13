@@ -75,7 +75,8 @@ def soboru_news():
     """앱 홈 '소보루 기사' (운영자 2026-11-13). 화면을 기다리게 하지 않게 뒤에서 새로 가져오고, 그동안은 가져온 목록을 씀"""
     if time.time() - _news['at'] > NEWS_TTL and not _news['busy']:
         _news['busy'] = True
-        threading.Thread(target=refresh_news, daemon=True).start()
+        th = threading.Thread(target=refresh_news, daemon=True); th.start()
+        if not _news['items']: th.join(4)  # 서버를 막 켰을 때 첫 화면부터 기사가 보이게 (최대 4초)
     return _news['items']
 
 
@@ -96,7 +97,7 @@ def install(S):
     def soboru_av(seed):
         # 운영자 2026-11-13: 프로필 사진이 없으면 소보루 5가지(기본·초코·녹차·딸기·치즈) 중 하나. 같은 사람은 늘 같은 얼굴
         n = seed if isinstance(seed, int) else sum(ord(ch) * (i + 1) for i, ch in enumerate(str(seed or '')))
-        return url_for('static', filename='img/av/soboru-%d.svg' % (n % 5 + 1))
+        return url_for('static', filename='img/av/soboru-%d.png' % (n % 5 + 1))
     app.jinja_env.globals['soboru_av'] = soboru_av
     app.jinja_env.globals['app_wants'] = lambda text: [w for w in WANTS if w in (text or '')]
 
@@ -163,7 +164,7 @@ def install(S):
         tab = request.args.get('t', 'hot')
         if tab not in TABS: tab = 'hot'
         with S.conn() as db:
-            data = dict(tick=ticker(db), guides=guides(db), groups=open_groups(db), news=soboru_news()[:5], news_home=NEWS_HOME)
+            data = dict(tick=ticker(db), guides=guides(db, 5), groups=open_groups(db), news=soboru_news()[:5], news_home=NEWS_HOME)
         return render_template('app_home.html', summary=S.report_summary(), tab=tab, tabs=TABS, cases=home_list(tab), **data)
 
     # ── 기업 순위 ────────────────────────────────────────
