@@ -317,3 +317,26 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-xt .ap-tabs::-webkit-scrollbar{display:none}
 .ap-xt .ap-tabs button{flex:none;white-space:nowrap}
 .ap-sub{display:block;font-size:13px;color:#8B95A1;font-weight:400;margin-top:2px}
+
+/* ── TDS 정리 (운영자 2026-11-13: 배치는 헤이마오, 느낌은 토스 TDS) ──
+   그라데이션·흐린 큰 이모지·그림자 빼고: 회색 바탕 #F2F4F6 + 흰 카드(20px), 단색 귤색 버튼, 글자 색은 TDS 회색 단계 */
+.ap-go,.ap-join,.ap-go:active,.ap-join:active{background:#EF920E!important;box-shadow:none}
+.ap-go:active,.ap-join:active,.ap-go2:active,.ac-go:active{background:#E08600!important}
+.ap-go2{background:#EF920E;box-shadow:none;border-radius:20px}
+.ap-go2 .tf{display:none}
+.ap-go2 b{font-size:20px;font-weight:700;letter-spacing:0}
+.ap-hero .ap-stat{border-radius:20px}
+.ap-hero .ap-num small{color:#6B7684;font-weight:500}
+.ap-hero .ap-num b{font-weight:700;color:#191F28}
+.ac-go{background:#EF920E}
+.ap-ban{background:#fff}
+.ap-ai{background:#fff}
+.ap-ai-pic{font-size:44px;top:20px}
+.ap-ai-h small{color:#6B7684}
+.ap-ai-q{background:#F2F4F6;box-shadow:none}
+.ap-tile2,.ap-tile2.t1,.ap-tile2.t2{background:#fff;color:#191F28!important;border-radius:20px;padding:18px 16px 16px}
+.ap-tile2 b{font-size:17px;font-weight:700;color:#191F28}
+.ap-tile2 small{font-size:13px;color:#6B7684;opacity:1}
+.ap-tile2 .tf{position:static;order:-1;font-size:28px;opacity:1;line-height:1}
+.ac-ph span{background:#E5E8EB;color:#6B7684}
+.ap-st{font-weight:600}
