@@ -213,53 +213,45 @@
         <button class="cs-btn cs-btn-main" type="submit">저장</button>
       </form>
 
-      {# 1-2. 검토 결과: 미검토·정상·중복·제외 (진행 단계와 따로 관리). 사유는 중복·제외일 때만, 내부 기록용 #}
-      <form class="cs-panel cs-card rv-panel" method="post" id="review"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="review">
-        <h2>검토 결과 <span class="rv-chip rv-{{ case['review'] or 'new' }}">{{ reviews[case['review']] }}</span></h2>
-        <div class="rv-seg" role="radiogroup" aria-label="검토 결과">{% for k, v in reviews.items() %}<label class="rv-opt rv-{{ k or 'new' }}" title="{{ review_hints[k] }}"><input type="radio" name="review" value="{{ k }}"{% if k == case['review'] %} checked{% endif %}><span>{{ v }}</span></label>{% endfor %}</div>
-        <p class="rv-desc">{{ review_hints[case['review']] }}</p>
-        <div class="rv-reason field"><label for="c-review-note">사유 <em class="cs-muted">관리자 내부 기록용, 공개 안 됨</em></label><input id="c-review-note" name="review_note" maxlength="500" value="{{ case['review_note'] if case['review'] in ('duplicate', 'rejected') else '' }}" placeholder="예: 3번 제보와 같은 내용"><button class="cs-btn cs-btn-main" type="submit">저장</button></div>
-        <noscript><button class="cs-btn" type="submit">검토 저장</button></noscript>
-        <p class="cs-hint">중복·제외는 공개 목록과 기업 통계에서 빠져요. 진행 단계는 바뀌지 않아요.</p>
-      </form>
-      <script>
-      // 검토 결과는 화면을 새로 고치지 않고 저장 (위 '처리'에서 고르던 진행 단계·담당 기자가 풀리지 않게)
-      (function () {
-        var f = document.getElementById('review'); if (!f || !window.fetch) return;
-        var d = f.querySelector('.rv-desc'), chip = f.querySelector('h2 .rv-chip'), h = {{ review_hints|tojson }}, names = {{ reviews|tojson }};
-        function save() {
-          var v = (f.querySelector('input[name=review]:checked') || {}).value || '';
-          d.textContent = '저장하는 중…';
-          fetch(f.action || location.href, { method: 'POST', body: new FormData(f), credentials: 'same-origin' })
-            .then(function (r) {
-              if (!r.ok) throw r;
-              chip.className = 'rv-chip rv-' + (v || 'new'); chip.textContent = names[v];
-              d.textContent = '✓ ' + names[v] + '(으)로 저장했어요. ' + (h[v] || '');
-            })
-            .catch(function () { f.submit(); });
-        }
-        f.addEventListener('change', function (e) {
-          if (e.target.name !== 'review') return;
-          d.textContent = h[e.target.value] || '';
-          if (e.target.value === 'duplicate' || e.target.value === 'rejected') f.querySelector('#c-review-note').focus();
-          else save();
-        });
-        f.addEventListener('submit', function (e) { e.preventDefault(); save(); });
-      })();
-      </script>
+      {# 1-2. 기업에 보내기 (운영자 2026-11-13: 검토 결과 칸 대신 버튼 하나). 누르면 '정상' 승인 + 기업 자동 전달. 중복·제외는 접어 둠 #}
+      {% set rv = case['review'] %}
+      <section class="cs-panel cs-card rv-panel" id="review">
+        <h2>기업에 보내기 {% if rv == 'ok' %}<span class="rv-chip rv-ok">{{ '보냄' if case['forwarded_at'] else '승인됨' }}</span>{% elif rv %}<span class="rv-chip rv-{{ rv }}">{{ reviews[rv] }}</span>{% endif %}</h2>
+        {% if not rv %}
+        <p class="rv-desc">내용을 확인했으면 승인해 주세요. 기업 메일(가입 기업은 담당자 화면)로 바로 가고, 단계가 '기업 전달'로 바뀌어요. 아래 입장 요청서를 '관리자 승인'해도 똑같이 보내져요.</p>
+        <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="review"><input type="hidden" name="review" value="ok">
+          <button class="cs-btn cs-btn-main rv-go" type="submit">승인하고 기업에 보내기</button></form>
+        {% elif rv == 'ok' %}
+        <p class="rv-desc">{% if case['forwarded_at'] %}{{ case['forwarded_at'][5:16]|replace('T', ' ')|replace('-', '.') }}에 기업에 보냈어요.{% elif not case['share_company'] %}제보자가 기업 전달에 동의하지 않아 보내지 않았어요.{% else %}아직 못 보냈어요. 아래 ‘기업 안내’에서 이유를 확인해 주세요.{% endif %}</p>
+        {% else %}
+        <p class="rv-desc">{{ review_hints[rv] }}{% if case['review_note'] %} · {{ case['review_note'] }}{% endif %}. 공개 목록과 기업 통계에서 빠져요.</p>
+        {% endif %}
+        <details class="rv-more"{% if rv in ('duplicate', 'rejected') %} open{% endif %}>
+          <summary>{{ '검토 결과 바꾸기' if rv else '중복·제외로 빼기' }}</summary>
+          <form method="post" class="rv-more-f"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="review">
+            <div class="field"><label for="c-review">검토 결과</label><select id="c-review" name="review">{% for k, v in reviews.items() %}{% if k != rv %}<option value="{{ k }}"{% if (not rv and k == 'duplicate') %} selected{% endif %}>{{ v }}{{ '하고 기업에 보내기' if k == 'ok' }}</option>{% endif %}{% endfor %}</select></div>
+            <div class="field"><label for="c-review-note">사유 <em class="cs-muted">중복·제외일 때, 내부 기록용</em></label><input id="c-review-note" name="review_note" maxlength="500" value="{{ case['review_note'] if rv in ('duplicate', 'rejected') else '' }}" placeholder="예: 3번 제보와 같은 내용"></div>
+            <button class="cs-btn" type="submit">바꾸기</button>
+          </form>
+        </details>
+      </section>
 
       {# 2. 기업: 기업 페이지 연결, 가입 기업 전달, 답변 링크 #}
       <section class="cs-panel cs-card">
         <h2>기업 {% if linked %}<span class="cs-pill on">연결됨</span>{% else %}<span class="cs-pill">연결 전</span>{% endif %}{% if not case['share_company'] %} <span class="cs-pill off">전달 미동의</span>{% endif %}</h2>
         <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="company">
-          <label class="cs-label" for="c-company">등록 기업</label>
+          {# 운영자 2026-11-13: 제보가 들어오면 업체는 자동으로 저장·연결 (같은 이름이면 그 기업에). 바꿀 때만 고르면 바로 저장, 저장 버튼 없음 #}
+          {% if linked %}<p class="co-linked"><b>{{ linked['name'] }}</b>{{ ' (가입 기업)' if linked['status'] == 'active' }}</p>
+          <p class="cs-hint">제보가 들어올 때 자동으로 저장·연결됐어요. 이 기업 페이지에 모여요.{% if linked['status'] == 'active' %}{% if case['forwarded_at'] %} 담당자 화면에 보내졌어요.{% elif case['share_company'] %} 아직 담당자 화면에는 보내지 않았어요.{% endif %}{% endif %}</p>{% endif %}
           {% if companies %}
-          <div class="cs-row"><select id="c-company" name="company_id">
+          {% if linked %}<details class="co-change"><summary>다른 기업으로 바꾸기</summary>{% endif %}
+          <label class="cs-label" for="c-company">{{ '바꿀 기업' if linked else '연결할 기업' }}</label>
+          <select id="c-company" name="company_id" onchange="this.form.submit()">
             <option value="">연결 안 함</option>
-            {% for c in companies %}<option value="{{ c['id'] }}"{% if linked and linked['id'] == c['id'] %} selected{% endif %}>{{ '★ ' if c['id'] in suggested_ids }}{{ c['name'] }}{{ ' (가입)' if c['status'] == 'active' }}</option>{% endfor %}
-          </select><button class="cs-btn" type="submit">저장</button></div>
+            {% for c in companies %}<option value="{{ c['id'] }}"{% if linked and linked['id'] == c['id'] %} selected{% endif %}>{{ c['name'] }}{{ ' (가입)' if c['status'] == 'active' }}{{ ' · 이름 비슷함' if c['id'] in suggested_ids and not (linked and linked['id'] == c['id']) }}</option>{% endfor %}
+          </select><noscript><button class="cs-btn" type="submit">저장</button></noscript>
+          {% if linked %}</details>{% else %}<p class="cs-hint">고르면 바로 저장돼요.</p>{% endif %}
           {% endif %}
-          <p class="cs-hint">{% if linked %}<b>{{ linked['name'] }}</b> 기업 페이지에 모여요.{% if linked['status'] == 'active' %}{% if case['forwarded_at'] %} 담당자 화면에 보내졌어요.{% elif case['share_company'] %} 아직 담당자 화면에는 보내지 않았어요.{% endif %}{% endif %}{% elif suggested_ids %}★ 업체 이름이 비슷한 기업이에요.{% else %}연결하면 기업 페이지에 모여요.{% endif %}</p>
         </form>
         {% if linked and linked['status'] == 'active' and case['share_company'] and not case['forwarded_at'] %}
         <form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="forward"><span class="cs-hint">검토를 마쳤으면 기업 담당자 화면에 보내요.</span><button class="cs-btn" type="submit">담당자에게 보내기</button></form>
@@ -281,7 +273,7 @@
         <h2>기업 안내 {% if case['seen_at'] %}<span class="cs-pill on">기업이 열어 봄</span>{% elif case['forwarded_at'] %}<span class="cs-pill">전달 시도</span>{% endif %}</h2>
         {% if ops.notice_block %}<p class="cs-hint">{{ ops.notice_block }}</p>
         {% else %}<form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice"><span class="cs-hint">{{ ops.company['name'] }} {% if ops.notice_to %}공식 이메일({{ ops.notice_to }}){% endif %}{% if ops.notice_to and ops.notice_phone %}과 {% endif %}{% if ops.notice_phone %}카카오톡({{ ops.notice_phone }}){% endif %}로 이 제보만 볼 수 있는 답변 링크를 보내요.</span><button class="cs-btn" type="submit" onclick="return confirm('{{ ops.company['name'] }}에 안내를 보낼까요?')">{{ '재안내 보내기' if ops.notices|selectattr('status', 'equalto', '보냄')|list else '안내 보내기' }}</button></form>{% endif %}
-        <p class="cs-hint">검토 결과를 '정상'으로 저장하면 첫 안내가 자동으로 나가요. 제보자가 '답변 독촉'을 누르면 재안내가 나가요. 메일은 같은 제보로 3번까지, 72시간 간격이에요. 기업이 링크를 열어야 '기업 전달 확인'이 돼요.</p>
+        <p class="cs-hint">위 '기업에 보내기'를 누르면 첫 안내가 나가요. 제보자가 '답변 독촉'을 누르면 재안내가 나가요. 메일은 같은 제보로 3번까지, 72시간 간격이에요. 기업이 링크를 열어야 '기업 전달 확인'이 돼요.</p>
         {% if ops.notices %}<ol class="ops-notices">{% for n in ops.notices %}<li><span>{{ n['created'][5:16]|replace('T', ' ')|replace('-', '.') }}</span><b>{{ OPS_NOTICE_KINDS.get(n['kind'], n['kind']) }}</b> {{ n['status'] }}{% if n['target'] %} · {{ n['target'] }}{% endif %}{% if n['memo'] %} · {{ n['memo'] }}{% endif %}</li>{% endfor %}</ol>{% endif %}
         <details class="cs-more" id="notice_manual"><summary>전화·우편 등 직접 연락 기록</summary>
           <form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice_manual"><input name="memo" maxlength="300" required placeholder="예: 고객센터에 전화로 안내 (담당 김OO)" aria-label="연락 기록"><button class="cs-btn" type="submit">기록</button></form>

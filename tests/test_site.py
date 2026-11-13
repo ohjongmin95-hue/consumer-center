@@ -1662,7 +1662,7 @@ class SiteTest(unittest.TestCase):
         listing = admin.get('/admin/reports').get_data(as_text=True)
         # 목록은 공개가 기본이라 따로 안 적고, 비밀글만 표시
         self.assertIn('jl-lock" title="제보자가 비밀글로 접수">비밀', listing)
-        self.assertIn('rv-chip rv-new">미검토', listing)
+        self.assertIn('rv-chip rv-new">승인 전', listing)
         # 운영자가 사후에 게시를 내리면 목록에는 '비공개'로 제목만, 누르면 조회 비밀번호 창
         self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'hold'})
         self.assertEqual(self.client.get('/reports/%d' % ids['public']).status_code, 404)
@@ -2013,7 +2013,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('주식회사 테스트몰', admin.get('/admin/companies').get_data(as_text=True))
         self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'approve', 'manual': '1'})
         self.post_form(admin, '/admin/companies', {'id': company_id, 'action': 'aliases', 'aliases': 'TestMall, 테스트 쇼핑'})
-        self.assertIn('★ 주식회사 테스트몰', admin.get('/admin/reports/%d' % shared).get_data(as_text=True))
+        self.assertIn('주식회사 테스트몰 (가입) · 이름 비슷함', admin.get('/admin/reports/%d' % shared).get_data(as_text=True))
         self.post_form(admin, '/admin/reports/%d' % shared, {'form': 'company', 'company_id': company_id})
         # 미동의 제보도 기업 페이지에는 모을 수 있지만 기업 담당자 화면에는 안 감
         self.post_form(admin, '/admin/reports/%d' % private, {'form': 'company', 'company_id': company_id})
@@ -2936,6 +2936,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('(관리자 추가)', vs[1]['body'])
         post(form='req_restore', version='2')
         post(form='req_approve')
+        with self.site.conn() as db:  # 요청서를 승인하면 제보도 승인 (기업 자동 전달까지, 운영자 2026-11-13)
+            self.assertEqual(db.execute('SELECT review FROM cases WHERE id=?', (cid,)).fetchone()['review'], 'ok')
         post(form='req_sent', channel='email', target='cs@cat.example')
         with self.site.conn() as db:
             last = db.execute('SELECT * FROM company_requests WHERE case_id=? ORDER BY version DESC LIMIT 1', (cid,)).fetchone()

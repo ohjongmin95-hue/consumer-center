@@ -926,3 +926,18 @@ body.console .jl-need-f input{height:46px;box-sizing:border-box;width:100%;paddi
 body.console .jl-need-f input:focus{outline:none;border-color:var(--ad-orange);background:#fff}
 .jl-need-f .cs-btn{height:46px;white-space:nowrap}
 @media(max-width:700px){.jl-need-card{padding:18px}.jl-need-f{grid-template-columns:1fr}.jl-need-f .cs-btn{width:100%}}
+/* 기업에 보내기 칸 (운영자 2026-11-13) */
+.rv-panel .rv-go{width:100%;height:52px;font-size:16px}
+.rv-panel .rv-more{margin-top:14px;padding-top:12px;border-top:1px solid var(--ad-line)}
+.rv-panel .rv-more summary{cursor:pointer;color:var(--ad-sub);font-size:14px;font-weight:600}
+.rv-panel .rv-more-f{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.rv-panel .rv-more-f .cs-btn{align-self:flex-end}
+/* 목록 줄마다 단계·담당 고르기 (운영자 2026-11-13) */
+body.console .jl-table select.jl-in{appearance:none;-webkit-appearance:none;field-sizing:content;width:auto;height:auto;min-width:0;max-width:100%;margin:0;padding:3px 22px 3px 9px;border:0;border-radius:8px;font:inherit;font-size:12.5px;font-weight:700;line-height:18px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b95a1' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;background-size:12px;transition:box-shadow .2s}
+body.console .jl-table select.jl-in-as{background-color:transparent;color:var(--ad-ink);font-size:14px;font-weight:600;padding-left:0}
+body.console .jl-table select.jl-in:hover{box-shadow:0 0 0 1px #d1d6db}
+body.console .jl-table select.jl-in.saved{box-shadow:0 0 0 2px #3fd599}
+/* 제보 화면 기업 칸: 자동 연결된 기업 이름 + 바꾸기는 접어 둠 (운영자 2026-11-13) */
+.co-linked{margin:0 0 4px;font-size:17px;color:var(--ad-ink)}
+.co-change{margin-top:12px}.co-change summary{cursor:pointer;color:var(--ad-sub);font-size:14px;font-weight:600;margin-bottom:8px}

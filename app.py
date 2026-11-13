@@ -882,7 +882,8 @@ def pick_company(db,company_id,typed):
         hit=next((c for c in rows if c['id']==company_id),None)
         if hit and (same(hit) or company_matches(hit,typed)):return hit
     hits=[c for c in rows if same(c)]
-    return hits[0] if len(hits)==1 else None
+    # 같은 이름이 여럿이면 새로 만들지 않고 가입 기업 → 먼저 만든 기업에 붙임 (운영자 2026-11-13: 중복 저장 금지)
+    return sorted(hits,key=lambda c:(c['status']!='active',c['id']))[0] if hits else None
 def link_company(db,case_id,typed,company_id=None):
     # 제보를 기업에 연결. 같은 이름(다른 이름 포함)의 기업이 없으면 '등록 기업(listed)'으로 새로 만듦. 기업 페이지는 공개 제보가 생겨야 열림
     match=pick_company(db,company_id,typed)
@@ -2128,7 +2129,7 @@ def set_status(db,case,status):
     if jebo.STATUS_MY.get(status)!=jebo.STATUS_MY.get(case['status']):notify_later(case['id'],'status')
     if status!='접수':jebo.mark(db,case['id'],'reviewed_at')
     if status=='종결':jebo.mark(db,case['id'],'closed_at')
-BULK_ACTS={'ok':'정상으로 승인','forward':'기업에 전달','duplicate':'중복으로 처리','rejected':'제외로 처리'}
+BULK_ACTS={'ok':'승인하고 기업에 보내기','forward':'기업에 다시 보내기','duplicate':'중복으로 처리','rejected':'제외로 처리'}
 
 def reports_list():
     ep=AREAS[g.area]
