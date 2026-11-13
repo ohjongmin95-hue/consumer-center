@@ -6,6 +6,7 @@
 {% set filtered = track or assignee or review %}
 {% set track_label = '미분류' if track == 'none' else TRIAGE_TRACKS.get(track, '') %}
 {% set rv_label = reviews[review_keys[review]] if review else '' %}
+{% set bulk = ep.list == 'admin_reports' and cases %}
 <main class="cs-page jl-page">
   <div class="jl-head">
     <h1 class="cs-title">제보 목록 <span class="jl-total">{{ total }}건</span></h1>
@@ -58,13 +59,14 @@
   </div>
 
   <div class="cs-table-wrap jl-wrap">
-    <table class="jl-table">
-      <colgroup><col><col class="w-co"><col class="w-st"><col class="w-as"><col class="w-dt"></colgroup>
-      <thead><tr><th>제보</th><th>업체</th><th>상태</th><th>담당</th><th class="c-dt">접수일</th></tr></thead>
+    <table class="jl-table{{ ' has-ck' if bulk }}">
+      <colgroup>{% if bulk %}<col class="w-ck">{% endif %}<col><col class="w-co"><col class="w-st"><col class="w-as"><col class="w-dt"></colgroup>
+      <thead><tr>{% if bulk %}<th class="jl-ck"><label class="jl-ckbox"><input type="checkbox" id="bulk-all" aria-label="이 화면 제보 모두 고르기"></label></th>{% endif %}<th>제보</th><th>업체</th><th>상태</th><th>담당</th><th class="c-dt">접수일</th></tr></thead>
       <tbody>
       {% for c in cases %}
       {% set tr = track_of.get(c['id']) %}
       <tr class="{{ 'is-new' if c['status'] == STATUSES[0] }}" data-href="{{ url_for(ep.case, case_id=c['id']) }}">
+        {% if bulk %}<td class="jl-ck"><label class="jl-ckbox"><input type="checkbox" name="id" value="{{ c['id'] }}" form="bulk" data-review="{{ c['review'] }}" aria-label="{{ c['receipt'] }} 고르기"></label></td>{% endif %}
         <td class="jl-sub">
           <a href="{{ url_for(ep.case, case_id=c['id']) }}" title="{{ c['subject'] }}">{{ c['subject'] }}</a>
           <span class="jl-meta"><span class="jl-meta-co">{{ c['company'] }}</span><span class="mono">{{ c['receipt'] }}</span><span title="{{ (c['industry'] ~ ' · ' if c['industry']) ~ c['category'] }}">{{ c['category'] }}</span>{% if tr and tr['track'] %}<span class="tri-{{ tr['track'] }}">{{ '취재' if tr['track'] == 'story' else '자동 응답' }}</span>{% endif %}{% if not c['public_consent'] %}<span class="jl-lock" title="제보자가 비밀글로 접수">비밀</span>{% elif not c['published'] %}<span title="게시되지 않음 (운영자가 내림)">비공개</span>{% endif %}</span>
@@ -75,11 +77,25 @@
         <td class="c-dt" title="{{ c['created'][:16]|replace('T', ' ') }}">{{ c['created'][5:10]|replace('-', '.') }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="cs-empty">{{ '조건에 맞는 제보가 없어요.' if q or status or mine or review or track or assignee else '아직 접수된 제보가 없어요.' }}</td></tr>
+      <tr><td colspan="{{ 6 if bulk else 5 }}" class="cs-empty">{{ '조건에 맞는 제보가 없어요.' if q or status or mine or review or track or assignee else '아직 접수된 제보가 없어요.' }}</td></tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
+  {% if bulk %}
+  {# 일괄 처리: 고르면 아래에 막대가 떠요. 상태를 고르고 버튼 하나 (운영자 2026-11-13) #}
+  <form class="jl-bulk" id="bulk" method="post" action="{{ url_for('admin_reports_bulk') }}" hidden>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+    <p class="jl-bulk-n"><b id="bulk-n">0</b>건 골랐어요</p>
+    <select name="act" aria-label="고른 제보에 할 일">
+      <option value="ok">정상으로 승인 (기업에 자동 전달)</option>
+      <option value="forward">기업에 전달 (정상 제보만)</option>
+      <option value="duplicate">중복으로 처리</option>
+      <option value="rejected">제외로 처리</option>
+    </select>
+    <button class="cs-btn cs-btn-main" type="submit">적용하기</button>
+  </form>
+  {% endif %}
   {% if pages > 1 %}
   <nav class="pager" aria-label="페이지">
     {% if page > 1 %}<a href="{{ qs(page=page - 1) }}">← 이전</a>{% endif %}
@@ -89,6 +105,22 @@
   {% endif %}
 </main>
 <script>
+  // 일괄 처리: 고른 개수를 막대에 보여 주고, 중복·제외는 한 번 더 확인
+  (function () {
+    var bar = document.getElementById('bulk'); if (!bar) return;
+    var all = document.getElementById('bulk-all'), boxes = document.querySelectorAll('input[name=id][form=bulk]'), n = document.getElementById('bulk-n'), act = bar.querySelector('[name=act]');
+    function upd() { var k = [].filter.call(boxes, function (b) { return b.checked; }).length; n.textContent = k; bar.hidden = !k; document.body.classList.toggle('jl-bulk-on', !!k); all.checked = k && k === boxes.length; all.indeterminate = k > 0 && k < boxes.length;
+      if (k && !act.dataset.touched) act.value = [].some.call(boxes, function (b) { return b.checked && b.dataset.review !== 'ok'; }) ? 'ok' : 'forward'; }
+    all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); upd(); });
+    boxes.forEach(function (b) { b.addEventListener('change', upd); });
+    act.addEventListener('change', function () { act.dataset.touched = 1; });
+    bar.addEventListener('submit', function (e) {
+      var k = n.textContent, label = act.options[act.selectedIndex].text;
+      if (!confirm(k + '건을 \'' + label + '\'(으)로 처리할까요?' + (act.value === 'ok' || act.value === 'forward' ? '\n기업 담당자 화면이나 기업 메일로 바로 보내져요.' : ''))) e.preventDefault();
+      else bar.querySelector('button').disabled = true;
+    });
+    upd();
+  })();
   // 거르기 칩: 하나를 펼치면 나머지는 닫고, 바깥을 누르면 닫음
   document.addEventListener('click', function (e) {
     document.querySelectorAll('.jl-pick[open]').forEach(function (d) { if (!d.contains(e.target)) d.open = false; });

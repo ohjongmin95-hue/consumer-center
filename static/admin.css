@@ -882,3 +882,28 @@ body.console .lt-ad-row h3{padding-right:72px}
 body.console .lt-ad-del{position:absolute;top:18px;right:18px;margin:0}
 body.console .lt-ad-del button{background:none;border:0;padding:6px 8px;font-size:14px;font-weight:600;color:#e42939;cursor:pointer;border-radius:8px;min-height:0;width:auto}
 body.console .lt-ad-del button:hover{background:#fdecee}
+
+/* 제보 목록 일괄 처리 (운영자 2026-11-13): 왼쪽 고르기 칸 + 고르면 아래에 뜨는 막대 */
+.jl-table col.w-ck{width:52px}
+.jl-table th.jl-ck,.jl-table td.jl-ck{padding:0!important;text-align:left}
+.jl-ckbox{display:flex;align-items:center;justify-content:center;width:52px;height:100%;min-height:44px;cursor:pointer}
+.jl-ckbox input{width:20px;height:20px;margin:0;accent-color:var(--ad-orange);cursor:pointer}
+.jl-table.has-ck th:nth-child(2),.jl-table.has-ck td:nth-child(2){padding-left:4px}
+.jl-bulk{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:12px;width:min(640px,calc(100% - 32px));box-sizing:border-box;padding:12px 12px 12px 20px;background:#191f28;color:#fff;border-radius:20px;box-shadow:0 12px 32px rgba(0,0,0,.24)}
+.jl-bulk[hidden]{display:none}
+.jl-bulk-n{margin:0;flex:none;font-size:15px;white-space:nowrap}.jl-bulk-n b{color:#ffb766;font-size:17px}
+body.console .jl-bulk select{flex:1;min-width:0;height:44px;border:0;border-radius:12px;padding:0 12px;background:#fff;color:#191f28;font:inherit;font-size:15px;font-weight:600}
+.jl-bulk .cs-btn{flex:none;height:44px;padding:0 18px}
+body.jl-bulk-on .pager{margin-bottom:96px}
+body.jl-bulk-on .jl-wrap{margin-bottom:96px}
+@media(max-width:700px){
+  .jl-table.has-ck tbody tr{grid-template-columns:28px minmax(0,1fr) auto;grid-template-areas:"ck sub sub" ". st dt";padding-left:10px}
+  .jl-table.has-ck td.jl-ck{grid-area:ck;align-self:start}
+  .jl-table.has-ck .jl-ckbox{width:28px;min-height:24px;justify-content:flex-start}
+  .jl-table.has-ck td:nth-child(2){padding-left:0}
+  .jl-bulk{flex-wrap:wrap;gap:8px;padding:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  .jl-bulk-n{flex-basis:100%;padding-left:4px}
+  .jl-bulk select{flex-basis:100%}
+  .jl-bulk .cs-btn{flex:1 1 100%}
+  body.jl-bulk-on .jl-wrap{margin-bottom:180px}
+}
