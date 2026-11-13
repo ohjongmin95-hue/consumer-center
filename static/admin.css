@@ -941,3 +941,5 @@ body.console .jl-table select.jl-in.saved{box-shadow:0 0 0 2px #3fd599}
 /* 제보 화면 기업 칸: 자동 연결된 기업 이름 + 바꾸기는 접어 둠 (운영자 2026-11-13) */
 .co-linked{margin:0 0 4px;font-size:17px;color:var(--ad-ink)}
 .co-change{margin-top:12px}.co-change summary{cursor:pointer;color:var(--ad-sub);font-size:14px;font-weight:600;margin-bottom:8px}
+.jl-toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:41;max-width:min(560px,calc(100% - 32px));margin:0;padding:12px 18px;border-radius:14px;background:#191f28;color:#fff;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.jl-toast[hidden]{display:none}

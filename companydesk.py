@@ -293,9 +293,22 @@ def install(S):
         files={}
         for f in db.execute('SELECT * FROM answer_files WHERE case_id=? ORDER BY id',(case['id'],)):files.setdefault(f['message_id'],[]).append(f)
         failed=versions[0] if versions and not versions[0]['body'] else None
+        if cur and case['share_company']:cur=with_answer_link(db,case,cur)
         return dict(req=cur,versions=[v for v in versions if v['body']],failed=failed,contact=find_contact(db,case),public_url=public_url(case),
                     answer_files=files,today=datetime.date.today().isoformat())
     S.desk_context=context
+
+    def with_answer_link(db,case,cur):
+        """요청서 본문에 기업 답변 링크를 넣음 (운영자 2026-11-13: 기업에 보낼 때 바로 답할 수 있게). 공개 제보 링크 칸이 있으면 그 자리에, 없으면 맺음말 앞에"""
+        link=S.answer_link(db,case)  # 없으면 만들고, 있으면 메일로 보낸 것과 같은 링크
+        if not link or link in cur['body']:return cur
+        block='■ 답변 남기기 (로그인 없이 이 제보만 보고 답할 수 있어요)\n'+link
+        body=re.sub(r'■ 답변 남기기[^\n]*\n\S+',block,cur['body'])
+        if block not in body:
+            body,n=re.subn(r'■ 제보 내용 확인\n\S+',block,body,count=1)
+            if not n:
+                i=body.find('본 센터는 접수된');body=(body[:i]+block+'\n\n'+body[i:]) if i>=0 else body+'\n\n'+block
+        d=dict(cur);d['body']=body;return d
 
     def handle_form(db,case,form):
         cid=case['id'];who=S.actor_name()

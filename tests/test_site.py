@@ -1662,7 +1662,7 @@ class SiteTest(unittest.TestCase):
         listing = admin.get('/admin/reports').get_data(as_text=True)
         # 목록은 공개가 기본이라 따로 안 적고, 비밀글만 표시
         self.assertIn('jl-lock" title="제보자가 비밀글로 접수">비밀', listing)
-        self.assertIn('rv-chip rv-new">승인 전', listing)
+        self.assertNotIn('rv-chip rv-new', listing)  # 승인 전 표시는 없앰, 단계만 (운영자 2026-11-13)
         # 운영자가 사후에 게시를 내리면 목록에는 '비공개'로 제목만, 누르면 조회 비밀번호 창
         self.post_form(admin, '/admin/reports/%d' % ids['public'], {'form': 'publish_review', 'decision': 'hold'})
         self.assertEqual(self.client.get('/reports/%d' % ids['public']).status_code, 404)
@@ -4153,6 +4153,15 @@ class SiteTest(unittest.TestCase):
         reporter.post('/case/files', data={'_csrf': token, 'evidence': (io.BytesIO(b'MZ' + b'0' * 20), 'bad.exe')}, content_type='multipart/form-data')
         with self.site.conn() as db:
             self.assertEqual([r['original'] for r in db.execute('SELECT original FROM attachments WHERE case_id=?', (first,))], ['order.png'])
+        # 제보자가 글을 직접 고침 (운영자 2026-11-13), 고치기 전 글은 보관
+        self.assertIn('제보 내용 고치기', page)
+        reporter.post('/case/edit', data={'_csrf': token, 'subject': '고친 제목', 'description': '고친 내용이에요', 'request_text': '환불'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT subject FROM cases WHERE id=?', (first,)).fetchone()['subject'], '고친 제목')
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM case_edits WHERE case_id=?', (first,)).fetchone()[0], 1)
+        reporter.post('/case/edit', data={'_csrf': token, 'subject': '', 'description': 'x', 'request_text': 'y'})
+        with self.site.conn() as db:
+            self.assertEqual(db.execute('SELECT subject FROM cases WHERE id=?', (first,)).fetchone()['subject'], '고친 제목')
         # 정정 요청 → 운영자 처리 → 제보자에게 메시지
         mails.clear()
         reporter.post('/case/request', data={'_csrf': token, 'kind': 'correct', 'body': '날짜를 10월 1일로 고쳐 주세요.'})
