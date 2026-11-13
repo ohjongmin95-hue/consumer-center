@@ -346,12 +346,5 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-ai-h b{line-height:1.4}.ap-ai-h small{line-height:1.4}
 .ap-ht,.ac-t{word-break:keep-all;overflow-wrap:anywhere}
 .ap-ai-q span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* 운영자 2026-11-13: 타일은 색 있게 (토스식 단색 카드 + 흰 글자, 그라데이션 없이) */
-.ap-tile2.t1{background:#EF920E!important}.ap-tile2.t2{background:#F26B4A!important}
-.ap-tile2.t1,.ap-tile2.t2{color:#fff!important}
-.ap-tile2.t1 b,.ap-tile2.t2 b{color:#fff}
-.ap-tile2.t1 small,.ap-tile2.t2 small{color:rgba(255,255,255,.88)}
-.ap-tile2 .tf{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.95);font-size:24px;margin-bottom:6px}
-.ap-tile2.t1:active{background:#E08600!important}.ap-tile2.t2:active{background:#E05A3A!important}
-/* 운영자 2026-11-13: 아이콘 칸은 흰색 말고 카드 색에 어울리는 옅은 색 */
-.ap-tile2.t1 .tf{background:#FFD08A}.ap-tile2.t2 .tf{background:#FFC2B0}
+/* 운영자 2026-11-13: 타일은 흰 카드 그대로, 색은 아이콘에만 (색 카드·아이콘 칸은 장난 같다고 뺌) */
+.ap-tile2 .tf{font-size:30px}
