@@ -320,7 +320,11 @@ def install(S):
         elif form=='req_approve':
             if not cur:abort(400)
             db.execute("UPDATE company_requests SET status='approved',approved_at=?,approved_by=? WHERE id=?",(now(),who,cur['id']))
-            S.log_case(db,cid,f"입장 요청서 {cur['version']}판 관리자 승인");flash('승인했어요. 기업에 보낸 뒤 \'기업 전달 완료\'를 눌러 주세요.')
+            S.log_case(db,cid,f"입장 요청서 {cur['version']}판 관리자 승인")
+            # 운영자 2026-11-13: 요청서를 승인하면 제보도 승인하고 기업에 바로 보냄 (따로 검토 결과를 고르지 않게)
+            if case['review'] not in jebo.NOT_VALID and case['review']!='ok':S.set_review(db,case,'ok')
+            msg=S.ops_auto_forward(db,cid) if case['review'] not in jebo.NOT_VALID else ''
+            flash('승인했어요. '+(msg or '기업에 이미 보낸 제보예요.' if case['forwarded_at'] else msg or ''))
         elif form=='req_sent':
             if not cur or cur['status']=='draft':flash('먼저 관리자 승인을 해 주세요.');return
             channel=request.form.get('channel','');target=request.form.get('target','').strip()[:200]

@@ -55,7 +55,7 @@
   {# 거르기 칩: 누르면 목록이 펼쳐짐. 개수는 전체 제보 기준 #}
   <div class="jl-filters">
     <details class="jl-pick{% if review %} on{% endif %}">
-      <summary>{{ rv_label or '검토' }}{% if not review and review_counts['new'] %} <em>미검토 {{ review_counts['new'] }}</em>{% endif %}</summary>
+      <summary>{{ rv_label or '검토' }}{% if not review and review_counts['new'] %} <em>승인 전 {{ review_counts['new'] }}</em>{% endif %}</summary>
       <div class="jl-menu" aria-label="검토 결과별 보기">
         <a href="{{ qs(review='', page=None) }}"{% if not review %} class="on"{% endif %}>전체</a>
         {% for key, val in review_keys.items() %}<a class="{{ 'on' if review == key }}" href="{{ qs(review=key, page=None) }}">{{ reviews[val] }} <b>{{ review_counts[key] }}</b></a>{% endfor %}
@@ -77,7 +77,7 @@
       </div>
     </details>
     {% if filtered %}<a class="jl-reset" href="{{ qs(track='', assignee='', review='', page=None) }}">초기화</a>{% endif %}
-    <a class="jl-switch{% if sort %} on{% endif %}" href="{{ qs(sort=('' if sort else 'new_first'), page=None) }}" role="switch" aria-checked="{{ 'true' if sort else 'false' }}"><span class="jl-switch-track" aria-hidden="true"></span>미검토 먼저</a>
+    <a class="jl-switch{% if sort %} on{% endif %}" href="{{ qs(sort=('' if sort else 'new_first'), page=None) }}" role="switch" aria-checked="{{ 'true' if sort else 'false' }}"><span class="jl-switch-track" aria-hidden="true"></span>승인 전 먼저</a>
   </div>
 
   <div class="cs-table-wrap jl-wrap">
@@ -94,8 +94,8 @@
           <span class="jl-meta"><span class="jl-meta-co">{{ c['company'] }}</span><span class="mono">{{ c['receipt'] }}</span><span title="{{ (c['industry'] ~ ' · ' if c['industry']) ~ c['category'] }}">{{ c['category'] }}</span>{% if tr and tr['track'] %}<span class="tri-{{ tr['track'] }}">{{ '취재' if tr['track'] == 'story' else '자동 응답' }}</span>{% endif %}{% if not c['public_consent'] %}<span class="jl-lock" title="제보자가 비밀글로 접수">비밀</span>{% elif not c['published'] %}<span title="게시되지 않음 (운영자가 내림)">비공개</span>{% endif %}</span>
         </td>
         <td class="jl-co" title="{{ c['company'] }}">{{ c['company'] }}</td>
-        <td class="jl-st"><span class="cs-status s{{ stage_of(c['status']) }}">{{ stage_names()[stage_of(c['status']) - 1] }}</span>{% if c['review'] != 'ok' %}<span class="rv-chip rv-{{ c['review'] or 'new' }}">{{ reviews[c['review']] if c['review'] in reviews else c['review'] }}</span>{% endif %}</td>
-        <td class="jl-as{% if not c['assignee'] %} is-none{% endif %}" title="{{ c['assignee'] or '' }}">{% if c['assignee'] %}<span class="jl-ava" aria-hidden="true">{{ c['assignee'][:1] }}</span>{% endif %}{{ c['assignee'] or '미배정' }}</td>
+        <td class="jl-st">{% if bulk %}{# 줄마다 바로 단계 바꾸기 (운영자 2026-11-13: 하나씩 따로) #}<select class="jl-in cs-status s{{ stage_of(c['status']) }}" data-id="{{ c['id'] }}" data-kind="st" aria-label="{{ c['receipt'] }} 진행 단계">{% for st in statuses %}<option value="{{ st }}"{% if st == c['status'] or (c['status'] not in statuses and loop.first) %} selected{% endif %}>{{ stage_names()[loop.index0] }}</option>{% endfor %}</select>{% else %}<span class="cs-status s{{ stage_of(c['status']) }}">{{ stage_names()[stage_of(c['status']) - 1] }}</span>{% endif %}{% if c['review'] != 'ok' %}<span class="rv-chip rv-{{ c['review'] or 'new' }}">{{ reviews[c['review']] if c['review'] in reviews else c['review'] }}</span>{% endif %}</td>
+        <td class="jl-as{% if not c['assignee'] %} is-none{% endif %}" title="{{ c['assignee'] or '' }}">{% if bulk %}<select class="jl-in jl-in-as" data-id="{{ c['id'] }}" data-kind="as" aria-label="{{ c['receipt'] }} 담당 기자"><option value="">미배정</option>{% for n in staff_names %}<option{% if n == c['assignee'] %} selected{% endif %}>{{ n }}</option>{% endfor %}{% if c['assignee'] and c['assignee'] not in staff_names %}<option selected disabled>{{ c['assignee'] }}</option>{% endif %}</select>{% else %}{% if c['assignee'] %}<span class="jl-ava" aria-hidden="true">{{ c['assignee'][:1] }}</span>{% endif %}{{ c['assignee'] or '미배정' }}{% endif %}</td>
         <td class="c-dt" title="{{ c['created'][:16]|replace('T', ' ') }}">{{ c['created'][5:10]|replace('-', '.') }}</td>
       </tr>
       {% else %}
@@ -111,8 +111,8 @@
     <p class="jl-bulk-n"><b id="bulk-n">0</b>건 골랐어요</p>
     <select name="act" aria-label="고른 제보에 할 일">
       <optgroup label="검토">
-      <option value="ok">정상으로 승인 (기업에 자동 전달)</option>
-      <option value="forward">기업에 전달 (정상 제보만)</option>
+      <option value="ok">승인하고 기업에 보내기</option>
+      <option value="forward">기업에 다시 보내기 (승인한 제보만)</option>
       <option value="duplicate">중복으로 처리</option>
       <option value="rejected">제외로 처리</option>
       </optgroup>
@@ -147,6 +147,24 @@
       else bar.querySelector('button').disabled = true;
     });
     upd();
+  })();
+  // 줄마다 단계·담당 바로 바꾸기: 고르면 그 제보 하나만 저장 (화면은 그대로)
+  (function () {
+    var bar = document.getElementById('bulk'); if (!bar || !window.fetch) return;
+    var tok = bar.querySelector('[name=_csrf]').value, names = {{ stage_names()|tojson }}, sts = {{ statuses|tojson }};
+    document.querySelectorAll('select.jl-in').forEach(function (s) {
+      var before = s.value;
+      s.addEventListener('change', function () {
+        var fd = new FormData(); fd.append('_csrf', tok); fd.append('id', s.dataset.id); fd.append('act', s.dataset.kind + ':' + s.value); fd.append('next', '/admin/reports');
+        s.disabled = true;
+        fetch(bar.action, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) {
+          if (!r.ok) throw r;
+          before = s.value; s.classList.add('saved'); setTimeout(function () { s.classList.remove('saved'); }, 1200);
+          if (s.dataset.kind === 'st') s.className = s.className.replace(/\bs\d\b/, 's' + (sts.indexOf(s.value) + 1));
+        }).catch(function () { s.value = before; alert('저장하지 못했어요. 새로 고친 뒤 다시 해 주세요.'); })
+          .then(function () { s.disabled = false; });
+      });
+    });
   })();
   // 거르기 칩: 하나를 펼치면 나머지는 닫고, 바깥을 누르면 닫음
   document.addEventListener('click', function (e) {

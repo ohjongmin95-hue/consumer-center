@@ -12,8 +12,8 @@ CATEGORY_MAP={'상품·품질':'품질·하자·AS','배송·환불':'배송·�
 MIN_N=5  # 비율을 보여 주는 최소 유효 제보 수
 NOT_VALID=('rejected','duplicate')  # 운영자가 반려·중복 처리한 제보는 통계에서 뺀다
 # 검토 결과는 진행 단계와 따로 관리한다. 예전 값(ok·duplicate·rejected)을 그대로 쓰고 이름만 바꿈.
-REVIEWS={'':'미검토','ok':'정상','duplicate':'중복','rejected':'제외'}
-REVIEW_HINTS={'':'접수 후 아직 확인하지 않은 제보','ok':'정상적으로 접수·검토된 제보','duplicate':'같은 내용이 반복 접수된 제보','rejected':'허위·광고·욕설 등 운영 기준에 맞지 않는 제보'}
+REVIEWS={'':'승인 전','ok':'승인','duplicate':'중복','rejected':'제외'}  # 운영자 2026-11-13: 미검토·정상은 말이 어색해 승인 전·승인으로
+REVIEW_HINTS={'':'아직 승인하지 않은 제보','ok':'승인해 기업에 보내는 제보','duplicate':'같은 내용이 반복 접수된 제보','rejected':'허위·광고·욕설 등 운영 기준에 맞지 않는 제보'}
 REVIEW_KEYS={'new':'','ok':'ok','duplicate':'duplicate','rejected':'rejected'}  # 주소에 쓰는 이름 → DB 값
 CASE_COLS=('public_subject','public_body','public_request','review','review_note','reviewed_at','occurred_on','forwarded_at','seen_at','confirmed_at','closed_at','outcome')
 COMPANY_COLS=('brand','biz_name','official_email','statement','statement_at','statement_draft','statement_draft_at','email_token','email_verified_at','claim_id')
