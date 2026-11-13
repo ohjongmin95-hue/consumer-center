@@ -169,3 +169,16 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-news{align-items:flex-start;padding:12px 0}  /* 헤이마오처럼 사진 없이 글만 (운영자 2026-11-13) */
 .ap-news .ap-t b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:600;font-size:16px;line-height:24px;color:#191F28;word-break:keep-all}
 .ap-news .ap-t small{display:block;margin-top:4px;font-size:13px;color:#8B95A1}
+
+/* 고발 카드: 헤이마오 集体投诉처럼 한 장씩 (운영자 2026-11-13) */
+.ap-feed{display:flex;flex-direction:column;gap:12px;background:none;padding:0;border-radius:0;overflow:visible}
+.ap-body .ap-feed{border-radius:0;overflow:visible}
+.ap-feed .ap-cc{border-top:0;margin:0}
+.ap-cc .ap-co{font-size:17px}
+.ap-cc .ap-co .ap-st{margin-left:auto}
+.ap-cc .ap-cl{display:flex;flex-direction:column;gap:8px;color:inherit;text-decoration:none}
+.ap-cc .ap-cl p{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ap-tabs-out{padding:4px 4px 0}
+.ap-feed .ap-all{margin-top:0}
+.ap-cc .ap-co .ap-st{grid-column:auto;grid-row:auto;font-style:normal}
+.rf-wrap .rf-rows.rf-list:has(.ap-feed){background:none!important;border:0!important;box-shadow:none!important;padding:0!important}.rf-wrap:has(.ap-feed){background:none!important;border:0!important;padding:0!important}

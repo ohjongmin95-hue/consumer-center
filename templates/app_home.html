@@ -28,8 +28,8 @@
     {% for gr in groups %}<a class="ap-row" href="{{ url_for('group_page', group_id=gr['id']) }}"><em class="ap-badge red">{{ gr['n'] }}{{ ui('app.people', '명') }}</em><span class="ap-t">{{ gr['company'] }} {{ gr['title'] }}</span></a>{% endfor %}
   </section>{% endif %}
 
-  <section class="ap-card ap-list">
-    <nav class="ap-tabs" aria-label="{{ ui('app.list', '고발 목록') }}">{% for k, label in tabs.items() %}<a href="{{ url_for('home', t=k) }}"{% if k == tab %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+  <section class="ap-list ap-feed">
+    <nav class="ap-tabs ap-tabs-out" aria-label="{{ ui('app.list', '고발 목록') }}">{% for k, label in tabs.items() %}<a href="{{ url_for('home', t=k) }}"{% if k == tab %} class="on" aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}</nav>
     {% with cases = cases %}{% include 'app_feed.html' %}{% endwith %}
     <a class="ap-all" href="{{ url_for('reports', sort='hot' if tab == 'hot' else None, st=tab if tab in ('answer', 'done') else None) }}">{{ ui('app.all', '전체 고발 보기') }}</a>
   </section>

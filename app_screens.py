@@ -131,6 +131,16 @@ def install(S):
             w = who.get(r['no']); r['uid'] = w['uid'] if w else None; r['nick'] = (w['nickname'] if w else '') or ''
             # 운영자 2026-11-11: 커뮤니티라 목록에서도 본문이 보여야 함 (공개 글만, 개인정보 가린 본문)
             r['body'] = S.jebo.pub(w, S.mask_personal)['body'] if w and r.get('title') and not r.get('secret') and not r.get('pending') else ''
+            # 운영자 2026-11-13: 헤이마오 集体投诉 카드처럼. 업체 로고·이름, 이 업체 고발 수·기업 처리율, 피해·요구 태그
+            r['wants'] = [x for x in WANTS if w and x in (w['request_text'] or '')][:3] if r.get('body') else []
+            r['co'] = None
+            if w and w['company_id'] and not w['company_hidden'] and r.get('company'):
+                with S.conn() as db:
+                    co = db.execute('SELECT id,name,logo,logo_at FROM companies WHERE id=?', (w['company_id'],)).fetchone()
+                    if co:
+                        n, ans = db.execute("""SELECT COUNT(*),SUM(CASE WHEN c.status IN ('기업 답변 도착','종결') OR EXISTS(SELECT 1 FROM messages m WHERE m.case_id=c.id AND m.author='기업 답변') THEN 1 ELSE 0 END)
+                            FROM cases c WHERE c.company_id=? AND c.public_consent=1 AND c.published=1""", (co['id'],)).fetchone()
+                        r['co'] = dict(id=co['id'], logo=S.co_logo(co) if getattr(S, 'co_logo', None) else '', n=n or 0, rate=round(100 * (ans or 0) / n) if n else 0)
         return rows
 
     app.jinja_env.globals['app_feed'] = feed
