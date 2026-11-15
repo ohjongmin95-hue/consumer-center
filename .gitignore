@@ -5,3 +5,4 @@ private_uploads/
 .venv/
 platform.sqlite3
 moabap.sqlite3*
+mitgo.sqlite3*
