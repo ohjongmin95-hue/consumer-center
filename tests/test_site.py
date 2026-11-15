@@ -2626,6 +2626,23 @@ class SiteTest(unittest.TestCase):
             self.assertIsNone(db.execute('SELECT 1 FROM articles WHERE id=?', (aid,)).fetchone())
             self.assertIsNone(db.execute('SELECT 1 FROM posts WHERE id=?', (pid,)).fetchone())
 
+    def test_admin_life_bulk_delete(self):
+        # 운영자 2026-11-15: 기사 목록에서 여러 기사를 골라 한 번에 지움
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            ids = [db.execute("INSERT INTO articles(title,summary,body,status,created,updated,published_at) VALUES(?,'s','b','published',?,?,?)", (f'묶음 {k}', now, now, now)).lastrowid for k in range(3)]
+        admin = self.login_admin()
+        page = admin.get('/admin/life').get_data(as_text=True)
+        self.assertIn('id="mz-all"', page); self.assertIn(f'name="ids" value="{ids[0]}"', page); self.assertIn('선택한 기사 지우기', page)
+        tok = self.csrf(admin, '/admin/life')
+        r = admin.post('/admin/life/bulk-delete', data={'_csrf': tok, 'ids': [str(ids[0]), str(ids[1]), 'x', '999999'], 'view': 'published'})
+        self.assertEqual(r.status_code, 302); self.assertIn('view=published', r.headers['Location'])
+        with self.site.conn() as db:
+            left = {x[0] for x in db.execute('SELECT id FROM articles WHERE id IN (?,?,?)', ids)}
+        self.assertEqual(left, {ids[2]})
+        self.assertEqual(self.client.post('/admin/life/bulk-delete', data={'ids': [str(ids[2])]}).status_code in (302, 400, 403), True)
+        with self.site.conn() as db: self.assertTrue(db.execute('SELECT 1 FROM articles WHERE id=?', (ids[2],)).fetchone())
+
     def test_cross_site_login(self):
         self.enterContext(patch.object(self.site, 'RETIRED_HOSTS', set()))  # 예전 두 사이트 운영 때의 동작 확인 (지금 soboru.co.kr은 막혀 있음)
         # 소비자제보센터에서 가입·로그인하면 소보루에도 로그인, 로그아웃도 같이. 표는 한 번만 쓰고 다른 브라우저 상태값으론 안 됨
