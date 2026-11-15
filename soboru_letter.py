@@ -842,7 +842,7 @@ def install(S):
         # 정보성 콘텐츠만 (운영자 2026-11-01): 커뮤니티 리뷰·리뷰 주제는 빼고, 새 매거진 글과 오늘의 경제 용어
         # 운영자 2026-11-05: 콘텐츠가 적다 — 매거진 기사를 완전히 다른(매거진식) 디자인으로 사진·분야·요약까지. 최근 호에 넣은 기사는 건너뜀
         with conn() as db:
-            arts = db.execute("SELECT id,title,summary,body,emoji,category FROM articles WHERE status='published' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 40").fetchall()
+            arts = db.execute("SELECT id,title,summary,body,emoji,category FROM articles WHERE status='published' AND origin!='newspaper' ORDER BY COALESCE(published_at,created) DESC,id DESC LIMIT 40").fetchall()
             seen = set()
             for r in db.execute('SELECT sections FROM letters ORDER BY no DESC LIMIT 6'):
                 try: seen |= {x.get('id') for x in json.loads(r[0] or '{}').get('life') or [] if isinstance(x, dict)}

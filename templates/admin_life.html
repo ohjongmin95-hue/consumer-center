@@ -18,7 +18,7 @@
   {% for r in rows %}{% set ph = mag_photo(r['id'], 240) if mag_photo is defined else '' %}
     <li data-t="{{ r['title']|lower }}"><label class="mz-pick"><input type="checkbox" name="ids" value="{{ r['id'] }}" aria-label="{{ r['title'] }} 선택"></label><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">
       <span class="mz-thumb">{% if ph %}<img src="{{ ph }}" alt="" loading="lazy">{% endif %}</span>
-      <span class="mz-rt"><b>{{ r['title'] }}</b><small>{{ r['category'] }} · {{ (r['published_at'] or r['created'])[:10].replace('-', '.') }}{% if r['status'] == 'published' %} · 조회 {{ '{:,}'.format(r['views'] or 0) }}{% endif %}{% if r['origin'] == 'ai' %} · AI 초안{% if ai_marks is defined %}{% set m = ai_marks().get(r['id']) %}{% if m and not m.ok %} · 검토 필요 {{ m.problems|length }}곳{% endif %}{% endif %}{% endif %}{% if r['featured'] %} · 맨 위 고정{% endif %}</small></span>
+      <span class="mz-rt"><b>{{ r['title'] }}</b><small>{{ r['category'] }} · {{ (r['published_at'] or r['created'])[:10].replace('-', '.') }}{% if r['status'] == 'published' %} · 조회 {{ '{:,}'.format(r['views'] or 0) }}{% endif %}{% if r['origin'] == 'newspaper' %} · 소비자를위한신문{% endif %}{% if r['origin'] == 'ai' %} · AI 초안{% if ai_marks is defined %}{% set m = ai_marks().get(r['id']) %}{% if m and not m.ok %} · 검토 필요 {{ m.problems|length }}곳{% endif %}{% endif %}{% endif %}{% if r['featured'] %} · 맨 위 고정{% endif %}</small></span>
       <span class="mz-tag {{ r['status'] }}">{{ st_name.get(r['status'], '초안') }}</span>
     </a></li>
   {% else %}<li class="mz-empty">{% if view %}이 상태의 기사가 없어요.{% else %}아직 기사가 없어요. 첫 기사를 써 보세요.{% endif %}</li>{% endfor %}
@@ -26,6 +26,7 @@
   <div class="mz-bulkbar" id="mz-bulkbar" hidden><span id="mz-n">0개 선택</span><button type="submit" id="mz-del">선택한 기사 지우기</button></div>
   </form>
   <p class="mz-none" id="mz-none" hidden>찾는 제목의 기사가 없어요.</p>
+  {% if newspaper_on is defined and newspaper_on() %}<form class="mz-foot mz-np" method="post" action="{{ url_for('admin_life_newspaper') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">소비자를위한신문 기사 자동 연동 켜짐 · 30분마다 새 기사를 가져와요 <button type="submit">지금 가져오기</button></form>{% endif %}
   {% if naver_ready is defined %}<p class="mz-foot">네이버 검색 연결 {% if naver_ready() %}{% set nu = naver_usage() %}켜짐 · 오늘 검색 {{ '{:,}'.format(nu['search'][0]) }}/{{ '{:,}'.format(nu['search'][1]) }}번 · 추이·쇼핑 {{ '{:,}'.format(nu['datalab'][0]) }}/{{ '{:,}'.format(nu['datalab'][1]) }}번{% else %}꺼짐{% endif %}</p>{% endif %}
 <script>(function(){var q=document.getElementById('mz-q'),rows=document.querySelectorAll('#mz-rows li[data-t]'),none=document.getElementById('mz-none');if(!q)return;
 q.oninput=function(){var v=q.value.trim().toLowerCase(),n=0;rows.forEach(function(li){var ok=!v||li.dataset.t.indexOf(v)>-1;li.hidden=!ok;if(ok)n++});none.hidden=n>0||!rows.length;var a=document.getElementById('mz-all');if(a)a.checked=false}})();

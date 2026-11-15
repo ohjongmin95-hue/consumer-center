@@ -799,6 +799,7 @@ body.console .mz-search input:focus{background:#fff;box-shadow:inset 0 0 0 2px #
 .mz-bulkbar button{height:44px;padding:0 18px;border:0;border-radius:12px;background:#f2f4f6;color:#e5484d;font-size:15px;font-weight:700;cursor:pointer}
 .mz-bulkbar button.armed{background:#e5484d;color:#fff}
 .mz-bulkbar[hidden]{display:none}
+.mz-np button{margin-left:6px;padding:0;border:0;background:none;color:#e8590c;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
 .mz-empty,.mz-none{padding:48px 0;text-align:center;color:var(--ad-mute);font-size:15px}
 .mz-foot{margin:32px 0 0;font-size:13px;color:var(--ad-mute)}
 
