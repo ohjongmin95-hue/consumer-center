@@ -240,6 +240,7 @@ def block_count(item,default,top=30):
     try:return min(top,max(1,int(item.get('count',''))))
     except ValueError:return default
 app.jinja_env.globals.update(menu_href=menu_href,menu_active=menu_active,block_count=block_count)
+app.jinja_env.tests['image_file']=lambda stored:os.path.splitext(stored or '')[1].lower() in ('.png','.jpg','.jpeg','.webp','.gif')  # 관리자 첨부 사진 바로 보기 (2026-11-15)
 EMPHASIS=re.compile(r'\*\*(.+?)\*\*')
 @app.template_filter('emph')
 def emph(text):
@@ -2577,7 +2578,14 @@ def admin_reports_contact():
 def admin_report(case_id):return report_detail(case_id)
 @app.route('/admin/file/<int:file_id>')
 @admin_area
-def admin_file(file_id):return download_file(file_id)
+def admin_file(file_id):
+    # 운영자 2026-11-15: 관리자 화면에서는 사진을 바로 보이게 (?view=1이면 사진만 화면에 띄움, 나머지는 내려받기)
+    if request.args.get('view'):
+        with conn() as db:f=db.execute('SELECT * FROM attachments WHERE id=?',(file_id,)).fetchone()
+        mime=f and {'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif'}.get(os.path.splitext(f['stored'])[1].lower())
+        if mime:
+            r=send_file(UPLOAD/f['stored'],mimetype=mime,max_age=3600);r.headers['X-Content-Type-Options']='nosniff';r.headers['Content-Security-Policy']="default-src 'none'";return r
+    return download_file(file_id)
 @app.route('/admin/invite/<int:case_id>',methods=['POST'])
 @admin_area
 def admin_invite(case_id):return make_invite(case_id)

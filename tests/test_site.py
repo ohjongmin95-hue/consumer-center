@@ -3771,6 +3771,18 @@ class SiteTest(unittest.TestCase):
             row = db.execute("SELECT c.company,co.name,co.aliases FROM cases c JOIN companies co ON co.id=c.company_id WHERE c.id=?", (other['id'],)).fetchone()
         self.assertEqual((row['company'], row['name']), ('새로운 상점몰', '새로운 상점몰'))
         self.assertIn('새로운상점', row['aliases'])
+        # 관리자 화면 첨부 사진은 바로 보임 (운영자 2026-11-15), 사진이 아닌 파일은 내려받기
+        (self.site.UPLOAD / 'pic-view.png').write_bytes(b'\x89PNG\r\n\x1a\nfake'); (self.site.UPLOAD / 'doc-view.pdf').write_bytes(b'%PDF-1.4')
+        with self.site.conn() as db:
+            pid = db.execute("INSERT INTO attachments(case_id,stored,original) VALUES(?,'pic-view.png','캡처.png')", (other['id'],)).lastrowid
+            did = db.execute("INSERT INTO attachments(case_id,stored,original) VALUES(?,'doc-view.pdf','계약서.pdf')", (other['id'],)).lastrowid
+        page = admin.get('/admin/reports/%d' % other['id']).get_data(as_text=True)
+        self.assertIn('<img src="/admin/file/%d?view=1"' % pid, page)
+        self.assertIn('계약서.pdf', page); self.assertNotIn('/admin/file/%d?view=1' % did, page)
+        r = admin.get('/admin/file/%d?view=1' % pid)
+        self.assertEqual(r.mimetype, 'image/png'); self.assertNotIn('attachment', r.headers.get('Content-Disposition', '')); r.close()
+        r = admin.get('/admin/file/%d?view=1' % did); self.assertIn('attachment', r.headers['Content-Disposition']); r.close()
+        self.assertNotEqual(self.client.get('/admin/file/%d?view=1' % pid).status_code, 200)
         # 중지한 기업 페이지는 안 보임
         self.post_form(admin, '/admin/companies', {'id': co['id'], 'action': 'stop'})
         self.assertEqual(self.client.get('/companies/%d' % co['id']).status_code, 404)
