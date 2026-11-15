@@ -2672,7 +2672,8 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(ext['photo'](b['id']), 'https://www.consumertimes.kr/news/photo/202611/102_1.jpg')
         r = self.client.get(f"/life/{a['id']}", base_url='https://soboru.co.kr')
         self.assertEqual((r.status_code, r.headers['Location']), (302, a['source_url']))
-        self.assertIn('쿠팡 환불 지연', self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True))
+        home = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('쿠팡 환불 지연', home); self.assertIn('102_1.jpg', home)  # 신문 사진이 카드에
         self.assertNotIn(f"/life/{a['id']}<", self.client.get('/sitemap.xml', base_url='https://soboru.co.kr').get_data(as_text=True))
         admin = self.login_admin()
         page_ = admin.get('/admin/life').get_data(as_text=True)
