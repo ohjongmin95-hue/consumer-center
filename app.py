@@ -3326,3 +3326,4 @@ link_all_cases()  # 큰 기업 미리 등록: 처음 배포할 때 한 번만 (c
 
 if __name__=='__main__':app.run(debug=False)
 import moabap;app.wsgi_app=moabap.mount(app.wsgi_app)  # 모아밥: MOABAP_HOST 주소로 오면 모아배달 앱, 따로 DB (moabap/, 운영자 2026-11-11)
+import mitgo;app.wsgi_app=mitgo.mount(app.wsgi_app)  # 믿고가게: MITGO_HOST 주소로 오면 진짜 후기 가게 평판, 따로 DB (mitgo/, 운영자 2026-11-15)

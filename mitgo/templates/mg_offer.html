@@ -1,0 +1,6 @@
+{% extends 'mg_base.html' %}
+{% block title %}혜택 · {{ o.sname }} · 믿고가게{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block body %}<div class="wrap msg"><p class="mute">{{ o.sname }}</p><h1>{{ o.title }}</h1>{% if o.body %}<p>{{ o.body }}</p>{% endif %}
+<div class="code">{{ code }}</div><p>계산할 때 직원에게 이 화면을 보여 주세요.</p><p class="note">후기와 상관없는 혜택이에요. 후기를 쓰지 않아도 돼요.</p></div>{% endblock %}
+{% block bar %}<div class="bar"><a class="btn" href="{{ url_for('store', sid=o.store_id) }}">가게로 돌아가기</a></div>{% endblock %}

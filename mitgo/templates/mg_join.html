@@ -1,0 +1,23 @@
+{% extends 'mg_base.html' %}
+{% block title %}사장님 스티커 신청 · 믿고가게{% endblock %}
+{% block bodyclass %}has-bar{% endblock %}
+{% block body %}
+<section class="wrap about">
+  <h1>잘하는 가게가<br>제대로 알려지게</h1>
+  <p>가게에 스티커 한 장만 붙이면 손님이 찍고 바로 후기를 남겨요. 사장님은 후기에 답글을 달고, 손님이 많이 고른 말로 가게를 돌아볼 수 있어요.</p>
+  <div class="plans">
+    <div class="plan"><b>무료</b><p>가게 페이지, 스티커 1장, 후기 답글</p></div>
+    <div class="plan"><b>프로 월 {{ '{:,}'.format(price) }}원</b><p>후기 리포트, 가게 사진·가격표 꾸미기, 문의 받기. 별점과 순위에는 영향이 없어요.</p></div>
+  </div>
+</section>
+<form class="wrap write" method="post" id="jf">
+  <input type="hidden" name="_csrf" value="{{ csrf() }}">
+  <h2>스티커 신청</h2>
+  <input name="store" maxlength="40" placeholder="가게 이름" value="{{ f.store or '' }}" required>
+  <select name="cat"><option value="">분야</option>{% for n, e in cats %}<option{% if f.cat == n %} selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+  <input name="addr" maxlength="80" placeholder="주소" value="{{ f.addr or '' }}">
+  <input name="name" maxlength="20" placeholder="사장님 이름" value="{{ f.name or '' }}">
+  <input name="phone" inputmode="tel" placeholder="휴대폰 번호" value="{{ f.phone or '' }}" required>
+</form>
+{% endblock %}
+{% block bar %}<div class="bar"><button class="btn" form="jf">스티커 신청하기</button></div>{% endblock %}

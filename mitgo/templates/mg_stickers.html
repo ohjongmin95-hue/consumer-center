@@ -1,0 +1,13 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>믿고가게 스티커</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>@page{size:A4;margin:8mm}body{font-family:"Pretendard Variable",Pretendard,sans-serif;margin:0;color:#191F28}
+form{padding:16px;display:flex;gap:8px;align-items:center}form input{width:90px;padding:8px;border:1px solid #E5E8EB;border-radius:8px}form button{background:#FE9800;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:700}
+.sheet{display:flex;flex-wrap:wrap;gap:4mm}.st{width:80mm;height:110mm;border-radius:5mm;border:.3mm solid #E5E8EB;box-sizing:border-box;padding:8mm 7mm;display:flex;flex-direction:column;align-items:center;gap:3mm;break-inside:avoid}
+.lg{display:flex;align-items:center;gap:2mm;font-weight:800;font-size:6.5mm;letter-spacing:-.3mm}.lg img{width:8mm;height:8mm}.lg small{letter-spacing:0;font-size:2.6mm;color:#8B95A1;font-weight:600}
+.t{font-size:4.2mm;font-weight:800;text-align:center;line-height:1.35}.qr{width:46mm;height:46mm}.qr svg{width:100%;height:100%}.qr path{stroke:#191F28}
+.s{font-size:3mm;color:#4E5968;text-align:center}.n{font-size:2.6mm;color:#8B95A1;margin-top:auto}@media print{form{display:none}}</style></head><body>
+<form><input name="from" value="{{ a or '' }}" placeholder="시작 번호"> ~ <input name="to" value="{{ b or '' }}" placeholder="끝 번호"><button>만들기</button> <span>최대 200장, 인쇄는 브라우저에서</span></form>
+<div class="sheet">{% for n, svg in items %}<div class="st">
+<div class="lg"><img src="{{ url_for('static', filename='mark.svg') }}" alt="">믿고가게<small>by SOBORU</small></div>
+<div class="t">광고 없는 진짜 후기,<br>찍고 남겨 주세요</div><div class="qr">{{ svg|safe }}</div>
+<div class="s">스티커로 쓴 후기에는<br>방문 인증이 붙어요</div><div class="n">No. {{ n }}</div></div>{% endfor %}</div></body></html>

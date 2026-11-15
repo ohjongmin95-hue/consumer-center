@@ -1,0 +1,51 @@
+{% extends 'mg_base.html' %}
+{% block title %}{{ s.name }} 사장님 화면 · 믿고가게{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block body %}
+<section class="wrap">
+  {% if new %}<div class="flash">등록됐어요. 이 화면 주소를 즐겨찾기 해 두세요. 이 주소가 사장님 열쇠예요.</div>{% endif %}
+  <h1 class="ttl">{{ s.name }}<small>이번 주</small></h1>
+  <div class="kpi"><div><small>스티커 스캔</small><b>{{ scans }}</b></div><div><small>새 후기</small><b>{{ new_week }}</b></div>
+    <div><small>평균 별점</small><b>{{ st.avg if st else '-' }}</b></div><div><small>답글 기다림</small><b>{{ waiting }}</b></div><div><small>찜한 손님</small><b>{{ saves }}</b></div>
+    <div><small>믿고 갈 가게</small><b>{{ '선정' if st and st.pick else '아직' }}</b></div></div>
+  {% if st and st.subs|select|list %}<div class="subs">{% for name in subs %}<div><small>{{ name }}</small><b>{{ st.subs[loop.index0] or '-' }}</b></div>{% endfor %}</div>{% endif %}
+  {% if held %}<p class="note">별점이 낮은 후기 {{ held }}개는 사장님이 먼저 보고 있어요. 답글을 달면 답글과 함께 공개되고, 안 달아도 시간이 지나면 공개돼요.</p>{% endif %}
+  {% if st and st.top %}<p class="mute">손님이 많이 고른 말: {% for ch, n in st.top %}{{ ch }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+</section>
+{% for r, left in items %}
+<article class="wrap rv" id="r{{ r.id }}">
+  <div class="who"><span>{{ r.nick or '동네 손님' }}{% if r.visited %} <span class="vb">방문 인증</span>{% endif %}{% if r.private %} <span class="tb">사장님께만</span>{% elif left %} <span class="tb">{{ left }}시간 뒤 공개</span>{% endif %}</span><span>{{ ago(r.created) }}</span></div>
+  <div class="star">{{ '★' * r.stars }}<span class="off">{{ '★' * (5 - r.stars) }}</span></div>
+  {% if r.chips %}<div class="chips sm">{% for ch in r.chips.split('|') %}<span class="chip">{{ ch }}</span>{% endfor %}</div>{% endif %}
+  {% if r.body %}<p>{{ r.body }}</p>{% endif %}
+  <form method="post" action="{{ url_for('owner_reply', tok=tok, rid=r.id) }}" class="replyf"><input type="hidden" name="_csrf" value="{{ csrf() }}">
+    <textarea name="reply" rows="2" maxlength="400" placeholder="답글 달기">{{ r.reply }}</textarea><button class="btn sm">{{ '답글 고치기' if r.reply else '답글 달기' }}</button></form>
+  <details class="rep"><summary>규칙에 안 맞는 후기 신고</summary><form method="post" action="{{ url_for('owner_report', tok=tok, rid=r.id) }}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input name="reason" placeholder="이유 (예: 우리 가게 손님이 아니에요)" maxlength="200"><button class="link">신고하기</button></form></details>
+</article>
+{% else %}<p class="wrap empty">아직 후기가 없어요. 계산대 옆에 스티커를 붙여 두면 손님이 찍기 쉬워요.</p>{% endfor %}
+<section class="wrap card" id="offers"><h2>사장님 혜택</h2>
+  <p class="lead">쿠폰·묶음 할인처럼 손님 누구나 받는 혜택이에요. '후기 쓰면 할인'처럼 후기·별점을 조건으로 걸 수는 없어요.</p>
+  {% for o in offers %}<form method="post" action="{{ url_for('owner_offer', tok=tok) }}" class="deal-row{% if not o.active %} dim{% endif %}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input type="hidden" name="id" value="{{ o.id }}">
+    <div><b>{{ o.title }}</b><small>{{ o.body }}{% if o.until %} · {{ o.until }}까지{% endif %} · 받은 손님 {{ o.n }}명</small></div><button class="link">{{ '내리기' if o.active else '다시 올리기' }}</button></form>{% endfor %}
+  <form method="post" action="{{ url_for('owner_offer', tok=tok) }}" class="write"><input type="hidden" name="_csrf" value="{{ csrf() }}">
+    <input name="title" maxlength="40" placeholder="예: 평일 오전 커트 3,000원 할인">
+    <input name="body" maxlength="200" placeholder="자세한 내용 (안 써도 돼요)">
+    <label class="mute">언제까지 (안 고르면 계속)<input type="date" name="until"></label>
+    <button class="btn">혜택 올리기</button></form>
+</section>
+<details class="wrap card edit"><summary><b>가게 정보 고치기</b></summary>
+<form method="post" action="{{ url_for('owner_edit', tok=tok) }}" enctype="multipart/form-data" class="write"><input type="hidden" name="_csrf" value="{{ csrf() }}">
+  <input name="name" value="{{ s.name }}" maxlength="40" placeholder="가게 이름">
+  <select name="cat">{% for n, e in cats %}<option{% if s.cat == n %} selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+  <input name="addr" value="{{ s.addr }}" maxlength="80" placeholder="주소">
+  <input name="phone" value="{{ s.phone }}" maxlength="20" placeholder="가게 전화">
+  <input name="hours" value="{{ s.hours }}" maxlength="60" placeholder="여는 시간 (예: 10:00–20:00, 월 휴무)">
+  <input name="tags" value="{{ s.tags }}" maxlength="100" placeholder="태그 (예: 남성커트 주차가능 1인샵)">
+  <input name="reserve_url" value="{{ s.reserve_url }}" maxlength="300" placeholder="예약·웨이팅 주소 (네이버 예약 등, https://로 시작)">
+  <input name="loc" value="{{ '%s, %s'|format(s.lat, s.lng) if s.lat else '' }}" placeholder="지도 좌표 (예: 37.2886, 127.0507) 내 주변 찾기에 써요">
+  <textarea name="intro" rows="3" maxlength="300" placeholder="가게 소개">{{ s.intro }}</textarea>
+  <label class="mute">가게 사진 <input type="file" name="photo" accept="image/*"></label>
+  <button class="btn">저장</button>
+</form></details>
+<p class="wrap note">사장님은 후기를 지울 수 없어요. 답글로 설명하거나, 규칙에 안 맞으면 신고해 주세요.</p>
+{% endblock %}

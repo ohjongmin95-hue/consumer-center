@@ -1,0 +1,4 @@
+{% extends 'mg_base.html' %}
+{% block title %}{{ title }} · 믿고가게{% endblock %}
+{% block body %}<div class="wrap msg"><div class="msg-ic"><img src="{{ url_for('static', filename='mark.svg') }}" alt="" width="56" height="56"></div><h1>{{ title }}</h1><p>{{ text }}</p></div>{% endblock %}
+{% block bar %}{% if link %}<div class="bar"><a class="btn" href="{{ link }}">{{ label }}</a></div>{% endif %}{% endblock %}

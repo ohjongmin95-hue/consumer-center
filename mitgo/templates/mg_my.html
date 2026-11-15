@@ -1,0 +1,21 @@
+{% extends 'mg_base.html' %}
+{% block title %}내 활동 · 믿고가게{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% macro list(rows) %}<ol class="rank plain">{% for s in rows %}{% set t = st.get(s.id) %}<li><a href="{{ url_for('store', sid=s.id) }}">
+  <span class="th">{% if s.photo %}<img src="{{ url_for('img', name=s.photo) }}" alt="">{% else %}{{ cat_emoji.get(s.cat, '🏪') }}{% endif %}</span>
+  <span class="tx"><b>{{ s.name }}</b><small>{% if t %}<em class="star">★ {{ t.avg }}</em> · 후기 {{ t.n }} · {% endif %}{{ s.cat }}</small></span></a></li>{% endfor %}</ol>{% endmacro %}
+{% block body %}
+<section class="wrap me">
+  <h1 class="ttl">내 활동</h1>
+  <div class="lvcard"><b>{{ lv }}</b><span>후기 {{ n }}개 · 방문 인증 {{ v }}개</span>
+    {% if nxt %}<small>후기 {{ nxt[0] - n }}개 더 쓰면 {{ nxt[1] }}</small>{% endif %}</div>
+  <p class="note">로그인 없이 이 브라우저에 저장돼요. 다른 폰에서는 따로 보여요.</p>
+</section>
+<section class="wrap card"><h2>찜한 가게</h2>{% if saved %}{{ list(saved) }}{% else %}<p class="empty">가게 화면에서 ♡를 누르면 여기 모여요.</p>{% endif %}</section>
+<section class="wrap card"><h2>가 본 곳</h2><p class="lead">스티커를 찍은 가게예요.</p>{% if been %}{{ list(been) }}{% else %}<p class="empty">가게 스티커를 찍으면 여기 남아요.</p>{% endif %}</section>
+{% if deals %}<section class="wrap card"><h2>받은 혜택</h2>{% for d in deals %}<a class="mini" href="{{ url_for('store', sid=d.sid) }}"><div class="who"><b>{{ d.sname }}</b></div><p>{{ d.title }} · 번호 {{ d.code }}</p></a>{% endfor %}</section>{% endif %}
+<section class="wrap card"><h2>내가 쓴 후기</h2>
+{% for r in mine %}<a class="mini" href="{{ url_for('store', sid=r.store_id) }}"><div class="who"><b>{{ r.sname }}</b><span class="star">{{ '★' * r.stars }}</span>{% if r.visited %}<span class="vb">방문 인증</span>{% endif %}{% if not is_public(r) %}<span class="tb">{{ '사장님께만' if r.private else '공개 대기' }}</span>{% endif %}</div>
+  {% if r.body %}<p>{{ r.body }}</p>{% endif %}<small>{{ ago(r.created) }}{% if r.helpful %} · 도움돼요 {{ r.helpful }}{% endif %}</small></a>
+{% else %}<p class="empty">아직 쓴 후기가 없어요.</p>{% endfor %}</section>
+{% endblock %}

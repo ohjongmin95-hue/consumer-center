@@ -1,0 +1,16 @@
+{% extends 'mg_base.html' %}
+{% block title %}가게 등록 · 믿고가게{% endblock %}
+{% block bodyclass %}has-bar{% endblock %}
+{% block body %}
+<form class="wrap write" method="post" id="cf">
+  <input type="hidden" name="_csrf" value="{{ csrf() }}">
+  <h1>스티커 {{ code }}번,<br>가게를 등록해 주세요</h1>
+  <p class="mute">처음 찍으셨네요. 사장님이시면 1분이면 끝나요. 손님이시면 사장님께 알려 주세요.</p>
+  <input name="name" maxlength="40" placeholder="가게 이름" value="{{ f.name or '' }}" required>
+  <select name="cat" required><option value="">분야</option>{% for n, e in cats %}<option{% if f.cat == n %} selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+  <input name="addr" maxlength="80" placeholder="주소 (예: 광교중앙로 123 2층)" value="{{ f.addr or '' }}">
+  <input name="phone" inputmode="tel" placeholder="사장님 휴대폰 번호" value="{{ f.phone or '' }}" required>
+  <label class="check"><input type="checkbox" name="agree" value="1"> 체험단·후기 이벤트·돈 주고 받는 후기를 하지 않을게요. 어기면 스티커 가게 표시가 내려가요.</label>
+</form>
+{% endblock %}
+{% block bar %}<div class="bar"><button class="btn" form="cf">등록하기</button></div>{% endblock %}

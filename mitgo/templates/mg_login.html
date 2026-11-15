@@ -1,0 +1,6 @@
+{% extends 'mg_base.html' %}
+{% block title %}운영자 로그인 · 믿고가게{% endblock %}
+{% block gnb %}{% endblock %}{% block foot %}{% endblock %}
+{% block body %}<form class="login" method="post"><input type="hidden" name="_csrf" value="{{ csrf() }}">
+<img src="{{ url_for('static', filename='mark.svg') }}" alt="" width="56" height="56"><h1>믿고가게 운영자</h1>
+<input type="password" name="pw" placeholder="비밀번호" autofocus><button class="btn">들어가기</button></form>{% endblock %}

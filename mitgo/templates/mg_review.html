@@ -1,0 +1,31 @@
+{% extends 'mg_base.html' %}
+{% block title %}{{ s.name }} 후기 쓰기 · 믿고가게{% endblock %}
+{% block bodyclass %}has-bar{% endblock %}
+{% block body %}
+<form class="wrap write" method="post" id="wf" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="{{ csrf() }}">
+  <h1>{{ s.name }},<br>어떠셨어요?</h1>
+  <div class="stars" role="radiogroup" aria-label="별점">
+    {% for k in range(1, 6) %}<label><input type="radio" name="stars" value="{{ k }}"{% if f.stars|string == k|string %} checked{% endif %}><span>★</span></label>{% endfor %}
+  </div>
+  <p class="mute" id="sw">별을 눌러 주세요</p>
+  <div class="subrate">{% for name in subs %}<div class="sr"><span>{{ name }}</span><span class="stars sm" data-n="s{{ loop.index }}">{% for k in range(1, 6) %}<label><input type="radio" name="s{{ loop.index }}" value="{{ k }}"><span>★</span></label>{% endfor %}</span></div>{% endfor %}<p class="note">항목 별점은 안 골라도 돼요.</p></div>
+  <h2>어떤 점이 그랬나요?</h2>
+  <div class="chips pick" id="good">{% for ch in GOOD %}<label><input type="checkbox" name="chip" value="{{ ch }}"><span class="chip">{{ ch }}</span></label>{% endfor %}</div>
+  <div class="chips pick" id="bad" hidden>{% for ch in BAD %}<label><input type="checkbox" name="chip" value="{{ ch }}"><span class="chip">{{ ch }}</span></label>{% endfor %}</div>
+  <textarea name="body" rows="4" maxlength="600" placeholder="한 줄 남겨 주세요 (안 써도 돼요)">{{ f.body or '' }}</textarea>
+  <label class="mute">사진 (3장까지)<input type="file" name="photos" accept="image/*" multiple></label>
+  <input name="nick" maxlength="12" placeholder="이름 대신 보일 별명 (안 쓰면 동네 손님)" value="{{ f.nick or '' }}">
+  <label class="check"><input type="checkbox" name="private" value="1"> 사장님께만 전할게요</label>
+  <label class="check"><input type="checkbox" name="honest" value="1"> 대가 없이 직접 이용하고 쓰는 후기예요</label>
+  <p class="note">{% if visited %}가게 스티커로 들어와서 <b class="v">방문 인증</b>이 붙어요.{% else %}가게 안 스티커를 찍고 쓰면 방문 인증이 붙어요.{% endif %}</p>
+</form>
+{% endblock %}
+{% block bar %}<div class="bar"><button class="btn" form="wf">올리기</button></div>{% endblock %}
+{% block script %}<script>
+(function(){var W={{ STAR_WORD|tojson }},f=document.getElementById('wf'),g=document.getElementById('good'),b=document.getElementById('bad'),sw=document.getElementById('sw');
+function up(){var c=f.querySelector('input[name=stars]:checked'),v=c?+c.value:0;f.querySelectorAll('.stars:not(.sm) label').forEach(function(l,i){l.classList.toggle('on',i<v)});
+sw.textContent=v?W[v]:'별을 눌러 주세요';b.hidden=!(v&&v<=3);g.hidden=!!(v&&v<=2);}
+f.addEventListener('change',up);up();
+f.querySelectorAll('.stars.sm').forEach(function(g){g.addEventListener('change',function(){var c=g.querySelector('input:checked'),v=c?+c.value:0;g.querySelectorAll('label').forEach(function(l,i){l.classList.toggle('on',i<v)})})});})();
+</script>{% endblock %}
