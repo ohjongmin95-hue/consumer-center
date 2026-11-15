@@ -3292,6 +3292,7 @@ import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소�
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
 import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
 import aiusage;aiusage.install(types.SimpleNamespace(**globals()))  # 기능별 AI 호출 횟수·토큰 기록 (aiusage.py)
+import public_data;public_data.install(types.SimpleNamespace(**globals()))  # 공공데이터: 서버가 매일 받아 두고 관리자에서 봄 (public_data.py)
 import phoneauth;phoneauth.install(types.SimpleNamespace(**globals()))  # 휴대폰 번호로 시작하기 (phoneauth.py)
 import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·사장님 소식 (soboru_cm.py)
 import storeqr;storeqr.install(types.SimpleNamespace(**globals()))  # 매장 QR: 스티커 QR을 찍으면 /q/<번호>에서 별점·칩으로 사장님께 후기 (storeqr.py)

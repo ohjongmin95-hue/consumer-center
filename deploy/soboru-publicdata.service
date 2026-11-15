@@ -1,0 +1,17 @@
+# 공공데이터(1372 상담 통계·가맹 개폐점·의약품 회수·부적합 식품)를 서버가 받아 둠 (public_data.py). update.sh가 알아서 설치함
+[Unit]
+Description=소보루 공공데이터 받기
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=soboru
+Group=soboru
+WorkingDirectory=/opt/soboru/app
+EnvironmentFile=/etc/soboru.env
+ExecStart=/opt/soboru/venv/bin/python -m public_data
+TimeoutStartSec=3600
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/soboru

@@ -1,0 +1,36 @@
+{% extends 'console.html' %}
+{% block title %}공공데이터 | {{ site_name() }}{% if running %}<script>setTimeout(function () { location.reload(); }, 20000);</script>{% endif %}{% endblock %}
+{% block content %}
+{# 운영자 2026-11-15: 다운로드 없이 서버가 매일 받아 둔 공공데이터를 여기서 봄 (public_data.py) #}
+<main class="cs-page pd">
+  <h1 class="cs-title">공공데이터</h1>
+  <p class="au-help">서버가 매일 아침 8시 20분에 공공데이터포털에서 받아 둬요. 새 의약품 회수·부적합 식품은 아침 데스크 메일 위에 같이 와요.
+    {% if d.finished %}마지막으로 받은 때 {{ d.finished.replace('T', ' ') }} · 호출 {{ d.calls }}번.{% elif d.started %}{{ d.started.replace('T', ' ') }}에 받기 시작했어요.{% else %}아직 받은 적이 없어요.{% endif %}</p>
+  {% if not has_key %}<div class="cs-panel"><b>서버에 공공데이터포털 키가 없어요.</b> <code>sudo bash /opt/soboru/app/deploy/set-ftc.sh</code>로 넣어 주세요.</div>{% endif %}
+  <form method="post" class="pd-run"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="cs-btn cs-btn-main" type="submit"{% if running %} disabled{% endif %}>{{ '받는 중이에요…' if running else '지금 받기' }}</button></form>
+
+  {% for key, (pid, name, alert) in apis.items() %}{% set a = (d.apis or {}).get(key) or {} %}
+  <div class="cs-panel pd-api">
+    <h2>{{ name.split('_', 1)[-1] }}</h2>
+    <p class="pd-meta">{{ name.split('_', 1)[0] }} · <a href="https://www.data.go.kr/data/{{ pid }}/openapi.do" target="_blank" rel="noopener">포털 안내</a> ·
+      {% if a.rows %}<b>{{ '{:,}'.format(a.rows) }}건</b> 받음{% elif a.stale %}이번엔 못 받아서 지난번 것을 보여 줘요{% elif a %}<b class="pd-bad">0건</b>{% else %}아직 안 받음{% endif %}</p>
+    {% if a.new %}<div class="pd-new"><b>새로 나온 것 {{ a.new|length }}건</b><ul>{% for t in a.new %}<li>{{ t }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if a.errors %}<div class="pd-err"><b>오류</b><ul>{% for e in a.errors[:6] %}<li><code>{{ e }}</code></li>{% endfor %}</ul></div>{% endif %}
+    {% set s = a.summary or {} %}
+    {% if s.by_month %}<details><summary>달·해별 건수</summary><table class="cs-table"><tbody>{% for m, n in s.by_month.items() %}<tr><td>{{ m }}</td><td class="num">{{ '{:,}'.format(n) }}</td></tr>{% endfor %}</tbody></table></details>{% endif %}
+    {% if s.top_values %}<details><summary>항목별 많은 값</summary>{% for f, vals in s.top_values.items() %}<h3>{{ f }}</h3><table class="cs-table"><tbody>{% for v, n in vals[:15] %}<tr><td>{{ v }}</td><td class="num">{{ '{:,}'.format(n) }}</td></tr>{% endfor %}</tbody></table>{% endfor %}</details>{% endif %}
+    {% if s.keywords %}<details><summary>기사 재료: 키워드가 나온 건수</summary><table class="cs-table"><tbody>{% for k, v in s.keywords.items() %}<tr><td>{{ k }}</td><td class="num">{{ '{:,}'.format(v.count) }}</td><td>{% for y, n in v.by_year.items() %}{{ y }} {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}</td></tr>{% endfor %}</tbody></table></details>{% endif %}
+    {% if a.ops %}<details><summary>요청 항목(명세)</summary>{% for op in a.ops %}<p><code>{{ op.path }}</code> {{ op.summary }} — {{ op.rows }}건 / 호출 {{ op.calls }}번</p><ul class="pd-params">{% for n, req, desc in op.params %}<li><code>{{ n }}</code>{% if req %} <b>필수</b>{% endif %} {{ desc }}</li>{% endfor %}</ul>{% if op.fields %}<p class="pd-meta">응답 항목: {{ op.fields|join(', ') }}</p>{% endif %}{% endfor %}</details>{% endif %}
+  </div>
+  {% endfor %}
+  {% if d.log %}<details class="cs-panel"><summary>받은 기록</summary><pre class="pd-log">{{ d.log|join('\n') }}</pre></details>{% endif %}
+</main>
+<style>
+.pd-run{margin:0 0 16px}.pd-meta{color:#6B7684;font-size:14px;margin:4px 0 10px}.pd-bad{color:#F04452}
+.pd-new{background:#FFF4E6;border-radius:12px;padding:12px 14px;margin:0 0 10px}.pd-new ul,.pd-err ul{margin:6px 0 0;padding-left:18px}
+.pd-err{background:#FFEEEE;border-radius:12px;padding:12px 14px;margin:0 0 10px;font-size:14px}.pd-err code{white-space:pre-wrap;word-break:break-all}
+.pd-api details{margin:8px 0}.pd-api summary{cursor:pointer;font-weight:700}.pd-api h3{font-size:14px;margin:12px 0 4px}
+.pd-params{font-size:14px;color:#4E5968}.pd-log{white-space:pre-wrap;font-size:12px;max-height:400px;overflow:auto}
+</style>
+{% endblock %}
