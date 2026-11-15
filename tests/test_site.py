@@ -4542,7 +4542,7 @@ class SiteTest(unittest.TestCase):
             db.execute("DELETE FROM articles WHERE origin='ai'"); db.execute('DELETE FROM ai_articles')
             db.execute("DELETE FROM soboru_settings WHERE key LIKE 'writer%'"); db.execute('DELETE FROM soboru_art')
             # 예전 시험은 [취재 필요] 자리 없이 (자체기사 자리 시험은 test_writer_self_report_slots)
-            db.execute("INSERT INTO soboru_settings(key,value) VALUES('writer','{\"self\": 0}')")
+            db.execute("INSERT INTO soboru_settings(key,value) VALUES('writer','{\"self\": 0, \"yama\": 0}')")
             db.execute("DELETE FROM messages WHERE case_id IN (SELECT id FROM cases WHERE receipt LIKE 'AIW-%')")
             db.execute("DELETE FROM cases WHERE receipt LIKE 'AIW-%'"); db.execute("DELETE FROM companies WHERE biz_no='AIW'")
             db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
@@ -4749,7 +4749,7 @@ class SiteTest(unittest.TestCase):
             # 다음 날은 다음 종류부터, 자동 쓰기를 끄면 아무것도 안 함
             tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'per_run': '1'})
-            self.assertEqual(w['settings'](), {'auto': 0, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0, 'self': 0})
+            self.assertEqual(w['settings'](), {'auto': 0, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0, 'self': 0, 'yama': 0})
             self.assertEqual(w['daily'](tomorrow)[0]['status'], 'off')
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'per_run': '1'})
             with self.site.conn() as db: db.execute("UPDATE ai_articles SET created='2000-01-01T07:00:00'")  # 오늘 만든 개수에서 빼서 다음 날처럼
@@ -4760,10 +4760,10 @@ class SiteTest(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT status FROM articles WHERE origin='ai' ORDER BY id DESC LIMIT 1").fetchone()[0], 'draft')  # 바로 게시를 끄면 초안
             # 맨 위 '자동 게시 멈추기'는 게시만 끄고 글은 계속 씀, '다시 켜기'는 게시를 켬
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'start'})
-            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 1, 'cats': 0, 'self': 0})
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 1, 'cats': 0, 'self': 0, 'yama': 0})
             self.assertIn('자동 게시 중이에요', admin.get('/admin/life/ai').get_data(as_text=True))
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'stop'})
-            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0, 'self': 0})
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0, 'self': 0, 'yama': 0})
             self.assertIn('자동 게시를 멈췄어요', admin.get('/admin/life/ai').get_data(as_text=True))
             # 쇼핑 관심도: 가장 많이 오른 분야와 그 분야 클릭 비중
             with self.site.app.app_context(): shop = w['collect']('shopping')
@@ -5124,6 +5124,34 @@ class SiteTest(unittest.TestCase):
         admin.post(f'/admin/life/{aid}', data={'_csrf': token, 'act': 'publish', 'title': '자리 시험', 'body': filled})
         with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (aid,)).fetchone()[0], 'published')
         self.assertIn('컷 · 소비의 뒷면', admin.get('/admin/life/ai').get_data(as_text=True))
+
+    def test_writer_cut_kinds_and_daily_yama(self):
+        """운영자 2026-11-15: 기획 컷마다 쓰는 틀 + 서버가 받는 네이버 뉴스로 소비자 취재 야마 메모를 하루 몇 개 자동으로 (게시는 안 됨)"""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        w = self.site.app.extensions['soboru_writer']; hub = self.site.naverhub; mod = self.site.soboru_writer
+        self.assertEqual({mod.CUT_OF[k] for k in mod.CUT_KINDS if k != 'yama'}, set(mod.CUTS))  # 컷 6개 모두 틀이 있음
+        sent, calls = [], []
+        env = {'OPENAI_API_KEY': 'sk-test-key', 'NAVER_HUB_CLIENT_ID': 'cid-test', 'NAVER_HUB_CLIENT_SECRET': 'secret-test-value'}
+        with patch.dict(os.environ, env), patch.object(hub, 'http', self.writer_naver(calls)), patch.object(self.site.companydesk, 'post_json', self.writer_ai(sent)), \
+                patch.object(self.site.jebo, 'MIN_N', 10 ** 6):
+            w['save_settings'](1, 5, 1, 0, 0, 1)
+            today = datetime.date.today().isoformat()
+            with self.site.conn() as db: db.execute("INSERT OR REPLACE INTO soboru_settings(key,value) VALUES('writer_feature_pool', ?)",
+                                                  (json.dumps({'day': today, 'ideas': [{'topic': t, 'angle': '소비자 쪽 각도', 'category': '생활'} for t in ('배달앱 수수료', '헬스장 환불', '해외직구')]}, ensure_ascii=False),))
+            out = w['daily'](now=datetime.datetime(2026, 10, 20, 7, 30))
+            yamas = [r for r in out if r.get('kind') == 'yama']
+            self.assertEqual(sum(r['status'] == 'made' for r in yamas), 1)  # 아침에는 하루 3개 가운데 1개 몫
+            with self.site.conn() as db:
+                memo = db.execute("SELECT a.status,a.body FROM articles a JOIN ai_articles x ON x.article_id=a.id WHERE x.kind='yama'").fetchone()
+            self.assertEqual(memo['status'], 'draft')
+            self.assertTrue(memo['body'].startswith(mod.TODO + ' · 취재 메모]'))
+            prompt = json.dumps(sent, ensure_ascii=False)
+            self.assertIn('[취재 메모]', prompt); self.assertIn('가장 맞는 컷을 골라', prompt)
+            # 컷 틀: 관리자에서 만들면 그 컷으로 씀
+            r = w['generate']('c_receipt', 'admin'); self.assertEqual(r['status'], 'made')
+            self.assertIn('[컷] 영수증 너머', json.dumps(sent[-1], ensure_ascii=False) if sent else '')
+        page = self.login_admin().get('/admin/life/ai').get_data(as_text=True)
+        self.assertIn('기획 컷으로 쓰기', page); self.assertIn('뉴스로 소비자 취재 야마 잡기', page); self.assertIn('컷 · 더 라벨', page)
 
     def test_writer_law_source_hides_key(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)

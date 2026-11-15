@@ -87,7 +87,10 @@ CUTS = {'소비의 뒷면': '가격·광고 뒤에 숨은 피해와 구조를 �
         '취향수집': '요즘 소비자가 어디에 마음과 돈을 쓰는지 모은다',
         '넥스트 카트': '쇼핑이 어디로 가는지, 새 방식과 그 함정을 본다'}
 CUT_OF = {'trend': '취향수집', 'shopping': '넥스트 카트', 'news': '소비의 뒷면', 'reports': '소비의 뒷면', 'law': '체크아웃', 'issue': '영수증 너머',
-          'rights': '체크아웃', 'word': '취향수집', 'shopcat': '넥스트 카트', 'fix': '체크아웃', 'stat': '영수증 너머', 'feature': '소비의 뒷면'}
+          'rights': '체크아웃', 'word': '취향수집', 'shopcat': '넥스트 카트', 'fix': '체크아웃', 'stat': '영수증 너머', 'feature': '소비의 뒷면',
+          'c_back': '소비의 뒷면', 'c_receipt': '영수증 너머', 'c_checkout': '체크아웃', 'c_label': '더 라벨', 'c_taste': '취향수집', 'c_cart': '넥스트 카트'}
+YAMA_PER_DAY = 3
+CUT_KINDS = ['c_back', 'c_receipt', 'c_checkout', 'c_label', 'c_taste', 'c_cart', 'yama']
 # 네이버 뉴스제휴 '자체기사' (운영자 2026-11-15): 보도자료·통계를 옮기기만 한 글이 아니라 기자가 직접 취재한 흔적이 본문에 있어야 함.
 # AI는 사람 말·사례를 지어내지 않고, 기자가 채울 자리를 [취재 필요]로 본문에 넣어 둔다. 이 표시가 남아 있으면 게시하지 않는다
 TODO = '[취재 필요'
@@ -135,6 +138,21 @@ KINDS = {
                     about='[주제]를 소비자 잡지의 기획 기사로 깊이 쓴다. 최근 뉴스(무슨 일이 있었는지), 검색 추이 같은 통계(얼마나 관심이 몰리는지), '
                           '법 조문(소비자에게 어떤 권리가 있는지)을 엮어 하나의 이야기로 쓰고, 그래서 소비자는 무엇을 하면 되는지로 마무리한다. '
                           '[기획 각도]가 있으면 그 각도로 쓴다. 자료에 없는 사실은 보태지 않는다.'),
+    # 기획 컷마다 쓰는 틀 (운영자 2026-11-15: '우리 기획기사 컷에 도움되는 것들'). 주제는 소보루 기획 기사처럼 최근 뉴스에서 고른 야마. 관리자에서 만들 때만 씀
+    'c_back': dict(name='소비의 뒷면 · 피해 구조 파헤치기', needs=('naver',), category='생활', emoji='🔦', tone='t1', topics=True, cutkind=True,
+                   about='[주제]에서 소비자가 겪는 피해가 어떤 구조(수수료·약관·유통 단계·플랫폼 책임 공백)에서 생기는지 파헤친다. 무슨 피해가 있었나 → 왜 반복되나(구조) → 누가 이득을 보고 누가 손해를 보나 → 무엇이 바뀌어야 하나 순서.'),
+    'c_receipt': dict(name='영수증 너머 · 값이 매겨지는 구조', needs=('naver',), category='생활', emoji='🧾', tone='t3', topics=True, cutkind=True,
+                      about='[주제]의 값·요금이 왜 그렇게 매겨졌는지 영수증 너머를 따진다. 가격이 얼마나 움직였나(자료의 숫자) → 원가·수수료·세금·유통 가운데 무엇이 값을 올렸나(자료 안에서) → 같은 돈으로 소비자가 받는 것은 늘었나 줄었나 → 덜 내는 방법.'),
+    'c_checkout': dict(name='체크아웃 · 결제 전 확인 목록', needs=('naver',), category='생활', emoji='✅', tone='t5', topics=True, cutkind=True,
+                       about='[주제]를 결제하기 전에 소비자가 확인할 권리와 조건(청약철회·환불·위약금·자동결제·보증)을 법 조문 근거로 짚는다. 결제 전 → 결제 직후 → 문제가 생겼을 때 순서로, 확인할 곳과 물어볼 말을 구체적으로 쓴다. 조문에 없는 기간·금액은 쓰지 않는다.'),
+    'c_label': dict(name='더 라벨 · 인터뷰 준비 노트', needs=('naver',), category='생활', emoji='🎙️', tone='t2', topics=True, cutkind=True, memo=True,
+                    about='[주제]와 관련해 기자가 직접 만나 이야기를 들을 브랜드·사람 인터뷰를 준비하는 노트다. 기사가 아니다. 왜 지금 이 사람(브랜드)인지, 만날 후보(실명은 자료에 나온 기업·기관만, 개인은 "○○ 대표" 같은 역할로), 미리 확인할 사실, 물을 질문, 사진 찍을 장면을 정리한다. 답변은 지어내지 않는다.'),
+    'c_taste': dict(name='취향수집 · 요즘 돈 쓰는 곳', needs=('naver',), category='생활', emoji='🧺', tone='t2', topics=True, cutkind=True,
+                    about='[주제]에 요즘 소비자가 어디에 마음과 돈을 쓰는지 검색 추이·뉴스로 보여 준다. 얼마나 관심이 몰렸나 → 누가 왜 사나(자료 안에서) → 이 취향의 비용과 함정 → 똑똑하게 즐기는 법.'),
+    'c_cart': dict(name='넥스트 카트 · 새 쇼핑 방식과 함정', needs=('naver',), category='쇼핑', emoji='🛒', tone='t4', topics=True, cutkind=True,
+                   about='[주제]에서 새로 생긴 쇼핑 방식(라이브커머스·구독·해외직구·AI 추천·간편결제 등)이 어떻게 돌아가는지, 편해진 만큼 소비자가 놓치기 쉬운 함정과 책임 소재는 무엇인지 쓴다.'),
+    'yama': dict(name='뉴스로 소비자 취재 야마 잡기', needs=('naver',), category='생활', emoji='🧭', tone='t1', topics=True, cutkind=True, memo=True,
+                 about='[주제]의 일반 뉴스를 보고 소보루가 소비자 편에서 새로 취재할 야마(각도)를 잡는 취재 메모다. 기사가 아니다. 뉴스가 놓친 소비자 쪽 질문, 이 야마가 맞는 소보루 컷과 이유, 만날 소비자·기업·전문가, 기업에 보낼 질문, 확인할 자료·숫자, 찍을 사진, 예상 제목을 정리한다.'),
 }
 ORDER = ['trend', 'reports', 'news', 'shopping', 'law']  # 하루 한 번씩 쓰는 종류 (돌아가며 시작하는 순서)
 PAUSED = {'reports'}  # 운영자 요청 2026-10-18: 제보로 쓰는 글은 아직 쓰지 않음 (매일·관리자 버튼 모두). 다시 쓰려면 여기서 뺌
@@ -333,6 +351,13 @@ REPORT_DEFAULT = {'case': '같은 일을 겪은 소비자(소보루 제보자) �
                   'photo': '현장이나 화면을 기자가 직접 찍은 사진을 넣는다.'}
 
 
+MEMO = ('[취재 메모] 이것은 독자에게 내보낼 기사가 아니라 기자가 볼 취재 계획이다. 짧고 분명한 메모체(~하기, ~확인)로 쓴다. 문체 규칙 중 도입 장면·여운 같은 기사 꾸밈은 따르지 않는다. '
+        '사람의 말·답변·사례는 지어내지 않는다. 자료에 없는 숫자는 쓰지 않는다.\n'
+        '같은 JSON 꼴로 답하되: title = 이 취재로 나갈 기사의 예상 제목, summary = 야마 세 줄, intro = 왜 지금 이 이야기인지(자료의 뉴스로) 1~2문단, '
+        'sections = 소제목별 메모(예: "야마와 컷", "만날 사람", "물을 질문", "확인할 자료·숫자", "찍을 사진"). 질문·사람·자료는 points로 하나씩 (title 한 줄 + text 이유 한두 문장). '
+        'tips = 바로 할 일, closing = 빈 문단이 아니면 기사에 쓸 첫 문장 후보.\n')
+
+
 def assemble(out, kind, self_on=True):
     """AI JSON → (제목, 요약 세 줄, 본문, 분야). 형식이 틀리면 RuntimeError."""
     if not isinstance(out, dict): raise RuntimeError('AI 응답 형식이 달라요')
@@ -379,6 +404,8 @@ def assemble(out, kind, self_on=True):
     def todo(key, label):
         t = re.sub(r'\d', '○', _plain(rep.get(key), 300))  # 숫자 검사에 걸리지 않게 (지시문에는 숫자가 필요 없음)
         return f'{TODO} · {label}] ' + (t or REPORT_DEFAULT[key])
+    memo = KINDS.get(kind, {}).get('memo')
+    if memo: self_on = False  # 취재 메모는 그 자체가 취재 계획 (맨 위 표시로 게시를 막음)
     if parts and self_on:  # 운영자 2026-11-15: 자체기사 — 기자가 채울 자리를 본문 흐름 안에 (사례는 도입 뒤, 반론은 첫 소제목 끝, 전문가는 둘째 소제목 끝, 자체 자료·사진은 맺음 앞)
         parts[0] += '\n\n' + todo('answer', '기업·기관 답변')
         parts[min(1, len(parts) - 1)] += '\n\n' + todo('expert', '전문가 멘트')
@@ -387,6 +414,7 @@ def assemble(out, kind, self_on=True):
     if intro and parts: parts.insert(0, '\n\n'.join(intro))  # 소제목 없는 도입 (뉴닉처럼 말 걸며 시작)
     if not title or not parts: raise RuntimeError('AI가 기사를 채우지 못했어요')
     cat = out.get('category') if out.get('category') in CATS else KINDS[kind]['category']
+    if memo: parts.insert(0, f'{TODO} · 취재 메모] 기사가 아니라 취재 계획이에요. 취재한 뒤 기사로 다시 써 주세요.')
     return title, '\n'.join(summary), '\n\n'.join(parts), cat
 
 
@@ -983,7 +1011,8 @@ def install(S):
 
     def topic_list(kind):
         import naverhub
-        if kind == 'feature': return [i['topic'] for i in feature_pool(datetime.date.today().isoformat())]
+        if kind == 'yama': return [i['topic'] for i in feature_pool(datetime.date.today().isoformat()) if i.get('angle')]  # 오늘 뉴스로 고른 주제만
+        if kind == 'feature' or kind in CUT_KINDS: return [i['topic'] for i in feature_pool(datetime.date.today().isoformat())]
         if kind == 'stat':
             try: return [n for n, _ in cpi_movers()]
             except RuntimeError: return []
@@ -1006,7 +1035,8 @@ def install(S):
         return min(free, key=lambda t: last.get(t, '')) if free else None
 
     COLLECT = {'trend': collect_trend, 'shopping': collect_shopping, 'news': collect_news, 'reports': collect_reports, 'law': collect_law,
-               'rights': collect_rights, 'fix': lambda t: collect_rights(t, FIX_TOPICS.get(t)), 'word': collect_word, 'shopcat': collect_shopcat, 'feature': collect_feature, 'stat': collect_stat}
+               'rights': collect_rights, 'fix': lambda t: collect_rights(t, FIX_TOPICS.get(t)), 'word': collect_word, 'shopcat': collect_shopcat, 'feature': collect_feature, 'stat': collect_stat,
+               **{k: collect_feature for k in CUT_KINDS}}
 
     def collect(kind, topic=None):
         ok, why = kind_ready(kind)
@@ -1042,12 +1072,15 @@ def install(S):
         return {'auto': 0 if s.get('auto') == 0 else 1, 'per_run': per, 'per_day': per * len(SLOTS), 'publish': 0 if s.get('publish') == 0 else 1,
                 'cats': 0 if s.get('cats') == 0 else 1,
                 # self: 네이버 자체기사용 [취재 필요] 자리를 본문에 넣음 (운영자 2026-11-15). 켜 두면 그 자리가 남은 글은 자동 게시되지 않음
-                'self': 0 if s.get('self') == 0 else 1}
+                'self': 0 if s.get('self') == 0 else 1,
+                # yama: 서버가 받는 네이버 뉴스에서 할 만한 소비자 취재 야마를 하루 YAMA_PER_DAY개 자동으로 (운영자 2026-11-15)
+                'yama': 0 if s.get('yama') == 0 else 1}
 
-    def save_settings(auto, per_run, publish, cats=None, self_on=None):
+    def save_settings(auto, per_run, publish, cats=None, self_on=None, yama=None):
         cats = settings()['cats'] if cats is None else cats
         self_on = settings()['self'] if self_on is None else self_on
-        put('writer', {'auto': auto, 'per_run': per_run if per_run in PER_RUN else DEFAULT_PER_RUN, 'publish': publish, 'cats': cats, 'self': self_on, 'v': 3})
+        yama = settings()['yama'] if yama is None else yama
+        put('writer', {'auto': auto, 'per_run': per_run if per_run in PER_RUN else DEFAULT_PER_RUN, 'publish': publish, 'cats': cats, 'self': self_on, 'yama': yama, 'v': 3})
 
     def log(entry):
         rows = setting('writer_log', [])
@@ -1076,7 +1109,10 @@ def install(S):
         else: size = (k.get('length') or '1300~1700', '2~3', '2', 5000)
         long = long.replace('{len}', size[0]).replace('{heads}', size[1]).replace('{paras}', size[2])
         cut = CUT_OF.get(kind, '소비의 뒷면')
-        user = (f"[글 종류] {k['name']}: {k['about']}\n" + f"[컷] {cut}: {CUTS[cut]}. 이 컷의 시선으로 쓴다.\n" + (f"[주제] {topic}\n" if topic else '') + long + (SELF if self_on else '') + "[분야 목록] " + ', '.join(CATS) + "\n"
+        if k.get('memo'): long, self_on = MEMO, False
+        if kind == 'yama': cut_line = '[컷] 소보루 컷: ' + '; '.join(f'{c}({d})' for c, d in CUTS.items()) + '. 이 가운데 가장 맞는 컷을 골라 메모에 쓴다.\n'
+        else: cut_line = f"[컷] {cut}: {CUTS[cut]}. 이 컷의 시선으로 쓴다.\n"
+        user = (f"[글 종류] {k['name']}: {k['about']}\n" + cut_line + (f"[주제] {topic}\n" if topic else '') + long + (SELF if self_on else '') + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
         return chat(SYSTEM, user, size[3], AI_TIMEOUT * 3)
 
@@ -1251,12 +1287,12 @@ def install(S):
         # 몫은 게시된 글로 셈 (운영자 지적 2026-10-20: 검사에 걸려 초안으로 남은 글까지 세면 저녁에 5개가 안 올라옴). 바로 게시를 꺼 뒀으면 초안도 셈.
         pub_only = cfg['publish'] == 1
         with conn() as db:
-            done = db.execute("SELECT COUNT(*) FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.trigger='daily' AND substr(x.created,1,10)=?"
+            done = db.execute("SELECT COUNT(*) FROM ai_articles x JOIN articles a ON a.id=x.article_id WHERE x.trigger='daily' AND x.kind!='yama' AND substr(x.created,1,10)=?"
                               + (" AND a.status='published'" if pub_only else ''), (day,)).fetchone()[0]
         counts = lambda r: r['status'] == 'made' and (r.get('published') or not pub_only)
         out = []
         if cfg['cats']:  # 연재: 분야마다 한 편 + 글 종류마다 한 편, 아침·오후·저녁에 나눠 씀 (지난 때 몫까지). 한 번에 몇 개 몫은 쓰지 않음
-            return daily_cats(day, now, pub_only, counts) + daily_series(day, now, pub_only, counts)
+            return daily_cats(day, now, pub_only, counts) + daily_series(day, now, pub_only, counts) + daily_yama(day, now, cfg)
         want = cfg['per_run'] * slots_passed(now) - done; turn = setting('writer_turn', 0)
         turn = turn if isinstance(turn, int) else 0
         if want <= 0: return out  # 오늘 몫은 이미 다 씀 (순서도 그대로)
@@ -1288,6 +1324,22 @@ def install(S):
             elif r['status'] == 'skip' and '주제를 다 썼어요' in r.get('reason', ''): dead.add(kind)
             elif r.get('topic'): tried.add(r['topic'])
         put('writer_xturn', nxt % len(EXTRA))  # 다음 때는 이번에 멈춘 바로 다음 종류부터
+        return out + daily_yama(day, now, cfg)
+
+    def daily_yama(day, now, cfg):
+        """운영자 2026-11-15: '일반 네이버뉴스 있으니까 할만한 것도 자동으로' — 오늘 뉴스로 고른 주제(feature_pool)마다 소비자 취재 야마 메모.
+        하루 YAMA_PER_DAY개를 아침·오후·저녁에 나눠, 관리자 기사 목록에 초안(취재 메모)으로 쌓음. 게시되지 않음."""
+        if not cfg.get('yama') or not kind_ready('yama')[0]: return []
+        goal = -(-YAMA_PER_DAY * slots_passed(now) // len(SLOTS)); out = []
+        with conn() as db:
+            have = db.execute("SELECT COUNT(*) FROM ai_articles WHERE kind='yama' AND trigger='daily' AND substr(created,1,10)=?", (day,)).fetchone()[0]
+        tried = set()
+        for _ in range(max(0, goal - have) * 2):
+            if have >= goal: break
+            r = dict(generate('yama', 'daily', day=day, avoid=tried), kind='yama'); out.append(r)
+            if r['status'] == 'made': have += 1
+            elif r['status'] == 'skip' and '주제를 다 썼어요' in r.get('reason', ''): break
+            if r.get('topic'): tried.add(r['topic'])
         return out
 
     # ---- 화면에서 쓰는 정보 ------------------------------------------------------
@@ -1339,9 +1391,11 @@ def install(S):
             return redirect(url_for('admin_life_ai_job'))
         with conn() as db:
             rows = db.execute("SELECT a.id,a.title,a.status,a.category,a.created,x.* FROM ai_articles x JOIN articles a ON a.id=x.article_id AND a.origin='ai' ORDER BY a.id DESC LIMIT 60").fetchall()
-        kinds = [dict(KINDS[k], key=k, cut=CUT_OF.get(k, ''), ready=kind_ready(k)[0], why=kind_ready(k)[1]) for k in dict.fromkeys(ORDER + EXTRA) if k not in PAUSED]
+        card = lambda k: dict(KINDS[k], key=k, cut=CUT_OF.get(k, '') if k != 'yama' else '알맞은 컷을 골라 줘요', ready=kind_ready(k)[0], why=kind_ready(k)[1])
+        kinds = [card(k) for k in dict.fromkeys(ORDER + EXTRA) if k not in PAUSED]
+        cut_kinds = [card(k) for k in ['yama'] + CUT_KINDS[:-1]]
         items = [dict(ai_info(r), id=r['id'], title=r['title'], status=r['status'], category=r['category']) for r in rows]
-        return render_template('admin_life_ai.html', kinds=kinds, items=items, cfg=settings(), cats_n=len(CATS), series_n=len(SERIES), ai_ready=desk.ai_ready(), logs=setting('writer_log', [])[:10],
+        return render_template('admin_life_ai.html', kinds=kinds, cut_kinds=cut_kinds, yama_n=YAMA_PER_DAY, items=items, cfg=settings(), cats_n=len(CATS), series_n=len(SERIES), ai_ready=desk.ai_ready(), logs=setting('writer_log', [])[:10],
                                per_run=PER_RUN, sources={k: f()[0] for k, f in SOURCES.items()})
 
     def done(r):
@@ -1359,7 +1413,7 @@ def install(S):
         if j.get('state') == 'done':
             put('writer_job', {}); return done(j)
         if j.get('state') != 'running': return redirect(url_for('admin_life_ai'))
-        return render_template('admin_life_ai.html', waiting=KINDS.get(j.get('kind'), {}).get('name', ''), kinds=[], items=[], cfg=settings(), cats_n=len(CATS), series_n=len(SERIES), ai_ready=True, logs=[], per_run=PER_RUN, sources={})
+        return render_template('admin_life_ai.html', waiting=KINDS.get(j.get('kind'), {}).get('name', ''), kinds=[], cut_kinds=[], items=[], cfg=settings(), cats_n=len(CATS), series_n=len(SERIES), ai_ready=True, logs=[], per_run=PER_RUN, sources={})
 
     @app.route('/admin/life/ai/settings', methods=['POST'])
     @S.admin_only
@@ -1369,7 +1423,8 @@ def install(S):
             on = request.form.get('act') == 'start'; save_settings(1, settings()['per_run'], int(on))
             flash('자동 게시를 다시 켰어요. 검사를 통과한 글은 바로 올라가요.' if on else '자동 게시를 멈췄어요. 글은 계속 써서 올릴 글(초안)에 쌓아 둬요.')
             return redirect(url_for('admin_life_ai'))
-        save_settings(1 if request.form.get('auto') else 0, per, 1 if request.form.get('publish') else 0, 1 if request.form.get('cats') else 0, 1 if request.form.get('self') else 0)
+        save_settings(1 if request.form.get('auto') else 0, per, 1 if request.form.get('publish') else 0, 1 if request.form.get('cats') else 0, 1 if request.form.get('self') else 0,
+                      1 if request.form.get('yama') else 0)
         flash('자동 쓰기 설정을 저장했어요.')
         return redirect(url_for('admin_life_ai'))
 
