@@ -2643,6 +2643,54 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(self.client.post('/admin/life/bulk-delete', data={'ids': [str(ids[2])]}).status_code in (302, 400, 403), True)
         with self.site.conn() as db: self.assertTrue(db.execute('SELECT 1 FROM articles WHERE id=?', (ids[2],)).fetchone())
 
+    def test_newspaper_feed_into_magazine(self):
+        # 운영자 2026-11-15: soboru.co.kr 매거진에 소비자를위한신문 기사 자동 연동. 카드는 원문으로, 사이트맵·레터 매거진 칸엔 빠짐
+        F = self.site.mag_feed
+        rss = """<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>t</title>
+<item><title><![CDATA[쿠팡 환불 지연 민원 급증…소비자원 "주의"]]></title><link>https://www.consumertimes.kr/news/articleView.html?idxno=101</link>
+<description><![CDATA[<p>온라인 쇼핑몰 환불 지연 민원이 한 달 새 크게 늘었다. 한국소비자원은 결제 기록을 꼭 남기라고 당부했다.</p>]]></description><pubDate>Sat, 15 Nov 2026 10:00:00 +0900</pubDate></item>
+<item><title>짧은 기사</title><link>https://www.consumertimes.kr/news/articleView.html?idxno=102</link><description>짧음</description><pubDate>Sat, 15 Nov 2026 11:00:00 +0900</pubDate></item>
+</channel></rss>""".encode()
+        page = b'<html><head><meta property="og:image" content="https://www.consumertimes.kr/news/photo/202611/102_1.jpg"><meta property="og:description" content="og \xec\x84\xa4\xeb\xaa\x85\xec\x9d\xb4 \xeb\x93\xa4\xec\x96\xb4\xea\xb0\x84\xeb\x8b\xa4. \xec\x9d\xb4 \xea\xb8\xb0\xec\x82\xac\xeb\x8a\x94 \xec\xa7\xa7\xec\x9d\x80 \xec\x9a\x94\xec\x95\xbd \xeb\x8c\x80\xec\x8b\xa0 \xec\x9d\xb4 \xec\x84\xa4\xeb\xaa\x85\xec\x9d\x84 \xec\x93\xb4\xeb\x8b\xa4."></head></html>'
+        calls = []
+        def http(url, timeout=15):
+            calls.append(url)
+            return (200, rss) if url.endswith('.xml') else (200, page)
+        def cleanup():
+            with self.site.conn() as db: db.execute("DELETE FROM articles WHERE origin='newspaper'"); db.execute('DELETE FROM article_photo_url')
+        cleanup(); self.addCleanup(cleanup)
+        with patch.object(F, 'http', http):
+            ext = self.site.app.extensions['mag_feed']
+            self.assertEqual(ext['pull'](), 2)
+            self.assertEqual(ext['pull'](), 0)  # 같은 기사는 한 번만
+        with self.site.conn() as db:
+            rows = {r['source_url'][-3:]: r for r in db.execute("SELECT * FROM articles WHERE origin='newspaper'")}
+        a, b = rows['101'], rows['102']
+        self.assertEqual((a['status'], a['category'], a['source_name']), ('published', '쇼핑', '소비자를위한신문'))
+        self.assertTrue(a['published_at'].startswith('2026-11-15T10:00'))
+        self.assertIn('og 설명이', b['summary'])
+        self.assertEqual(ext['photo'](b['id']), 'https://www.consumertimes.kr/news/photo/202611/102_1.jpg')
+        r = self.client.get(f"/life/{a['id']}", base_url='https://soboru.co.kr')
+        self.assertEqual((r.status_code, r.headers['Location']), (302, a['source_url']))
+        home = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('쿠팡 환불 지연', home); self.assertIn('102_1.jpg', home)  # 신문 사진이 카드에
+        self.assertNotIn(f"/life/{a['id']}<", self.client.get('/sitemap.xml', base_url='https://soboru.co.kr').get_data(as_text=True))
+        admin = self.login_admin()
+        page_ = admin.get('/admin/life').get_data(as_text=True)
+        self.assertIn('지금 가져오기', page_); self.assertIn('· 소비자를위한신문', page_)
+
+    def test_life_body_markdown_table(self):
+        # 운영자 2026-11-15: 본문에 | 칸 | 칸 | 으로 적으면 기사 화면에서 표로
+        body = '## 2. 배송비와 추가 구매금액 비교하기\n\n다음은 가상 사례입니다.\n| 선택지 | 결제금액 | 판단 기준 |\n|---|---:|:---:|\n| 기존 상품만 구매 | 28,000원 | **배송비** 3,000원 |\n| 5,000원 상품 추가 | 30,000원 |\n\n표에서 보듯 지출이 커질 수 있습니다.'
+        with self.site.app.test_request_context('/'):
+            out = str(self.site.app.jinja_env.globals['life_body'](body))
+        self.assertIn('<div class="sb-table"', out); self.assertIn('<th>선택지</th>', out)
+        self.assertIn('<td class="sb-t-right">28,000원</td>', out); self.assertIn('<strong class="sb-hl">배송비</strong>', out)
+        self.assertIn('<td class="sb-t-center"></td>', out)  # 모자란 칸은 빈칸
+        self.assertIn('<p>다음은 가상 사례입니다.</p>', out); self.assertNotIn('|---', out)
+        self.assertIn('class="sb-h"', out)
+        self.assertNotIn('<table', str(self.site.app.jinja_env.globals['life_body']('| 그냥 | 글 |')))  # 구분선 없으면 표 아님
+
     def test_cross_site_login(self):
         self.enterContext(patch.object(self.site, 'RETIRED_HOSTS', set()))  # 예전 두 사이트 운영 때의 동작 확인 (지금 soboru.co.kr은 막혀 있음)
         # 소비자제보센터에서 가입·로그인하면 소보루에도 로그인, 로그아웃도 같이. 표는 한 번만 쓰고 다른 브라우저 상태값으론 안 됨

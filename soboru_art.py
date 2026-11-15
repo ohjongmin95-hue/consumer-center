@@ -384,6 +384,8 @@ def install(S):
         # 운영자 2026-11-04: 매거진에는 AI 그림 말고 운영자가 직접 올린 사진. 없으면 언스플래시 사진
         f = live().get(('life', target_id))
         if f and '-photo-' in f: return url_for('art_image', kind='life', target_id=target_id, v=f[-12:-5])
+        feed = app.extensions.get('mag_feed'); np = feed['photo'](target_id) if feed else ''  # 소비자를위한신문 연동 기사는 신문 사진 (mag_feed.py)
+        if np: return np
         u = unsplash_row(target_id)
         if u: return u['url'] + ('&' if '?' in u['url'] else '?') + f'w={w}&q=78&auto=format&fit=crop'
         unsplash_kick()
@@ -392,6 +394,8 @@ def install(S):
     def mag_credit(target_id):
         f = live().get(('life', target_id))
         if f and '-photo-' in f: return None
+        feed = app.extensions.get('mag_feed')
+        if feed and feed['photo'](target_id): return None
         u = unsplash_row(target_id)
         return {'name': u['credit'], 'url': u['credit_url'], 'home': 'https://unsplash.com/?utm_source=soboru_letter&utm_medium=referral'} if u else None
 

@@ -18,7 +18,7 @@
   {% for r in rows %}{% set ph = mag_photo(r['id'], 240) if mag_photo is defined else '' %}
     <li data-t="{{ r['title']|lower }}"><label class="mz-pick"><input type="checkbox" name="ids" value="{{ r['id'] }}" aria-label="{{ r['title'] }} 선택"></label><a href="{{ url_for('admin_life_edit', article_id=r['id']) }}">
       <span class="mz-thumb">{% if ph %}<img src="{{ ph }}" alt="" loading="lazy">{% endif %}</span>
-      <span class="mz-rt"><b>{{ r['title'] }}</b><small>{{ r['category'] }} · {{ (r['published_at'] or r['created'])[:10].replace('-', '.') }}{% if r['status'] == 'published' %} · 조회 {{ '{:,}'.format(r['views'] or 0) }}{% endif %}{% if r['origin'] == 'ai' %} · AI 초안{% if ai_marks is defined %}{% set m = ai_marks().get(r['id']) %}{% if m and not m.ok %} · 검토 필요 {{ m.problems|length }}곳{% endif %}{% endif %}{% endif %}{% if r['featured'] %} · 맨 위 고정{% endif %}</small></span>
+      <span class="mz-rt"><b>{{ r['title'] }}</b><small>{{ r['category'] }} · {{ (r['published_at'] or r['created'])[:10].replace('-', '.') }}{% if r['status'] == 'published' %} · 조회 {{ '{:,}'.format(r['views'] or 0) }}{% endif %}{% if r['origin'] == 'newspaper' %} · 소비자를위한신문{% endif %}{% if r['origin'] == 'ai' %} · AI 초안{% if ai_marks is defined %}{% set m = ai_marks().get(r['id']) %}{% if m and not m.ok %} · 검토 필요 {{ m.problems|length }}곳{% endif %}{% endif %}{% endif %}{% if r['featured'] %} · 맨 위 고정{% endif %}</small></span>
       <span class="mz-tag {{ r['status'] }}">{{ st_name.get(r['status'], '초안') }}</span>
     </a></li>
   {% else %}<li class="mz-empty">{% if view %}이 상태의 기사가 없어요.{% else %}아직 기사가 없어요. 첫 기사를 써 보세요.{% endif %}</li>{% endfor %}
@@ -26,6 +26,7 @@
   <div class="mz-bulkbar" id="mz-bulkbar" hidden><span id="mz-n">0개 선택</span><button type="submit" id="mz-del">선택한 기사 지우기</button></div>
   </form>
   <p class="mz-none" id="mz-none" hidden>찾는 제목의 기사가 없어요.</p>
+  {% if newspaper_on is defined and newspaper_on() %}<form class="mz-foot mz-np" method="post" action="{{ url_for('admin_life_newspaper') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">소비자를위한신문 기사 자동 연동 켜짐 · 30분마다 새 기사를 가져와요 <button type="submit">지금 가져오기</button></form>{% endif %}
   {% if naver_ready is defined %}<p class="mz-foot">네이버 검색 연결 {% if naver_ready() %}{% set nu = naver_usage() %}켜짐 · 오늘 검색 {{ '{:,}'.format(nu['search'][0]) }}/{{ '{:,}'.format(nu['search'][1]) }}번 · 추이·쇼핑 {{ '{:,}'.format(nu['datalab'][0]) }}/{{ '{:,}'.format(nu['datalab'][1]) }}번{% else %}꺼짐{% endif %}</p>{% endif %}
 <script>(function(){var q=document.getElementById('mz-q'),rows=document.querySelectorAll('#mz-rows li[data-t]'),none=document.getElementById('mz-none');if(!q)return;
 q.oninput=function(){var v=q.value.trim().toLowerCase(),n=0;rows.forEach(function(li){var ok=!v||li.dataset.t.indexOf(v)>-1;li.hidden=!ok;if(ok)n++});none.hidden=n>0||!rows.length;var a=document.getElementById('mz-all');if(a)a.checked=false}})();
@@ -70,6 +71,7 @@ del.disabled=true;del.textContent='지우는 중…'})})();</script>
       <div class="mz-toolbar" role="toolbar" aria-label="본문 도구">
         <button type="button" data-md="## ">소제목</button>
         <button type="button" data-md="- ">목록</button>
+        <button type="button" id="mz-tbl" title="| 칸 | 칸 | 으로 적으면 기사에서 표로 보여요">표</button>
         <label class="mz-tb-photo">사진 넣기<input type="file" id="mz-photo" accept="image/jpeg,image/png,image/webp" hidden></label>
         <label class="mz-tb-photo">영상 넣기<input type="file" id="mz-video" accept="video/mp4,video/quicktime,video/webm" hidden></label>
         <button type="button" class="mz-tb-ai" id="mz-ai-open" aria-controls="mz-ai">AI 도움</button>
@@ -134,6 +136,8 @@ ti.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault()
 t.addEventListener('input',function(){grow(t,Math.round(innerHeight*.6));count()});grow(t,Math.round(innerHeight*.6));count();
 function insertAt(text,lineStart){var p=t.selectionStart,v=t.value;if(lineStart){var s=v.lastIndexOf('\n',p-1)+1;t.value=v.slice(0,s)+text+v.slice(s);p+=text.length}else{t.value=v.slice(0,p)+text+v.slice(p);p+=text.length}t.focus();t.setSelectionRange(p,p);grow(t,Math.round(innerHeight*.6));count()}
 document.querySelectorAll('.mz-toolbar [data-md]').forEach(function(b){b.onclick=function(){insertAt(b.dataset.md,true)}});
+/* 운영자 2026-11-15: 표 넣기 — 마크다운 표 틀을 넣으면 기사 화면에서 표로 그려짐 (soboru.py life_table) */
+var tb=document.getElementById('mz-tbl');if(tb)tb.onclick=function(){var v=t.value,p=t.selectionStart,pre=(p&&v[p-1]!=='\n'?'\n\n':(p>1&&v[p-2]!=='\n'?'\n':''));insertAt(pre+'| 항목 | 내용 | 비고 |\n|---|---|---|\n| 칸 1 | 칸 2 | 칸 3 |\n| 칸 1 | 칸 2 | 칸 3 |\n\n')};
 function say(x){m.hidden=!x;m.textContent=x||''}
 // 운영자 2026-11-05: 사진·영상을 고르면 먼저 얼굴 가리기 창(static/mosaic.js)을 거쳐서 올라감
 var CSRF=document.querySelector('#write [name=_csrf]').value,pos=0;

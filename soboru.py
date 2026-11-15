@@ -262,6 +262,9 @@ def install(S):
                 terms.clear()
         for block in re.split(r'\n\s*\n', (text or '').strip()):
             lines = [l.strip() for l in block.split('\n') if l.strip()]
+            tbl = life_table(lines)
+            if tbl is not None:  # 운영자 2026-11-15: | 칸 | 칸 | 으로 적으면 표로
+                flush(); out.append(tbl); continue
             for line in lines:
                 if line.startswith('- '):
                     if terms: flush()
@@ -296,6 +299,24 @@ def install(S):
                 else: out.append(Markup('<p>%s</p>') % hl(line))
             flush()
         return Markup('\n').join(out)
+
+    def life_table(lines):
+        # 마크다운 표: 첫 줄 머리, 둘째 줄 |---|:---:| 구분선(가운데·오른쪽 맞춤), 나머지 줄 내용. 앞에 설명 문장이 붙어 있으면 그 문장은 따로 문단
+        start = next((i for i, l in enumerate(lines) if l.startswith('|')), None)
+        if start is None or len(lines) - start < 2: return None
+        rows = lines[start:]
+        if not all(l.startswith('|') for l in rows): return None
+        cells = lambda l: [c.strip() for c in l.strip().strip('|').split('|')]
+        sep = cells(rows[1])
+        if not all(re.fullmatch(r':?-{2,}:?', c) for c in sep): return None
+        align = ['center' if c.startswith(':') and c.endswith(':') else 'right' if c.endswith(':') else '' for c in sep]
+        n = len(sep)
+        def tr(l, tag):
+            cs = (cells(l) + [''] * n)[:n]
+            return Markup('<tr>') + Markup('').join(Markup('<%s%s>%s</%s>') % (Markup(tag), Markup(' class="sb-t-%s"' % align[i]) if align[i] else '', hl(c), Markup(tag)) for i, c in enumerate(cs)) + Markup('</tr>')
+        table = (Markup('<div class="sb-table" role="region" aria-label="표" tabindex="0"><table><thead>') + tr(rows[0], 'th') + Markup('</thead><tbody>')
+                 + Markup('').join(tr(l, 'td') for l in rows[2:]) + Markup('</tbody></table></div>'))
+        return Markup('').join([Markup('<p>%s</p>') % hl(l) for l in lines[:start]] + [table])
 
     def hl(text):
         # **말** -> 형광펜 강조 (뉴닉처럼). 글은 먼저 이스케이프하고 강조만 태그로

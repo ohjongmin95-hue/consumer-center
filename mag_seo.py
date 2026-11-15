@@ -44,7 +44,7 @@ def install(S):
 
     def published(limit=None):
         with conn() as db:
-            return db.execute("SELECT id,title,summary,body,category,published_at,updated,created FROM articles WHERE status='published' ORDER BY published_at DESC, id DESC" + (' LIMIT %d' % limit if limit else '')).fetchall()
+            return db.execute("SELECT id,title,summary,body,category,published_at,updated,created FROM articles WHERE status='published' AND origin!='newspaper' ORDER BY published_at DESC, id DESC" + (' LIMIT %d' % limit if limit else '')).fetchall()
 
     def mag_categories():
         with conn() as db:
