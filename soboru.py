@@ -643,6 +643,19 @@ def install(S):
         back = S.safe_back(url_for('admin_life'))
         return redirect(url_for('life') if back.startswith('/life/') else back)
 
+    @app.route('/admin/life/bulk-delete', methods=['POST'])
+    @S.admin_only
+    def admin_life_bulk_delete():
+        # 운영자 2026-11-15: 기사 목록에서 고른 기사를 한 번에 지움 (화면에서 한 번 더 누르는 확인을 거침)
+        ids = sorted({int(x) for x in request.form.getlist('ids') if str(x).isdigit()})
+        n = 0
+        with conn() as db:
+            for aid in ids:
+                if db.execute('SELECT 1 FROM articles WHERE id=?', (aid,)).fetchone(): delete_article(db, aid); n += 1
+        flash(f'기사 {n}개를 지웠어요.' if n else '고른 기사가 없어요.')
+        view = request.form.get('view', '')
+        return redirect(url_for('admin_life', view=view) if view in ('draft', 'scheduled', 'published') else url_for('admin_life'))
+
     @app.route('/admin/life/<int:article_id>', methods=['GET', 'POST'])
     @S.admin_only
     def admin_life_edit(article_id):

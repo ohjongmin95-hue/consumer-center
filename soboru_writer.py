@@ -359,6 +359,79 @@ def drop_meta(text):
     return re.sub(r'\n{3,}', '\n\n', '\n'.join(out)).strip()
 
 
+ANALYSIS_KEY = '자료 분석(본지 계산)'
+ANALYZE = ('[자료 분석] 이 기사는 받아쓰기가 아니라 자체기사다. [자료]의 "자료 분석(본지 계산)"은 본지가 기존 통계를 다시 계산한 것이다(변화율·비중·순위·최근과 이전 견주기·최고와 최저). '
+           '이 가운데 다른 기사가 짚지 않은 새로운 점(예: 전체는 줄었는데 특정 유형만 늘었다, 비중이 몇 년 새 뒤집혔다) 하나를 골라 기사의 야마로 삼고 리드와 제목에 쓴다. '
+           '그 숫자는 "소비자를위한신문이 ○○ 자료를 분석한 결과"처럼 본지 분석으로 밝히고, 분석에 쓴 원자료 기관 이름을 함께 쓴다. 분석에 없는 계산은 새로 하지 않는다.\n')
+
+
+def _num(v):
+    if isinstance(v, bool): return None
+    if isinstance(v, (int, float)): return float(v)
+    if isinstance(v, str) and re.fullmatch(r'-?[\d,]+(\.\d+)?', v.strip()): return float(v.replace(',', ''))
+    return None
+
+
+def _fmt(x): return f'{x:,.1f}'.rstrip('0').rstrip('.') if abs(x - round(x)) > 1e-9 else f'{int(round(x)):,}'
+
+
+def _pct(a, b): return None if not b else round((a - b) / abs(b) * 100, 1)
+
+
+def analyze(facts, limit=10):
+    """운영자 2026-11-15: '기존 데이터들을 분석해서 새로운 인식을 도출' — 자료 속 숫자 묶음을 다시 계산해 문장으로.
+    (이름, 숫자) 줄(시계열·항목별)을 찾아: 처음→끝 변화율, 최고·최저, 최근 3개와 그 전 3개 평균 견주기, 항목별 비중·순위. 계산 결과는 자료에 넣어 숫자 검사도 통과."""
+    out = []
+    def pairs_of(v):
+        if isinstance(v, dict):
+            ps = [(str(k), _num(x)) for k, x in v.items()]
+            return ps if len(ps) >= 3 and all(n is not None for _, n in ps) else None
+        if isinstance(v, list) and len(v) >= 3:
+            if all(isinstance(r, (list, tuple)) and len(r) == 2 and _num(r[1]) is not None for r in v):
+                return [(str(r[0]), _num(r[1])) for r in v]
+            if all(isinstance(r, dict) for r in v):
+                keys = [k for k in v[0] if all(isinstance(r.get(k), str) for r in v)]
+                nums = [k for k in v[0] if all(_num(r.get(k)) is not None for r in v)]
+                if keys and nums: return [(r[keys[0]], _num(r[nums[0]])) for r in v], nums[0]
+        return None
+    def walk(name, v, depth=0):
+        if depth > 3 or len(out) >= limit: return
+        got = pairs_of(v)
+        if got:
+            ps, col = got if isinstance(got, tuple) else (got, '')
+            label = name + (f' · {col}' if col else '')
+            vals = [n for _, n in ps]
+            timeish = all(re.search(r'\d{4}|\d+월|\d+분기', k) for k, _ in ps)
+            if timeish:
+                ch = _pct(vals[-1], vals[0])
+                if ch is not None: out.append(f'{label}: {ps[0][0]} {_fmt(vals[0])} → {ps[-1][0]} {_fmt(vals[-1])}, 변화율 {_fmt(ch)}%')
+                hi, lo = max(ps, key=lambda p: p[1]), min(ps, key=lambda p: p[1])
+                out.append(f'{label}: 가장 높은 때 {hi[0]}({_fmt(hi[1])}), 가장 낮은 때 {lo[0]}({_fmt(lo[1])})')
+                if len(vals) >= 6:
+                    a, b = sum(vals[-3:]) / 3, sum(vals[-6:-3]) / 3; ch = _pct(a, b)
+                    if ch is not None: out.append(f'{label}: 최근 3개 평균 {_fmt(round(a, 1))}, 그 전 3개 평균 {_fmt(round(b, 1))}, 변화율 {_fmt(ch)}%')
+            else:
+                tot = sum(vals)
+                if tot > 0 and all(x >= 0 for x in vals):
+                    top = sorted(ps, key=lambda p: -p[1])[:3]
+                    out.append(f'{label}: 합계 {_fmt(tot)} 가운데 ' + ', '.join(f'{k} {_fmt(round(x / tot * 100, 1))}%({i}위)' for i, (k, x) in enumerate(top, 1)))
+                    if len(ps) >= 4: out.append(f'{label}: 상위 세 항목 비중 합 {_fmt(round(sum(x for _, x in top) / tot * 100, 1))}%')
+            return
+        if isinstance(v, dict):
+            for k, x in v.items():
+                if k != ANALYSIS_KEY: walk(f'{name} · {k}' if name else str(k), x, depth + 1)
+        elif isinstance(v, list):
+            for i, x in enumerate(v[:6]):
+                walk(name, x, depth + 1)
+    walk('', facts)
+    return out[:limit]
+
+
+def with_analysis(facts):
+    lines = analyze(facts)
+    return dict(facts, **{ANALYSIS_KEY: lines}) if lines else facts
+
+
 def _plain(s, n=2000, hl=False):
     s = re.sub(r'https?://\S+', '', str(s or ''))           # 링크는 화면에서 따로
     if hl: s = re.sub(r'\*\*([^*\n]{1,60}?)\*\*', '\x00\\1\x01', s)   # 본문 문단은 **형광펜 강조**만 남김
@@ -1138,7 +1211,7 @@ def install(S):
         if k.get('memo'): long, self_on = MEMO, False
         if kind == 'yama': cut_line = '[컷] 소보루 컷: ' + '; '.join(f'{c}({d})' for c, d in CUTS.items()) + '. 이 가운데 가장 맞는 컷을 골라 메모에 쓴다.\n'
         else: cut_line = f"[컷] {cut}: {CUTS[cut]}. 이 컷의 시선으로 쓴다.\n"
-        user = (f"[글 종류] {k['name']}: {k['about']}\n" + cut_line + (f"[주제] {topic}\n" if topic else '') + long + (SELF if self_on else '') + "[분야 목록] " + ', '.join(CATS) + "\n"
+        user = (f"[글 종류] {k['name']}: {k['about']}\n" + cut_line + (f"[주제] {topic}\n" if topic else '') + long + (ANALYZE if ANALYSIS_KEY in facts else '') + (SELF if self_on else '') + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
         sysmsg = SYSTEM_NEWS.replace('{d}', str(datetime.date.today().day)) if NEWS_STYLE else SYSTEM
         return chat(sysmsg, user, size[3], AI_TIMEOUT * 3)
@@ -1215,6 +1288,7 @@ def install(S):
                 except Exception: pass
                 got['facts'] = dict(got['facts'], **CONST)
             else: got = collect(kind, topic)
+            got['facts'] = with_analysis(got['facts'])  # 운영자 2026-11-15: 기존 통계를 다시 계산해 새로운 점을 찾음 (자체기사)
             title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic, long_form=False, self_on=settings()['self'] == 1), kind, settings()['self'] == 1)
             summary, body = drop_meta(summary), drop_meta(body)  # 자료 이야기 문장은 쓰지 않음 (운영자 2026-11-05)
         except Skip as e: res = {'status': 'skip', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res

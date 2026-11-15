@@ -2626,6 +2626,23 @@ class SiteTest(unittest.TestCase):
             self.assertIsNone(db.execute('SELECT 1 FROM articles WHERE id=?', (aid,)).fetchone())
             self.assertIsNone(db.execute('SELECT 1 FROM posts WHERE id=?', (pid,)).fetchone())
 
+    def test_admin_life_bulk_delete(self):
+        # 운영자 2026-11-15: 기사 목록에서 여러 기사를 골라 한 번에 지움
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            ids = [db.execute("INSERT INTO articles(title,summary,body,status,created,updated,published_at) VALUES(?,'s','b','published',?,?,?)", (f'묶음 {k}', now, now, now)).lastrowid for k in range(3)]
+        admin = self.login_admin()
+        page = admin.get('/admin/life').get_data(as_text=True)
+        self.assertIn('id="mz-all"', page); self.assertIn(f'name="ids" value="{ids[0]}"', page); self.assertIn('선택한 기사 지우기', page)
+        tok = self.csrf(admin, '/admin/life')
+        r = admin.post('/admin/life/bulk-delete', data={'_csrf': tok, 'ids': [str(ids[0]), str(ids[1]), 'x', '999999'], 'view': 'published'})
+        self.assertEqual(r.status_code, 302); self.assertIn('view=published', r.headers['Location'])
+        with self.site.conn() as db:
+            left = {x[0] for x in db.execute('SELECT id FROM articles WHERE id IN (?,?,?)', ids)}
+        self.assertEqual(left, {ids[2]})
+        self.assertEqual(self.client.post('/admin/life/bulk-delete', data={'ids': [str(ids[2])]}).status_code in (302, 400, 403), True)
+        with self.site.conn() as db: self.assertTrue(db.execute('SELECT 1 FROM articles WHERE id=?', (ids[2],)).fetchone())
+
     def test_cross_site_login(self):
         self.enterContext(patch.object(self.site, 'RETIRED_HOSTS', set()))  # 예전 두 사이트 운영 때의 동작 확인 (지금 soboru.co.kr은 막혀 있음)
         # 소비자제보센터에서 가입·로그인하면 소보루에도 로그인, 로그아웃도 같이. 표는 한 번만 쓰고 다른 브라우저 상태값으론 안 됨
@@ -4896,6 +4913,18 @@ class SiteTest(unittest.TestCase):
             r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
         prompt = [b for b in sent if b['messages'][0]['content'].startswith(('너는 소보루', '너는 「소비자를위한신문」'))][-1]['messages'][1]['content']
         self.assertIn('[분량·구성]', prompt); self.assertIn('1200~1300자', prompt); self.assertNotIn('3500~4500자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+
+    def test_writer_analysis_finds_new_points(self):
+        """운영자 2026-11-15: 기존 통계를 다시 계산(변화율·비중·순위·최근과 이전)해 자료에 넣고, 그걸로 새 야마를 잡게 함"""
+        import soboru_writer as sw
+        f = {'달별 건수': {'2025-01': 120, '2025-02': 130, '2025-03': 110, '2025-04': 150, '2025-05': 170, '2025-06': 200},
+             '유형별': {'환불': 500, '배송': 300, '품질': 150, '기타': 50}}
+        lines = sw.analyze(f)
+        self.assertIn('달별 건수: 2025-01 120 → 2025-06 200, 변화율 66.7%', lines)
+        self.assertIn('달별 건수: 최근 3개 평균 173.3, 그 전 3개 평균 120, 변화율 44.4%', lines)
+        self.assertIn('유형별: 합계 1,000 가운데 환불 50%(1위), 배송 30%(2위), 품질 15%(3위)', lines)
+        self.assertEqual(sw.with_analysis({'자료': '숫자 없음'}), {'자료': '숫자 없음'})
+        self.assertIn(sw.ANALYSIS_KEY, sw.with_analysis(f))
 
     def test_writer_newspaper_style(self):
         """운영자 2026-11-15: AI 기사 틀은 모두 신문 기사체(경기일보 오민주 기자 문체), 1200~1300자, 소제목 없음, 끝에 AI 활용 표시"""
