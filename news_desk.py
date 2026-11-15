@@ -5,6 +5,7 @@ python -m news_desk --dry      AI·메일 없이 모은 뉴스 제목만 보여 
 python -m news_desk --n 2      초안 수를 바꿈
 
 - 뉴스: 네이버 API HUB 뉴스 검색(키가 있으면) → 없거나 모자라면 구글 뉴스 RSS. 최근 하루치 제목·요약.
+- 한국소비자원 보도자료(kca.go.kr 보도자료 목록): 새 글이면 여러 언론 규칙 없이 넣고, 메일 위에 따로 모아 알려 줌 (2026-11-15).
 - 고르기: AI가 기사로 다시 쓸 만한 이슈 10개를 고름 (소비자 피해·물가·금융·통신·유통·공정위·소비자원 등).
 - 초안(--n 4로 켤 때만): 고른 이슈 위 4개를 원문(제목·요약·본문 앞부분)만 보고 경기일보 오민주 기자 문체로 1300자 안팎 새로 씀.
   문장은 처음부터 새로 쓰고, 지어낸 인터뷰는 【가안】 표시 (운영자가 실제로 바꿈). 숫자는 원문에 있는 것만.
@@ -80,6 +81,45 @@ def google_news(q):
     return out
 
 
+# ---- 한국소비자원 보도자료 (운영자 2026-11-15: 새로 뜨면 데스크 메일에 꼭 알려 줌) ---------------------
+KCA_LIST = 'https://www.kca.go.kr/home/sub.do?menukey=4002'
+KCA_SOURCE = '한국소비자원 보도자료'
+
+
+def kca_parse(raw, base=KCA_LIST):
+    """보도자료 목록 화면에서 (제목, 날짜, 링크). 화면 구조가 바뀌어도 되게: 글 보기 링크(no=숫자) 옆 날짜를 찾음"""
+    out, seen = [], set()
+    for m in re.finditer(r'<a\b([^>]*)>(.*?)</a>', raw, re.S | re.I):
+        attrs, label = m.group(1), clean(m.group(2))
+        href = re.search(r'href\s*=\s*["\']([^"\']+)', attrs)
+        href = htmlmod.unescape(href.group(1)) if href else ''
+        no = re.search(r'(?:[?&;]|^)(?:no|seq|bbsNo|idx)=(\d+)', href) or re.search(r"\(\s*['\"]?(\d{4,})['\"]?", attrs)
+        if not no or len(label) < 8 or label in seen: continue
+        tail = raw[m.end():m.end() + 600]
+        d = re.search(r'(20\d{2})[-.](\d{1,2})[-.](\d{1,2})', tail)
+        if not d: continue
+        if not href or href.startswith(('javascript', '#')):
+            href = base + '&mode=view&no=' + no.group(1)
+        seen.add(label)
+        out.append({'title': label, 'date': datetime.date(int(d[1]), int(d[2]), int(d[3])), 'url': urllib.parse.urljoin(base, href)})
+    return out
+
+
+def kca_releases(since_date):
+    req = urllib.request.Request(KCA_LIST, headers={'User-Agent': 'Mozilla/5.0 (compatible; soboru-newsdesk)'})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r: raw = r.read().decode('utf-8', 'replace')
+    except Exception as ex:
+        print('소비자원 보도자료를 못 읽었어요:', ex); return []
+    out = []
+    for it in kca_parse(raw):
+        if it['date'] < since_date: continue
+        when = datetime.datetime.combine(it['date'], datetime.time(9), datetime.timezone(datetime.timedelta(hours=9)))
+        out.append({'title': it['title'], 'summary': '', 'url': it['url'], 'read': it['url'], 'source': KCA_SOURCE, 'when': when,
+                    'outlets': 0, 'also': [], 'wire': False, 'kca': True})
+    return out
+
+
 WIRES = ('yna.co.kr', 'news1.kr', 'newsis.com', '연합뉴스', '뉴스1', '뉴시스')  # 통신사 기사는 한 곳만 써도 받음
 
 
@@ -147,6 +187,7 @@ PICK_SYSTEM = ('너는 소비자 전문 일간지 「소비자를위한신문」
                '경제·소비자 이슈를 ' + str(PICKS) + '개 고른다.\n'
                '- 기준: 소비자 지갑·피해·권리에 직접 닿는 것, 숫자(통계·금액·건수)가 있는 것, 공정위·소비자원·금융당국 등 행정 비판거리, 기업 실명이 나오는 것.\n'
                '- 연예·정치 공방·사건사고 단신·주가 시황·해외 단순 소식은 뺀다. 같은 일을 다룬 뉴스는 하나로 묶는다.\n'
+               "- '소비자원 보도자료'로 표시된 것은 한국소비자원이 직접 낸 자료다. 소비자에게 쓸모 있으면 우선 고르고, more에 '한국소비자원 보도자료 원문'을 적는다.\n"
                '- 분야가 한쪽에 몰리지 않게 한다. category는 ' + ', '.join(CATS) + ' 가운데 하나. 가장 중요한 것부터.\n'
                '- ids: 그 이슈를 다룬 뉴스 번호들(1~4개). title: 뉴스레터 제목처럼 짧고 구체적으로(숫자 있으면 넣기).\n'
                '- fact: 목록에 있는 내용만으로 핵심 사실 2~3문장(~다 체). 목록에 없는 숫자는 쓰지 않는다.\n'
@@ -205,7 +246,7 @@ def write_draft(issue, items, today):
 def e(s): return htmlmod.escape(str(s or ''))
 
 
-def render(today, issues, items, drafts):
+def render(today, issues, items, drafts, kca=()):
     d = f'{today.month}월 {today.day}일({KO_WEEK[today.weekday()]})'
     wrap = 'font-family:Pretendard,Apple SD Gothic Neo,Malgun Gothic,sans-serif;color:#191f28;line-height:1.7;word-break:keep-all;max-width:680px;margin:0 auto;padding:24px 16px;background:#F6F2EC'
     card = 'background:#fff;border-radius:16px;padding:20px;margin:0 0 14px'
@@ -215,6 +256,10 @@ def render(today, issues, items, drafts):
          '<div style="color:#4e5968">어제와 오늘 나온 뉴스 가운데 우리가 받아 쓸 만한 것만 골랐어요.</div></div>',
          f'<div style="{card};margin-top:18px"><b>오늘 목차</b><ol style="margin:6px 0 0;padding-left:20px;color:#4e5968">'
          + ''.join(f'<li>{e(i.get("title") or i.get("issue"))}</li>' for i in issues) + '</ol></div>']
+    if kca:  # 운영자 2026-11-15: 소비자원 새 보도자료는 AI가 안 골라도 전부 알려 줌
+        h.append(f'<div style="{card};border:2px solid #EF920E"><b>한국소비자원 새 보도자료 {len(kca)}건</b><ul style="margin:6px 0 0;padding-left:20px">'
+                 + ''.join(f'<li><a href="{e(k["url"])}" style="color:#191f28">{e(k["title"])}</a> <span style="color:#8b95a1;font-size:13px">{k["when"].month}.{k["when"].day}</span></li>' for k in kca)
+                 + '</ul></div>')
     for n, i in enumerate(issues, 1):
         arts = [a for k in i.get('ids', []) if isinstance(k, int) and 0 < k <= len(items) for a in [items[k - 1]] + items[k - 1].get('also', [])][:5]
         links = ''.join(f'<a href="{e(a["url"])}" style="color:#8b95a1;margin-right:12px">{e(a["source"] or "원문")}</a>' for a in arts)
@@ -233,27 +278,30 @@ def render(today, issues, items, drafts):
                  f'<div style="font-size:19px;font-weight:800;margin:6px 0">{e(dr.get("title"))}</div>'
                  + ''.join(f'<div style="color:#4e5968;font-weight:600">{e(x)}</div>' for x in dr.get('deck') or []) + f'<div style="margin-top:14px">{body}</div></div>')
     h.append('<div style="color:#8b95a1;font-size:13px;margin-top:20px">매일 아침 6시 30분에 와요. 고른 기준: 소비자 지갑·피해에 닿고 숫자나 기업 실명이 있는 것.</div></div>')
-    text = f'{d} 경제·소비자 이슈\n\n' + '\n\n'.join(
+    text = f'{d} 경제·소비자 이슈\n\n' + (('한국소비자원 새 보도자료\n' + '\n'.join(f'- {k["title"]} {k["url"]}' for k in kca) + '\n\n') if kca else '') + '\n\n'.join(
         f'{n}. [{i.get("category")}] {i.get("title") or i.get("issue")}\n{i.get("fact", "")}\n- 더할 방향: {i.get("angle", "")}\n- 더 찾을 것: {i.get("more", "")}\n- 인터뷰: {i.get("people", "")}\n'
         + '\n'.join('  ' + items[k - 1]['url'] for k in i.get('ids', []) if isinstance(k, int) and 0 < k <= len(items)) for n, i in enumerate(issues, 1))
-    return f'[아침 데스크] {d} 경제·소비자 이슈 {len(issues)}', text, ''.join(h)
+    return f'[아침 데스크] {d} 경제·소비자 이슈 {len(issues)}' + (f' · 소비자원 보도자료 {len(kca)}' if kca else ''), text, ''.join(h)
 
 
 def run(n_drafts=DRAFTS, dry=False, today=None, send=None):
     today = today or datetime.date.today()
     # 운영자 2026-11-10: 오전 9시·오후 2시 두 번. 오전엔 어제 오후 2시 뒤 뉴스, 오후엔 오늘 오전 뉴스
     items = gather(20 if datetime.datetime.now().hour < 12 else 6)
+    # 소비자원 보도자료: 오전엔 어제·오늘, 오후엔 오늘 것. 여러 언론 규칙과 상관없이 넣음
+    kca = kca_releases(today - datetime.timedelta(days=1 if datetime.datetime.now().hour < 12 else 0))
+    items = kca + [it for it in items if not any(k['title'][:15] in it['title'] for k in kca)]
     if dry:
         for n, it in enumerate(items, 1): print(n, it['when'].strftime('%m-%d %H:%M'), it['source'], it['title'])
         return {'items': len(items)}
     if len(items) < 5: raise RuntimeError(f'모은 뉴스가 {len(items)}개뿐이에요')
-    listing = '\n'.join(f'{n}. {it["title"]} ({it["outlets"]}개 언론{", 통신사" if it.get("wire") else ""}) — {it["summary"][:120]}' for n, it in enumerate(items, 1))
+    listing = '\n'.join(f'{n}. {it["title"]} (' + ('소비자원 보도자료' if it.get('kca') else f'{it["outlets"]}개 언론{", 통신사" if it.get("wire") else ""}') + f') — {it["summary"][:120]}' for n, it in enumerate(items, 1))
     issues = [i for i in (chat(PICK_SYSTEM, '[지난 하루 뉴스]\n' + listing, 3000).get('issues') or []) if isinstance(i, dict)][:PICKS]
     drafts = []
     for i in issues[:n_drafts]:
         try: drafts.append(write_draft(i, items, today))
         except Exception as ex: print('초안 실패:', i.get('issue'), ex); drafts.append(None)
-    subject, text, html = render(today, issues, items, drafts)
+    subject, text, html = render(today, issues, items, drafts, kca)
     to = [x.strip() for x in (env('NEWS_DESK_TO') or env('OPS_EMAIL')).split(',') if x.strip()]
     if not to: raise RuntimeError('받는 사람(NEWS_DESK_TO 또는 OPS_EMAIL)이 없어요')
     if send is None:
