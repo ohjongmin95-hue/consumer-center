@@ -4541,6 +4541,8 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             db.execute("DELETE FROM articles WHERE origin='ai'"); db.execute('DELETE FROM ai_articles')
             db.execute("DELETE FROM soboru_settings WHERE key LIKE 'writer%'"); db.execute('DELETE FROM soboru_art')
+            # 예전 시험은 [취재 필요] 자리 없이 (자체기사 자리 시험은 test_writer_self_report_slots)
+            db.execute("INSERT INTO soboru_settings(key,value) VALUES('writer','{\"self\": 0}')")
             db.execute("DELETE FROM messages WHERE case_id IN (SELECT id FROM cases WHERE receipt LIKE 'AIW-%')")
             db.execute("DELETE FROM cases WHERE receipt LIKE 'AIW-%'"); db.execute("DELETE FROM companies WHERE biz_no='AIW'")
             db.execute('DELETE FROM naver_cache'); db.execute('DELETE FROM naver_usage')
@@ -4747,7 +4749,7 @@ class SiteTest(unittest.TestCase):
             # 다음 날은 다음 종류부터, 자동 쓰기를 끄면 아무것도 안 함
             tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'per_run': '1'})
-            self.assertEqual(w['settings'](), {'auto': 0, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0})
+            self.assertEqual(w['settings'](), {'auto': 0, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0, 'self': 0})
             self.assertEqual(w['daily'](tomorrow)[0]['status'], 'off')
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'auto': '1', 'per_run': '1'})
             with self.site.conn() as db: db.execute("UPDATE ai_articles SET created='2000-01-01T07:00:00'")  # 오늘 만든 개수에서 빼서 다음 날처럼
@@ -4758,10 +4760,10 @@ class SiteTest(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT status FROM articles WHERE origin='ai' ORDER BY id DESC LIMIT 1").fetchone()[0], 'draft')  # 바로 게시를 끄면 초안
             # 맨 위 '자동 게시 멈추기'는 게시만 끄고 글은 계속 씀, '다시 켜기'는 게시를 켬
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'start'})
-            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 1, 'cats': 0})
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 1, 'cats': 0, 'self': 0})
             self.assertIn('자동 게시 중이에요', admin.get('/admin/life/ai').get_data(as_text=True))
             admin.post('/admin/life/ai/settings', data={'_csrf': self.csrf(admin, '/admin/life/ai'), 'act': 'stop'})
-            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0})
+            self.assertEqual(w['settings'](), {'auto': 1, 'per_run': 1, 'per_day': 3, 'publish': 0, 'cats': 0, 'self': 0})
             self.assertIn('자동 게시를 멈췄어요', admin.get('/admin/life/ai').get_data(as_text=True))
             # 쇼핑 관심도: 가장 많이 오른 분야와 그 분야 클릭 비중
             with self.site.app.app_context(): shop = w['collect']('shopping')
@@ -5096,6 +5098,32 @@ class SiteTest(unittest.TestCase):
             again = w['generate']('rights', 'daily', day=tomorrow)
             with self.site.conn() as db: key = db.execute('SELECT ext_key FROM articles WHERE id=?', (again['id'],)).fetchone()[0]
             self.assertNotIn('온라인 쇼핑 청약철회', key)
+
+    def test_writer_self_report_slots(self):
+        """운영자 2026-11-15: 네이버 자체기사용 — 컷을 정하고, 본문에 [취재 필요] 자리를 넣고, 채우기 전엔 게시하지 않음"""
+        self.writer_cleanup(); self.addCleanup(self.writer_cleanup)
+        with self.site.conn() as db: db.execute("DELETE FROM soboru_settings WHERE key='writer'")
+        w = self.site.app.extensions['soboru_writer']; mod = self.site.soboru_writer
+        self.assertEqual(w['settings']()['self'], 1)  # 기본으로 켬
+        self.assertEqual(set(mod.CUT_OF.values()) - set(mod.CUTS), set())
+        out = {'title': '배달 수수료 올랐다', 'summary': ['하나', '둘', '셋'], 'intro': ['요즘 배달비가 올랐다.'],
+               'sections': [{'heading': '왜', 'paragraphs': ['수수료가 오른 이유다.']}, {'heading': '어떻게', 'paragraphs': ['대응 방법이다.']}],
+               'reporting': {'case': '배달비 3000원 더 낸 소비자 사례', 'answer': '배달앱 측 해명', 'expert': '소비자학 교수 의견'}}
+        body = mod.assemble(out, 'news', True)[2]
+        self.assertEqual(body.count(mod.TODO), 5)  # 사례·답변·전문가·자료·사진
+        self.assertIn('배달비 ○○○○원', body)  # 자리 안내 문구에는 숫자를 넣지 않음 (숫자 검사)
+        self.assertNotIn(mod.TODO, mod.assemble(out, 'news', False)[2])
+        # 관리자에서도 자리가 남으면 게시 안 됨
+        admin = self.login_admin(); token = self.csrf(admin, '/admin/life')
+        with self.site.conn() as db:
+            aid = db.execute("INSERT INTO articles(title,summary,body,category,status,created,updated,origin) VALUES('자리 시험','', ?, '생활','draft','2026-11-15','2026-11-15','ai')", (body,)).lastrowid
+        page = admin.post(f'/admin/life/{aid}', data={'_csrf': token, 'act': 'publish', 'title': '자리 시험', 'body': body}, follow_redirects=True).get_data(as_text=True)
+        self.assertIn('[취재 필요] 자리가 남아', page)
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (aid,)).fetchone()[0], 'draft')
+        filled = body.replace(mod.TODO, '[채움')
+        admin.post(f'/admin/life/{aid}', data={'_csrf': token, 'act': 'publish', 'title': '자리 시험', 'body': filled})
+        with self.site.conn() as db: self.assertEqual(db.execute('SELECT status FROM articles WHERE id=?', (aid,)).fetchone()[0], 'published')
+        self.assertIn('컷 · 소비의 뒷면', admin.get('/admin/life/ai').get_data(as_text=True))
 
     def test_writer_law_source_hides_key(self):
         self.writer_cleanup(); self.addCleanup(self.writer_cleanup)

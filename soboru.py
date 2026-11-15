@@ -603,11 +603,13 @@ def install(S):
             v = form_values()
             if not v['title']: flash('제목을 적어 주세요.'); return redirect(url_for('admin_life'))
             status = 'published' if request.form.get('publish') else 'draft'
+            if status == 'published' and '[취재 필요' in v['body']:
+                flash('본문에 [취재 필요] 자리가 남아 있어 초안으로 저장했어요.'); status = 'draft'
             with conn() as db:
                 cur = db.execute('INSERT INTO articles(title,summary,body,category,emoji,tone,source_name,source_url,featured,status,created,updated,published_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
                                  (v['title'], v['summary'], v['body'], v['category'], v['emoji'], v['tone'], v['source_name'], v['source_url'], v['featured'], status, now(), now(), now() if status == 'published' else None))
             auto_art(cur.lastrowid)
-            flash('글을 게시했어요.' if status == 'published' else '초안으로 저장했어요.')
+            if status == 'published' or '[취재 필요' not in v['body']: flash('글을 게시했어요.' if status == 'published' else '초안으로 저장했어요.')
             return redirect(url_for('admin_life_edit', article_id=cur.lastrowid))
         view = request.args.get('view', '')
         if view not in ('draft', 'scheduled', 'published'): view = ''
@@ -654,6 +656,8 @@ def install(S):
                 v = form_values()
                 if not v['title']: flash('제목을 적어 주세요.'); return redirect(url_for('admin_life_edit', article_id=article_id))
                 status = {'publish': 'published', 'unpublish': 'draft'}.get(act, a['status'])
+                if status == 'published' and '[취재 필요' in v['body']:  # 운영자 2026-11-15: 자체기사 취재 자리가 남은 글은 게시 안 함 (soboru_writer.TODO)
+                    flash('본문에 [취재 필요] 자리가 남아 있어요. 직접 취재한 내용으로 채운 뒤 게시해 주세요.'); status = a['status'] if a['status'] != 'published' else 'draft'
                 published_at = a['published_at'] or (now() if status == 'published' else None)
                 db.execute('UPDATE articles SET title=?,summary=?,body=?,category=?,emoji=?,tone=?,source_name=?,source_url=?,featured=?,status=?,updated=?,published_at=? WHERE id=?',
                            (v['title'], v['summary'], v['body'], v['category'], v['emoji'], v['tone'], v['source_name'], v['source_url'], v['featured'], status, now(), published_at, article_id))
