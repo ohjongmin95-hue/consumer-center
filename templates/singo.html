@@ -60,7 +60,8 @@
   </section>
 
   <div class="sg-bar">
-    {% if case %}<a class="sg-go" href="{{ url_for('public_case', case_id=case['id']) }}">{{ ui('singo.my_case', '내 고발 보기') }}</a>
+    {% if case and g.user %}<a class="sg-go" href="{{ url_for('public_case', case_id=case['id']) }}">{{ ui('singo.my_case', '내 고발 보기') }}</a>
+    {% elif case %}<a class="sg-go" href="https://www.ccn.go.kr" target="_blank" rel="noopener">{{ ui('singo.go_ccn', '피해구제 신청하러 가기 (1372)') }}</a>
     {% else %}<a class="sg-go" id="sg-go" href="{{ url_for('report') }}">{{ ui('singo.go', '소보루고발에도 올리기') if sg_app else ui('singo.go_web', '이 피해 고발하기') }}</a>{% endif %}
   </div>
 <script>

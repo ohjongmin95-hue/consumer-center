@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {# 피해구제·분쟁조정 안내 (singo.py singo_guide). 운영자 2026-11-13: 신고서·내용증명뿐 아니라 절차와 방법도 안내. 토스 TDS #}
 {% block title %}{{ ui('guide2.t', '피해구제·분쟁조정 안내') }} | {{ txt('site.name') }}{% endblock %}
-{% block description %}{{ ui('guide2.desc', '소비자 피해를 입었을 때 업체 요구부터 1372 상담, 피해구제, 분쟁조정까지 순서대로 알려 드려요.') }}{% endblock %}
+{% block description %}{{ ui('guide2.desc', '소비자 피해를 입었을 때 업체 요구부터 1372 상담·피해구제, 소송까지 순서대로 알려 드려요.') }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ asset('singo.css') }}">{% endblock %}
 {% block content %}
 <main class="sg{% if not sg_app %} sg-web{% endif %}">
@@ -9,16 +9,18 @@
   <h1 class="sg-h">{{ ui('guide2.h', '피해 해결, 이 순서로 진행돼요') }}</h1>
 
   <section class="sg-card">
-    <h2 class="sg-st">{{ ui('guide2.flow', '피해구제와 분쟁조정') }}</h2>
+    <h2 class="sg-st">{{ ui('guide2.flow', '해결 순서') }}</h2>
     <ol class="sg-flow">
       {% for emo, name, desc, go in flow %}
       <li><span class="sg-ic tf" aria-hidden="true">{{ emo }}</span><div class="sg-tx"><b>{{ loop.index }}. {{ name }}</b><small>{{ desc }}</small>
         {% if go == 'letter' %}<span class="sg-links"><a href="{{ url_for('singo_letter') }}">{{ ui('guide2.go_letter', '내용증명 쓰기') }} ›</a></span>
+        {% elif go == 'help' %}<span class="sg-links"><a href="tel:1372">{{ ui('singo.call', '전화') }} 1372</a><a href="https://www.ccn.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_ccn', '온라인 상담') }} ›</a><a href="https://www.kca.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_kca', '한국소비자원') }} ›</a></span>
         {% elif go == 'ccn' %}<span class="sg-links"><a href="tel:1372">{{ ui('singo.call', '전화') }} 1372</a><a href="https://www.ccn.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_ccn', '온라인 상담') }} ›</a></span>
         {% elif go == 'kca' %}<span class="sg-links"><a href="https://www.kca.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_kca', '한국소비자원') }} ›</a></span>{% endif %}
       </div></li>
       {% endfor %}
     </ol>
+    <p class="sg-note">{{ ui('guide2.adr', adr_note) }}</p>
   </section>
 
   <section class="sg-card">

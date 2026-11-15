@@ -70,3 +70,4 @@ body:not(.sb) main.sg{max-width:760px;margin:0 auto;padding:24px 16px 120px;min-
 .sg-web .sg-card:not(.sg-guide):not(.sg-types),.sg-web .sg-types .sg-row{border:1px solid #E5E8EB}
 .sg-web .sg-types{background:none;padding:0}
 @media(max-width:899px){.sg-web .sg-types{display:flex;flex-direction:column;gap:8px}.sg-web .sg-types .sg-row{background:#fff;border-radius:16px;padding:14px 16px}.sg-web .sg-types .sg-row+.sg-row{border-top:1px solid #E5E8EB}}
+.sg-note{margin:18px 0 0;padding:14px 16px;border-radius:12px;background:#F9FAFB;font-size:14px;line-height:22px;color:#4E5968;word-break:keep-all}

@@ -5,7 +5,7 @@
 - 신고서 문장은 화면에서 바로 만든다 (AI 비용 없음). 내가 쓴 고발(/doumi/<유형>?case=번호)이면 그 내용으로 채움.
 - 기관 정보는 공식 사이트·대표 번호만. 번호가 확실하지 않은 곳은 번호를 적지 않는다.
 """
-from flask import abort, g, redirect, render_template, request, url_for
+from flask import abort, g, redirect, render_template, request, session, url_for
 
 # 기관: 이름, 한 줄 설명, 대표 번호(없으면 ''), 공식 주소
 PLACES = {
@@ -60,16 +60,15 @@ CALC_FOR = {'shop': ['cooling'], 'contract': ['fitness', 'academy', 'subscriptio
 # 내 고발 '해결까지 할 일' (운영자 2026-11-13). 키, 이름, 한 줄 설명
 STEPS = [('ask', '업체에 정식으로 요구하기', '날짜를 정해 글로 요구하고, 답을 기록해요'),
          ('letter', '내용증명 보내기', '답이 없으면 기한을 정해 내용증명을 보내요'),
-         ('c1372', '1372 상담 받기', '국번 없이 1372, 상담 기록이 다음 단계의 근거가 돼요'),
-         ('kca', '피해구제 신청하기', '한국소비자원이 조사하고 합의를 권고해요'),
-         ('adr', '분쟁조정 신청하기', '합의가 안 되면 소비자분쟁조정위원회로 가요')]
+         ('c1372', '1372 상담·피해구제 신청하기', '1372에 상담하면 필요할 때 한국소비자원 피해구제로 넘어가요')]
 
 # 절차 안내 (/doumi/guide). 법에 정해진 기간만 숫자로 적는다 (소비자기본법 제58조·제66조·제67조)
+# 운영자 2026-11-15: 소비자가 할 일은 '상담 또는 피해구제'. 분쟁조정은 소비자원이 넘기니 따로 단계로 두지 않는다
 FLOW = [('🤝', '업체에 먼저 요구해요', '날짜를 정해 글로 요구하고 답을 남겨요. 답이 없으면 내용증명으로 기한을 정해요.', 'letter'),
-        ('☎️', '1372 소비자상담센터 상담', '국번 없이 1372 또는 온라인으로 상담해요. 해결이 안 되면 상담 내용 그대로 피해구제로 넘어가요.', 'ccn'),
-        ('🔍', '한국소비자원 피해구제', '소비자원이 사실을 조사하고 업체에 합의를 권고해요. 원칙은 30일 안에 처리하고, 조사가 필요하면 더 걸려요.', 'kca'),
-        ('⚖️', '소비자분쟁조정위원회 분쟁조정', '합의가 안 되면 넘어가요. 30일 안에 조정안을 내고, 양쪽이 15일 안에 거부하지 않으면 받아들인 것으로 봐요.', 'kca'),
+        ('☎️', '1372 상담 또는 피해구제 신청', '국번 없이 1372나 온라인으로 상담해요. 상담으로 안 풀리면 상담 내용 그대로 한국소비자원 피해구제로 넘어가요. 피해구제는 원칙적으로 30일 안에 처리해요.', 'help'),
         ('🏛️', '그래도 안 되면 소송', '3,000만 원 이하는 소액사건심판으로 간단하게 진행할 수 있어요.', '')]
+# 2번에서 합의가 안 될 때 (소비자기본법 제66조·제67조)
+ADR_NOTE = '피해구제에서 합의가 안 되면 한국소비자원이 소비자분쟁조정위원회로 넘겨요. 따로 신청하지 않아도 돼요. 30일 안에 조정안이 나오고, 15일 안에 거부하지 않으면 받아들인 것으로 봐요.'
 LINKS = [('📘', '소비자분쟁해결기준', '품목별로 환불·교환·배상 기준을 찾아봐요', 'https://www.consumer.go.kr'),
          ('📂', '피해구제·분쟁조정 사례', '나와 비슷한 사례가 어떻게 해결됐는지 봐요', 'https://www.kca.go.kr'),
          ('🖥️', '1372 온라인 상담 신청', '전화가 어려우면 온라인으로 상담을 신청해요', 'https://www.ccn.go.kr')]
@@ -94,10 +93,12 @@ def install(S):
 
     def own_case(cid):
         """내가 쓴 고발이면 그 고발 (신고서 채우기용). 아니면 None"""
-        if not cid.isdigit() or not g.get('user'): return None
+        if not cid.isdigit(): return None
+        just = int(cid) in (session.get('sg_cases') or [])  # 방금 이 브라우저에서 접수한 고발 (비회원 포함)
+        if not just and not g.get('user'): return None
         with S.conn() as db:
             c = db.execute('SELECT id,user_id,company,category,subject,description,request_text,occurred_on FROM cases WHERE id=?', (int(cid),)).fetchone()
-        return c if c and c['user_id'] and c['user_id'] == g.user['id'] else None
+        return c if c and (just or (c['user_id'] and c['user_id'] == g.user['id'])) else None
 
     @app.context_processor
     def _sg_app():
@@ -107,6 +108,7 @@ def install(S):
     def singo_for(category):
         return url_for('singo_type', key=FROM_CATEGORY.get(category or '', 'shop'))
     app.jinja_env.globals['singo_for'] = singo_for
+    app.jinja_env.globals['singo_apply'] = lambda category, cid: url_for('singo_type', key=FROM_CATEGORY.get(category or '', 'shop'), case=cid) + '#sg-write'
 
     app.jinja_env.globals['singo_types'] = TYPES
 
@@ -141,7 +143,7 @@ def install(S):
     @app.route('/doumi/guide')
     def singo_guide():
         """피해구제·분쟁조정 절차 안내 (운영자 2026-11-13: 신고서만 써 주는 게 아니라 절차·방법도 안내)"""
-        return render_template('singo_guide.html', flow=FLOW, faq=FAQ, links=LINKS)
+        return render_template('singo_guide.html', flow=FLOW, adr_note=ADR_NOTE, faq=FAQ, links=LINKS)
 
     @app.route('/doumi/letter')
     def singo_letter():
@@ -157,7 +159,7 @@ def install(S):
         with S.conn() as db:
             done = {r['step']: r['done_at'] for r in db.execute('SELECT step,done_at FROM case_steps WHERE case_id=?', (case['id'],))}
         kind = FROM_CATEGORY.get(case['category'] or '', 'shop')
-        go = {'letter': url_for('singo_letter', case=case['id']), 'c1372': 'tel:1372', 'kca': url_for('singo_type', key=kind, case=case['id']), 'adr': 'https://www.kca.go.kr'}
+        go = {'letter': url_for('singo_letter', case=case['id']), 'c1372': 'tel:1372'}
         return [(k, n, d, done.get(k, ''), go.get(k, '')) for k, n, d in STEPS]
     app.jinja_env.globals['case_steps'] = case_steps
 
