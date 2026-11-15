@@ -829,6 +829,20 @@ class SiteTest(unittest.TestCase):
         page = self.login_admin().get('/admin/ai-usage').get_data(as_text=True)
         self.assertIn('AI 대화 제보', page); self.assertIn('OPENAI_API_KEY_REPORT_TALK', page)
 
+    def test_admin_public_data_page(self):
+        # 운영자 2026-11-15: 서버가 받아 둔 공공데이터를 관리자에서 봄 (public_data.py)
+        import public_data, tempfile, json as _j
+        with tempfile.TemporaryDirectory() as t, patch.object(public_data, 'DATA_DIR', Path(t)):
+            (Path(t) / 'latest.json').write_text(_j.dumps({'started': '2026-11-15T08:20', 'finished': '2026-11-15T08:25', 'calls': 30, 'apis': {
+                'drug_recall': {'name': '식품의약품안전처_의약품 회수·판매중지 정보', 'rows': 2, 'errors': ['/x HTTP 400 필수값 없음'], 'new': ['감기약A · 가제약 · 함량 부적합'],
+                                'summary': {'by_month': {'2026-11': 2}, 'top_values': {}, 'keywords': {}}, 'ops': []}}}, ensure_ascii=False), encoding='utf-8')
+            admin = self.login_admin()
+            page = admin.get('/admin/public-data').get_data(as_text=True)
+            self.assertIn('감기약A', page); self.assertIn('HTTP 400 필수값 없음', page); self.assertIn('2026-11-15 08:25', page)
+            with patch.object(public_data.threading, 'Thread') as th:
+                admin.post('/admin/public-data', data={'_csrf': self.csrf(admin, '/admin/public-data')})
+            th.assert_called_once()
+
     def test_phone_start_signup_and_login(self):
         # 운영자 2026-11-03 (밤): 카카오 아니면 휴대폰 번호(문자 인증). 닉네임 비우면 자동, 같은 번호로 다시 오면 로그인
         sent = []

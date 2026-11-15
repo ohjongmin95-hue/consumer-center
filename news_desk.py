@@ -246,7 +246,7 @@ def write_draft(issue, items, today):
 def e(s): return htmlmod.escape(str(s or ''))
 
 
-def render(today, issues, items, drafts, kca=()):
+def render(today, issues, items, drafts, kca=(), alerts=()):
     d = f'{today.month}월 {today.day}일({KO_WEEK[today.weekday()]})'
     wrap = 'font-family:Pretendard,Apple SD Gothic Neo,Malgun Gothic,sans-serif;color:#191f28;line-height:1.7;word-break:keep-all;max-width:680px;margin:0 auto;padding:24px 16px;background:#F6F2EC'
     card = 'background:#fff;border-radius:16px;padding:20px;margin:0 0 14px'
@@ -260,6 +260,9 @@ def render(today, issues, items, drafts, kca=()):
         h.append(f'<div style="{card};border:2px solid #EF920E"><b>한국소비자원 새 보도자료 {len(kca)}건</b><ul style="margin:6px 0 0;padding-left:20px">'
                  + ''.join(f'<li><a href="{e(k["url"])}" style="color:#191f28">{e(k["title"])}</a> <span style="color:#8b95a1;font-size:13px">{k["when"].month}.{k["when"].day}</span></li>' for k in kca)
                  + '</ul></div>')
+    for name, lines, src in alerts:  # 운영자 2026-11-15: 서버가 받아 둔 공공데이터에서 새로 나온 회수·부적합 (public_data.py)
+        h.append(f'<div style="{card};border:2px solid #EF920E"><b>새 {e(name)} {len(lines)}건</b> <a href="{e(src)}" style="color:#8b95a1;font-size:13px">출처</a><ul style="margin:6px 0 0;padding-left:20px">'
+                 + ''.join(f'<li>{e(x)}</li>' for x in lines) + '</ul></div>')
     for n, i in enumerate(issues, 1):
         arts = [a for k in i.get('ids', []) if isinstance(k, int) and 0 < k <= len(items) for a in [items[k - 1]] + items[k - 1].get('also', [])][:5]
         links = ''.join(f'<a href="{e(a["url"])}" style="color:#8b95a1;margin-right:12px">{e(a["source"] or "원문")}</a>' for a in arts)
@@ -278,7 +281,8 @@ def render(today, issues, items, drafts, kca=()):
                  f'<div style="font-size:19px;font-weight:800;margin:6px 0">{e(dr.get("title"))}</div>'
                  + ''.join(f'<div style="color:#4e5968;font-weight:600">{e(x)}</div>' for x in dr.get('deck') or []) + f'<div style="margin-top:14px">{body}</div></div>')
     h.append('<div style="color:#8b95a1;font-size:13px;margin-top:20px">매일 아침 6시 30분에 와요. 고른 기준: 소비자 지갑·피해에 닿고 숫자나 기업 실명이 있는 것.</div></div>')
-    text = f'{d} 경제·소비자 이슈\n\n' + (('한국소비자원 새 보도자료\n' + '\n'.join(f'- {k["title"]} {k["url"]}' for k in kca) + '\n\n') if kca else '') + '\n\n'.join(
+    text = f'{d} 경제·소비자 이슈\n\n' + (('한국소비자원 새 보도자료\n' + '\n'.join(f'- {k["title"]} {k["url"]}' for k in kca) + '\n\n') if kca else '') + ''.join(
+        f'새 {name}\n' + '\n'.join(f'- {x}' for x in lines) + '\n\n' for name, lines, src in alerts) + '\n\n'.join(
         f'{n}. [{i.get("category")}] {i.get("title") or i.get("issue")}\n{i.get("fact", "")}\n- 더할 방향: {i.get("angle", "")}\n- 더 찾을 것: {i.get("more", "")}\n- 인터뷰: {i.get("people", "")}\n'
         + '\n'.join('  ' + items[k - 1]['url'] for k in i.get('ids', []) if isinstance(k, int) and 0 < k <= len(items)) for n, i in enumerate(issues, 1))
     return f'[아침 데스크] {d} 경제·소비자 이슈 {len(issues)}' + (f' · 소비자원 보도자료 {len(kca)}' if kca else ''), text, ''.join(h)
@@ -301,7 +305,11 @@ def run(n_drafts=DRAFTS, dry=False, today=None, send=None):
     for i in issues[:n_drafts]:
         try: drafts.append(write_draft(i, items, today))
         except Exception as ex: print('초안 실패:', i.get('issue'), ex); drafts.append(None)
-    subject, text, html = render(today, issues, items, drafts, kca)
+    try:
+        import public_data
+        alerts = public_data.fresh_alerts()
+    except Exception as ex: print('공공데이터 못 읽음:', ex); alerts = []
+    subject, text, html = render(today, issues, items, drafts, kca, alerts)
     to = [x.strip() for x in (env('NEWS_DESK_TO') or env('OPS_EMAIL')).split(',') if x.strip()]
     if not to: raise RuntimeError('받는 사람(NEWS_DESK_TO 또는 OPS_EMAIL)이 없어요')
     if send is None:

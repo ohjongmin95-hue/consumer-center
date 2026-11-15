@@ -44,6 +44,9 @@ if [ -f /etc/systemd/system/soboru-content.timer ]; then install -m 644 $APP/dep
 if [ -f /etc/systemd/system/soboru-writer.timer ]; then install -m 644 $APP/deploy/soboru-writer.service $APP/deploy/soboru-writer.timer /etc/systemd/system/ && systemctl daemon-reload
   systemctl is-enabled --quiet soboru-writer.timer && systemctl restart soboru-writer.timer || true; fi  # 쓰는 시각이 바뀌면 새 시각으로
 if [ -f /etc/systemd/system/soboru-letter.timer ]; then install -m 644 $APP/deploy/soboru-letter.service $APP/deploy/soboru-letter.timer /etc/systemd/system/ && systemctl daemon-reload; fi  # 소보루 레터(set-letter.sh)
+# 운영자 2026-11-15: 공공데이터는 서버가 매일 알아서 받음 (public_data.py, 관리자 > 공공데이터). 처음 설치하면 바로 한 번 받기 시작
+install -m 644 $APP/deploy/soboru-publicdata.service $APP/deploy/soboru-publicdata.timer /etc/systemd/system/ && systemctl daemon-reload
+if ! systemctl is-enabled --quiet soboru-publicdata.timer; then systemctl enable --now soboru-publicdata.timer; systemctl start --no-block soboru-publicdata.service; echo "공공데이터 받기를 켰어요 (매일 8시 20분, 지금 한 번 받는 중)"; fi
 # 운영자 2026-11-03: 새 제보를 자문단에게 하루 한 번(저녁 6시) 메일로 알림
 cat > /etc/cron.d/soboru-expert-digest <<'CRON'
 0 18 * * * root set -a; . /etc/soboru.env; set +a; cd /opt/soboru/app && runuser -u soboru -- /opt/soboru/venv/bin/python expert_digest.py >/dev/null 2>&1
