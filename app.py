@@ -2296,6 +2296,21 @@ def report_detail(case_id):
                 db.execute('UPDATE cases SET company_id=? WHERE id=?',(found['id'],case_id));log_case(db,case_id,f"기업 연결: {found['name']}")
                 flash(f"{found['name']}에 연결했어요.")
                 (lambda m:m and flash(m))(ops_auto_forward(db,case_id))
+            elif form=='company_rename':
+                # 운영자 2026-11-15: 자동 저장된 기업 이름 고치기. 같은 이름 기업이 따로 있으면 그쪽으로 연결(중복 저장 금지)
+                name=re.sub(r'\s+',' ',request.form.get('name','')).strip()[:120]
+                linked=db.execute("SELECT * FROM companies WHERE id=? AND status IN ('active','listed')",(case['company_id'],)).fetchone() if case['company_id'] else None
+                if not linked or len(norm_company(name))<2:abort(400)
+                other=pick_company(db,None,name)
+                if other and other['id']!=linked['id']:
+                    db.execute('UPDATE cases SET company=?,company_id=? WHERE id=?',(name,other['id'],case_id));log_case(db,case_id,f"기업 연결: {other['name']} (이름 고침)")
+                    flash(f"같은 이름의 기업이 있어서 {other['name']}에 연결했어요.")
+                elif name!=linked['name']:
+                    old=linked['name'];names=[a.strip() for a in (linked['aliases'] or '').split(',') if a.strip() and norm_company(a)!=norm_company(name)]
+                    if norm_company(old)!=norm_company(name) and old not in names:names.append(old)
+                    db.execute('UPDATE companies SET name=?,aliases=? WHERE id=?',(name,', '.join(names)[:300],linked['id']))
+                    db.execute('UPDATE cases SET company=? WHERE id=?',(name,case_id));log_case(db,case_id,f"기업 이름 고침: {old} → {name}")
+                    flash(f"기업 이름을 {name}(으)로 고쳤어요.")
             elif form=='forward':
                 # 가입한 기업 담당자 화면에 보내기 (기업 전달 동의가 있는 제보만)
                 linked=db.execute("SELECT * FROM companies WHERE id=? AND status='active'",(case['company_id'],)).fetchone() if case['company_id'] else None

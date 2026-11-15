@@ -3764,6 +3764,13 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             new = db.execute("SELECT c.company_id,co.status FROM cases c JOIN companies co ON co.id=c.company_id WHERE c.id=?", (other['id'],)).fetchone()
         self.assertEqual(new['status'], 'listed')
+        # 자동 저장된 기업 이름 고치기 (운영자 2026-11-15): 기업 이름·제보 업체명이 바뀌고 예전 이름은 다른 이름으로 남음
+        self.assertIn('name="form" value="company_rename"', admin.get('/admin/reports/%d' % other['id']).get_data(as_text=True))
+        self.post_form(admin, '/admin/reports/%d' % other['id'], {'form': 'company_rename', 'name': '새로운 상점몰'})
+        with self.site.conn() as db:
+            row = db.execute("SELECT c.company,co.name,co.aliases FROM cases c JOIN companies co ON co.id=c.company_id WHERE c.id=?", (other['id'],)).fetchone()
+        self.assertEqual((row['company'], row['name']), ('새로운 상점몰', '새로운 상점몰'))
+        self.assertIn('새로운상점', row['aliases'])
         # 중지한 기업 페이지는 안 보임
         self.post_form(admin, '/admin/companies', {'id': co['id'], 'action': 'stop'})
         self.assertEqual(self.client.get('/companies/%d' % co['id']).status_code, 404)

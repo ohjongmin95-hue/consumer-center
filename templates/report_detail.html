@@ -217,10 +217,18 @@
       {# 2. 기업: 기업 페이지 연결, 가입 기업 전달, 답변 링크 #}
       <section class="cs-panel cs-card">
         <h2>기업 {% if linked %}<span class="cs-pill on">연결됨</span>{% else %}<span class="cs-pill">연결 전</span>{% endif %}{% if not case['share_company'] %} <span class="cs-pill off">전달 미동의</span>{% endif %}</h2>
+        {# 운영자 2026-11-13: 제보가 들어오면 업체는 자동으로 저장·연결 (같은 이름이면 그 기업에). 바꿀 때만 고르면 바로 저장, 저장 버튼 없음 #}
+        {% if linked %}<p class="co-linked"><b>{{ linked['name'] }}</b>{{ ' (가입 기업)' if linked['status'] == 'active' }}</p>
+        <p class="cs-hint">제보가 들어올 때 자동으로 저장·연결됐어요. 이 기업 페이지에 모여요.{% if linked['status'] == 'active' %}{% if case['forwarded_at'] %} 담당자 화면에 보내졌어요.{% elif case['share_company'] %} 아직 담당자 화면에는 보내지 않았어요.{% endif %}{% endif %}</p>
+        {# 운영자 2026-11-15: 자동 저장된 이름이 틀리면 바로 고침 (기업 이름 + 이 제보의 업체명, 예전 이름은 다른 이름으로 남겨 다음 제보도 붙게) #}
+        <details class="co-change" id="co-rename"><summary>이름 고치기</summary>
+          <form method="post" class="co-rename"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="company_rename">
+            <label class="cs-label" for="c-rename">기업 이름</label>
+            <input id="c-rename" name="name" maxlength="120" value="{{ linked['name'] }}" required>
+            <button class="cs-btn cs-btn-main" type="submit">이름 저장</button>
+          </form>
+        </details>{% endif %}
         <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="company">
-          {# 운영자 2026-11-13: 제보가 들어오면 업체는 자동으로 저장·연결 (같은 이름이면 그 기업에). 바꿀 때만 고르면 바로 저장, 저장 버튼 없음 #}
-          {% if linked %}<p class="co-linked"><b>{{ linked['name'] }}</b>{{ ' (가입 기업)' if linked['status'] == 'active' }}</p>
-          <p class="cs-hint">제보가 들어올 때 자동으로 저장·연결됐어요. 이 기업 페이지에 모여요.{% if linked['status'] == 'active' %}{% if case['forwarded_at'] %} 담당자 화면에 보내졌어요.{% elif case['share_company'] %} 아직 담당자 화면에는 보내지 않았어요.{% endif %}{% endif %}</p>{% endif %}
           {% if companies %}
           {% if linked %}<details class="co-change"><summary>다른 기업으로 바꾸기</summary>{% endif %}
           <label class="cs-label" for="c-company">{{ '바꿀 기업' if linked else '연결할 기업' }}</label>
