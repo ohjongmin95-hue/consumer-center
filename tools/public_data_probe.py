@@ -4,7 +4,7 @@
               -p WorkingDirectory=/opt/soboru/app /opt/soboru/venv/bin/python tools/public_data_probe.py
 결과는 화면과 /tmp/public_data_probe.txt 에 남는다. 인증키는 'KEY'로 가려서 찍는다.
 """
-import json, os, re, sys, urllib.parse, urllib.request
+import json, os, re, sys, urllib.error, urllib.parse, urllib.request
 
 NAMES = [
     '공정거래위원회_통신판매사업자 등록현황 제공 서비스',
@@ -97,33 +97,115 @@ def try_call(base, path, params):
     q = {'serviceKey': KEY, 'pageNo': 1, 'numOfRows': 1}
     if 'type' in params: q['type'] = 'json'
     if 'resultType' in params or not params: q['resultType'] = 'json'
-    try: return get(base + path + '?' + urllib.parse.urlencode(q), timeout=10)[:400].replace('\n', ' ')
+    try: return get(base.replace('http://', 'https://') + path + '?' + urllib.parse.urlencode(q), timeout=10)[:400].replace('\n', ' ')
+    except urllib.error.HTTPError as e:
+        try: body = e.read().decode('utf-8', 'replace')[:300]
+        except Exception: body = ''
+        return f'오류 HTTP {e.code} {body}'.replace('\n', ' ')
     except Exception as e: return f'오류 {e}'
 
 
+def verdict(text):
+    # 운영자 2026-11-15: 승인 54개가 서버 키로 다 되는지 한눈에. 키·승인 문제와 '요청 값이 모자람'(키는 됨)을 나눔
+    t = text.upper()
+    if 'SERVICE_KEY_IS_NOT_REGISTERED' in t or 'SERVICE KEY IS NOT REGISTERED' in t or 'UNAUTHORIZED' in t or 'HTTP 401' in t: return '안 됨: 키가 등록 안 됨'
+    if 'SERVICE_ACCESS_DENIED' in t or 'SERVICE ACCESS DENIED' in t or 'HTTP 403' in t: return '안 됨: 이 API 승인 안 됨'
+    if 'LIMITED_NUMBER_OF_SERVICE_REQUESTS' in t: return '키는 됨 (오늘 호출 한도 넘음)'
+    if text.startswith('오류'): return '확인 필요: ' + text[:120]
+    if re.search(r'(resultCode|returnReasonCode)\W+(0|00|000|INFO-000)\b', text) or '"items"' in text or '<item>' in text or 'totalCount' in text: return '됨'
+    return '키는 됨 (요청 값이 더 필요해 보임)'
+
+
+ORGS = ['공정거래위원회', '한국소비자원', '식품의약품안전처', '국세청', '통계청', '행정안전부', '한국부동산원', '국토교통부', '산업통상자원부', '국가기술표준원',
+        '금융위원회', '금융감독원', '한국환경공단', '환경부', '농림축산식품부', '한국농수산식품유통공사', '해양수산부', '보건복지부', '건강보험심사평가원', '국민건강보험공단',
+        '문화체육관광부', '한국관광공사', '과학기술정보통신부', '방송통신위원회', '한국인터넷진흥원', '중소벤처기업부', '소상공인시장진흥공단', '고용노동부', '교육부',
+        '한국교통안전공단', '경찰청', '조달청', '관세청', '기획재정부', '한국전력공사', '한국가스안전공사', '우정사업본부', '법무부', '법제처', '대법원', '특허청', '질병관리청']
+
+
+def scan_ids(orgs, pages=25):
+    # 운영자 2026-11-15: 승인 목록은 포털 계정에만 있어서, 기관별 API를 넓게 모아 서버 키로 하나씩 불러 보고 '되는 것'을 골라낸다
+    found = {}
+    for org in orgs:
+        for page in range(1, pages + 1):
+            q = urllib.parse.urlencode({'dType': 'API', 'keyword': org, 'currentPage': page, 'perPage': 40})
+            try: html = get('https://www.data.go.kr/tcs/dss/selectDataSetList.do?' + q)
+            except Exception: break
+            new = [i for i in dict.fromkeys(re.findall(r'/data/(\d+)/openapi\.do', html)) if i not in found]
+            for i in new: found[i] = org
+            if not new: break
+        say(f'  {org}: 지금까지 {len(found)}개')
+    return found
+
+
+def check_id(pid, name=''):
+    html = get(f'https://www.data.go.kr/data/{pid}/openapi.do')
+    if not name:
+        m = re.search(r'<title>\s*([^<|]+)', html); name = (m.group(1).strip() if m else '') or pid
+    spec = swagger(html)
+    if not spec: return name, '확인 필요: 명세 없음'
+    base, ops = describe(spec)
+    if not (KEY and ops): return name, '확인 필요: 시험 못 함'
+    return name, verdict(try_call(base, ops[0][0], ops[0][2]))
+
+
+def scan():
+    say(f'인증키: {"있음" if KEY else "없음 (FTC_API_KEY)"}'); say('기관별 API 모으는 중...')
+    ids = scan_ids(ORGS); say(f'모두 {len(ids)}개를 서버 키로 불러 볼게요 (오래 걸려요)')
+    ok, other = [], []
+    for n, (pid, org) in enumerate(ids.items(), 1):
+        try: name, v = check_id(pid)
+        except Exception as e: name, v = pid, f'확인 필요: {e}'
+        good = v == '됨' or v.startswith('키는 됨')
+        (ok if good else other).append((name, v, pid))
+        if good: say(f'  O {name} — {v}')
+        if n % 50 == 0: say(f'  ... {n}/{len(ids)} (된 것 {len(ok)}개)')
+    say(f'\n===== 서버 키로 되는 API: {len(ok)}개 (포털 승인 54개와 비교해 보세요) =====')
+    for name, v, pid in sorted(ok): say(f'  O {name} — {v} (data.go.kr/data/{pid})')
+    unsure = [o for o in other if o[1].startswith('확인 필요')]
+    if unsure: say(f'\n명세가 없거나 시험 못 한 API {len(unsure)}개는 위 숫자에 안 들어가요.')
+    try:
+        with open('/tmp/approved_apis.txt', 'w', encoding='utf-8') as f: f.write('\n'.join(n for n, _, _ in sorted(ok)))
+        say('되는 API 이름은 /tmp/approved_apis.txt 에도 남겼어요.')
+    except Exception: pass
+
+
 def main():
-    names = sys.argv[1:] or NAMES
+    args = sys.argv[1:]
+    if args[:1] == ['--scan']: scan(); return finish()
+    if args[:1] == ['--file']:  # 포털 '활용신청 현황' 목록을 줄마다 하나씩 붙여 넣은 파일
+        args = [re.sub(r'\s+', ' ', l).strip() for l in open(args[1], encoding='utf-8') if l.strip()]
+    names = args or NAMES
     say(f'인증키: {"있음" if KEY else "없음 (FTC_API_KEY)"}')
+    results = []
     for name in names:
         say('\n■', name)
         try:
             pid = find_id(name)
-            if not pid: say('  포털에서 못 찾음'); continue
+            if not pid: say('  포털에서 못 찾음'); results.append((name, '확인 필요: 포털에서 이름으로 못 찾음')); continue
             html = get(f'https://www.data.go.kr/data/{pid}/openapi.do')
             say(f'  id {pid}')
             spec = swagger(html)
             if not spec:
                 urls = sorted(set(re.findall(r'https?://apis\.data\.go\.kr/[\w/]+', html)))
-                say('  명세 없음. 페이지 속 주소:', ', '.join(urls) or '없음'); continue
+                say('  명세 없음. 페이지 속 주소:', ', '.join(urls) or '없음'); results.append((name, '확인 필요: 명세 없음 (주소 ' + (', '.join(urls) or '없음') + ')')); continue
             base, ops = describe(spec)
             say('  주소', base)
             for path, summary, params, fields in ops:
                 say(f'  - {path} {summary}')
                 say('    요청:', ', '.join(params))
                 say('    응답:', ', '.join(fields[:40]))
-            if KEY and ops: say('    시험:', try_call(base, ops[0][0], ops[0][2]))
+            if KEY and ops:
+                got = try_call(base, ops[0][0], ops[0][2]); say('    시험:', got); results.append((name, verdict(got)))
+            else: results.append((name, '확인 필요: 시험 못 함'))
         except Exception as e:
-            say('  오류', e)
+            say('  오류', e); results.append((name, f'확인 필요: {e}'))
+    ok = [r for r in results if r[1] == '됨' or r[1].startswith('키는 됨')]
+    say(f'\n===== 결과: {len(names)}개 중 {len(ok)}개가 서버 키로 돼요 =====')
+    for n, v in results: say(f'  {"O" if (v == "됨" or v.startswith("키는 됨")) else "X"} {n} — {v}')
+    finish()
+
+
+def finish():
     try:
         with open(OUT, 'w', encoding='utf-8') as f: f.write('\n'.join(lines))
         print(f'\n결과를 {OUT} 에도 남겼어요.')
