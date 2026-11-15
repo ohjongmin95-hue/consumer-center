@@ -106,3 +106,23 @@ body.adm .card{margin:0 0 12px;padding-left:16px;padding-right:16px}
 .stars.sm span{font-size:24px}
 .lvcard{background:#fff;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:4px}.lvcard b{font-size:20px;color:#C26A00}.lvcard span{color:var(--sub);font-size:14px}.lvcard small{color:var(--mute);font-size:13px}
 .rank.plain .th{width:48px;height:48px}
+/* 로고 v2 (둥근 워드마크) + 첫 화면 따종디앤핑식: 업종 아이콘 8칸, 2열 사진 후기 피드 (운영자 2026-11-15) */
+.logo img{height:30px;width:auto;display:block}.logo small{margin-left:2px;margin-bottom:2px}
+.hero.slim{padding-top:16px;padding-bottom:8px}
+.grid8{display:grid;grid-template-columns:repeat(4,1fr);gap:16px 4px;margin-top:20px}
+.grid8 a{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;color:var(--fg);font-weight:500}
+.grid8 i{font-style:normal;font-size:38px;line-height:1;height:44px;display:grid;place-items:center}
+.more{display:block;text-align:center;font-size:14px;font-weight:600;color:var(--sub);padding-top:8px;border-top:1px solid var(--line);margin-top:4px}
+.feedwrap{margin-top:8px}.feedwrap h2{font-size:19px;margin:12px 0 10px}
+.feed{columns:2;column-gap:8px;padding:0 8px}
+.fc{break-inside:avoid;display:flex;flex-direction:column;background:#fff;border-radius:14px;overflow:hidden;margin-bottom:8px}
+.fimg{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;max-width:100%}
+.fq{display:block;background:var(--orbg);padding:18px 14px;font-size:15px;line-height:1.55;font-weight:600;color:#5A3A00;min-height:120px}
+.fs{display:block;color:var(--or);font-size:13px;margin-bottom:6px;letter-spacing:1px}
+.fb{display:flex;flex-direction:column;gap:6px;padding:10px 12px 12px}
+.ft{font-size:14px;line-height:1.45;font-weight:600}
+.fst{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fu{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--mute)}.fu span:first-child{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.toprow{display:flex;align-items:center;gap:10px}.city{font-weight:800;font-size:18px;white-space:nowrap}.toprow .search{flex:1;min-width:0}.toprow .search input{padding:12px 16px;border-radius:999px}
+.tagline{margin:14px 0 0;font-size:14px;color:var(--sub)}.tagline b{color:var(--or)}
+.hero:has(.toprow){padding-top:14px}

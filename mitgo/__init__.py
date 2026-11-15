@@ -258,6 +258,27 @@ def create_app(db_path=None):
     # ── 손님 ─────────────────────────────────────────
     @mg.get('/')
     def home():
+        """첫 화면 (따종디앤핑식): 업종 아이콘 + 믿고 갈 가게 + 순위 다섯 + 2열 사진 후기 피드. 광고 카드는 없음."""
+        if request.args.get('q') or request.args.get('cat') or request.args.get('sort'):
+            return redirect(url_for('rank', **request.args))
+        c = conf()
+        with conn() as db:
+            stores = db.execute('SELECT * FROM stores WHERE hidden=0').fetchall()
+            st = stats(db, None, c) if stores else {}
+            feed = []
+            for r in db.execute('SELECT r.*, s.name sname, s.cat scat, s.photo sphoto FROM reviews r JOIN stores s ON s.id=r.store_id '
+                                'WHERE s.hidden=0 ORDER BY (r.photos != \'\') DESC, r.visited DESC, r.created DESC LIMIT 200'):
+                if is_public(r, c) and ((r['body'] or '').strip() or r['photos']):
+                    feed.append(r)
+            feed = sorted(feed, key=lambda r: r['created'], reverse=True)[:40]
+            lv = levels(db, feed)
+        g = lambda s, k, d=0: st.get(s['id'], {}).get(k, d)  # noqa: E731
+        top = sorted(stores, key=lambda s: (-g(s, 'rank'), -g(s, 'n'), s['id']))
+        picks = [s for s in top if g(s, 'pick')][:10]
+        return render_template('mg_home.html', st=st, top=top[:5], picks=picks, feed=feed, lv=lv)
+
+    @mg.get('/rank')
+    def rank():
         cat = request.args.get('cat', '')
         q = (request.args.get('q') or '').strip()[:40]
         c = conf()
@@ -296,7 +317,7 @@ def create_app(db_path=None):
                'near': lambda s: (far[s['id']] is None, far[s['id']] or 0, -g(s, 'rank'))}.get(sort)
         ranked = sorted(stores, key=key or (lambda s: (-g(s, 'rank'), s['id'])))
         picks = [s for s in sorted(stores, key=lambda s: -g(s, 'rank')) if g(s, 'pick')][:10]
-        return render_template('mg_home.html', stores=ranked[:30], st=st, cat=cat, q=q, recent=recent, lv=lv, picks=picks,
+        return render_template('mg_rank.html', stores=ranked[:30], st=st, cat=cat, q=q, recent=recent, lv=lv, picks=picks,
                                sort=sort, sorts=SORTS, only_v=only_v, far=far, lat=lat, lng=lng, offers=offers)
 
     @mg.get('/s/<int:sid>')

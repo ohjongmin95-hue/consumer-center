@@ -163,5 +163,5 @@ def test_sort_near(mg):
     c.execute("INSERT INTO stores(name,cat,token,lat,lng,created) VALUES('먼 가게','미용','t2',37.40,127.10,'2026-11-15 10:00:00')")
     c.execute("UPDATE stores SET lat=37.2886, lng=127.0507 WHERE id=1")
     c.commit()
-    page = mg.test_client().get('/?sort=near&lat=37.29&lng=127.05').get_data(as_text=True)
+    page = mg.test_client().get('/rank?sort=near&lat=37.29&lng=127.05').get_data(as_text=True)
     assert page.index('결헤어') < page.index('먼 가게') and 'km' in page
