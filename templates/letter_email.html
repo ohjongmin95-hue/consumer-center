@@ -1,8 +1,5 @@
-{#- 소보루 레터 메일 본문. 메일 앱(Gmail·네이버 메일)은 style 태그와 바깥 CSS를 지우거나 무시하므로 표(table)와 인라인 스타일만 씀. 폭 최대 640px, 폰에서는 화면 폭에 맞춰 줄어듦(고정 폭 속성 X: 메일 앱이 통째로 축소함)
-     운영자 2026-11-15: '뉴닉처럼, 지금은 너무 아기자기' → 흰 바탕·글 위주. 빵 장식·영수증·가게 지붕 없앰. 맨 위 영문 귤색 SOBORU 로고, 칸 머리는 굵은 검은 선 + 귤색 작은 영문 + 굵은 제목 -#}
-{%- set F = "font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;" -%}
-{%- set INK = '#191f28' -%}{%- set TXT = '#333d4b' -%}{%- set SUB = '#8b95a1' -%}{%- set LINE = '#e5e8eb' -%}{%- set ACC = '#EF920E' -%}{%- set LINK = '#e8590c' -%}
-{%- set P = 'margin:0 0 16px;font-size:17px;line-height:1.85;color:' ~ TXT ~ ';word-break:keep-all;' -%}
+{#- 소보루 레터 메일 본문. 메일 앱(Gmail·네이버 메일)은 style 태그와 바깥 CSS를 지우거나 무시하므로 표(table)와 인라인 스타일만 씀. 폭 최대 680px, 폰에서는 화면 폭에 맞춰 줄어듦(고정 폭 속성 X: 메일 앱이 통째로 축소함) -#}
+{%- set F = "font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;" -%}
 <!doctype html>
 <html lang="ko">
 <head>
@@ -16,217 +13,294 @@
 {#- 받은편지함 미리보기 문구: 화면엔 안 보이고 메일 목록 제목 옆에만 보임. 스티비 안내 양식($stb-htmlv3$)과 같은 모양 -#}
 {%- set pre = (L.intro or L.title or '')|striptags -%}
 <table id="$stb-htmlv3$" style="height:0px;max-height:0px;border-width:0px;visibility:hidden;line-height:0px;font-size:0px;overflow:hidden;display:none;mso-hide:all;"><tr><td>{{ pre[:110] }}{% for _ in range(40) %}&#8204;&nbsp;{% endfor %}</td></tr></table>
-{#- 칸 머리: 위에 굵은 검은 선, 귤색 작은 영문 이름표, 굵은 제목 (뉴닉식) -#}
-{%- macro head(en, ko, id='') -%}
-  <tr><td style="padding:52px 24px 0;{{ F }}"{% if id %} id="{{ id }}"{% endif %}>
-    <div style="height:3px;background:{{ INK }};font-size:0;line-height:0;">&nbsp;</div>
-    <p style="margin:16px 0 4px;font-size:13px;line-height:1.4;font-weight:800;letter-spacing:2px;color:{{ ACC }};">{{ en }}</p>
-    <p style="margin:0;font-size:23px;line-height:1.4;font-weight:800;letter-spacing:-0.6px;color:{{ INK }};">{{ ko }}</p>
+{%- macro pill(label, img=True) -%}
+  <tr><td align="center" style="padding:40px 28px 6px;">
+    {% if img %}<img src="{{ hero }}" width="104" alt="" style="display:block;width:104px;height:auto;border:0;margin:0 auto -6px;">{% endif %}
+    {#- 칸 제목 = 바게트 모양: 노릇한 껍질 색 긴 알약 + 칼집(사선) 무늬, 양옆 선 -#}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="50%" valign="middle"><div style="height:3px;background:#e39a4c;border-radius:2px;font-size:0;line-height:0;">&nbsp;</div></td>
+      <td style="white-space:nowrap;background:#e39a4c;border:2px solid #b8692a;border-radius:999px;padding:9px 18px;{{ F }}font-size:18px;line-height:1.3;font-weight:800;letter-spacing:-0.4px;color:#ffffff;"><span style="color:#ffe2b0;font-weight:400;">/ /</span>&nbsp;&nbsp;{{ label }}&nbsp;&nbsp;<span style="color:#ffe2b0;font-weight:400;">/ /</span></td>
+      <td width="50%" valign="middle"><div style="height:3px;background:#f8dcb8;border-radius:2px;font-size:0;line-height:0;">&nbsp;</div></td>
+    </tr></table>
   </td></tr>
 {%- endmacro -%}
-{#- 이모지로 시작하는 옛 칸 이름(🍞 한 입에 정리하면)은 글자만 -#}
-{%- macro plain(s) -%}{{ s.split(' ', 1)[1] if s and ' ' in s and s[0] > '⿿' and not ('가' <= s[0] <= '힣') else s }}{%- endmacro -%}
+{%- macro ic(name, size=22) -%}<img src="{{ tf(name) }}" width="{{ size }}" height="{{ size }}" alt="" style="display:inline-block;width:{{ size }}px;height:{{ size }}px;border:0;vertical-align:-{{ (size * 0.22)|int }}px;">{%- endmacro -%}
 <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{ (L.intro or L.title)[:90] }}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
-<tr><td align="center" style="padding:0;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:640px;background:#ffffff;">
-  {#- 맨 위 인사 + 바로 수신 거부 (운영자 2026-11-01). 구독하기는 아직 구독하지 않은 분께만: 사이트 발송은 받는 사람이 모두 구독자라 빼고, 스티비는 구독자 필드(sub_style)로 숨김 -#}
-  <tr><td style="padding:20px 24px 0;{{ F }}">
-    <p style="margin:0;font-size:13px;line-height:1.7;color:{{ SUB }};word-break:keep-all;">소보루 레터는 매일 아침 꼭 알아야 할 경제·소비자 뉴스를 골라, 내 지갑과 생활에 어떤 의미인지 쉽게 풀어 드리는 뉴스레터예요. 받고 싶지 않으시면 수신 거부하기를 눌러 주세요.
-    {%- if not sub_hide %}<span style="{{ sub_style }}"> 구독하기를 누르시면 소보루 레터(정보성 광고 포함) 받기에 동의하신 것으로 봐요.</span>{% endif %}
-    <a href="{{ unsub }}" style="color:{{ SUB }};font-weight:700;text-decoration:underline;white-space:nowrap;">수신 거부하기</a>{% if not sub_hide %}<span style="{{ sub_style }}"> · <a href="{{ site }}/letter" style="color:{{ LINK }};font-weight:700;text-decoration:none;">구독하기</a></span>{% endif %}</p>
+<tr><td align="center" style="padding:8px 0 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:680px;background:#ffffff;">
+  {#- 표지: 얇고 깔끔한 테두리 안에 로고를 크게, 둘레에 빵 이모지·호수 (운영자 2026-11-01) -#}
+  <tr><td style="padding:16px 22px 0;">
+    {#- 맨 위 인사 + 바로 수신 거부 (운영자 2026-11-01) -#}
+    <p style="margin:0 0 14px;text-align:center;{{ F }}font-size:15px;line-height:1.75;color:#4a433d;">안녕하세요, 소보루예요. 소보루 레터는 매일 아침 꼭 알아야 할 경제 뉴스를 골라, 내 지갑과 생활에 어떤 의미인지 쉽게 풀어 드리는 경제 뉴스레터예요. 경제 뉴스는 많고 어려워서 정작 나와 닿은 소식은 놓치기 쉽잖아요. 그 소식을 바쁜 아침 5분 만에 챙기실 수 있도록 먼저 찾아왔어요. 받고 싶지 않으시면 아래 수신 거부하기를 눌러 주세요. 따로 거부하지 않으시면 계속 보내 드릴게요.<br>{#- 구독하기 버튼·동의 안내는 아직 구독하지 않은 분께만 (운영자 2026-11-01): 사이트 발송은 받는 사람이 모두 구독자라 빼고, 스티비는 구독자 필드(sub_style)로 숨김 -#}{% if not sub_hide %}<span style="{{ sub_style }}"><a href="{{ site }}/letter" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #EF920E;border-radius:999px;background:#EF920E;color:#ffffff;font-weight:700;text-decoration:none;">구독하기</a>&nbsp;&nbsp;</span>{% endif %}<a href="{{ unsub }}" style="display:inline-block;margin-top:8px;padding:4px 14px;border:1px solid #d9d2c9;border-radius:999px;color:#6b625a;font-weight:700;text-decoration:none;">수신 거부하기</a>{% if not sub_hide %}<span style="{{ sub_style }}"><br><span style="display:inline-block;margin-top:6px;font-size:12px;color:#6b625a;">구독하기를 누르시면 소보루 레터(정보성 광고 포함) 받기에 동의하신 것으로 봐요.</span></span>{% endif %}</p>
+    <div style="height:3px;background:#EF920E;font-size:0;line-height:0;">&nbsp;</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
+    <tr><td align="center" style="padding:34px 6px 40px;{{ F }}">
+    {# 로고 둘레에 토스페이스 빵들을 위아래로 엇갈려 띄움 #}
+    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
+      {#- 빵은 양옆 칸에 둘씩 위아래로 엇갈려 쌓음: 폰에서도 로고가 작아지지 않게 (운영자 2026-11-01) -#}
+      <td valign="top" width="44" style="width:44px;padding:0 4px 0 0;"><img src="{{ tf('bagel') }}" width="28" height="28" alt="" style="display:block;width:28px;height:28px;border:0;"><img src="{{ tf('croissant') }}" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border:0;margin:4px 0 0;"></td>
+      <td valign="middle" style="padding:14px 4px 0;">{#- 운영자 2026-11-05: 표지는 원래 귤색 SOBORU 로고 ('소보루 레터' 글씨 X) -#}<a href="{{ site }}/" style="text-decoration:none;">{% if mark %}<img src="{{ mark }}" width="320" alt="SOBORU 소보루 레터" style="display:block;width:100%;max-width:320px;height:auto;border:0;">{% else %}<b style="{{ F }}font-size:34px;color:#EF920E;">SOBORU</b>{% endif %}</a></td>
+      <td valign="top" width="40" style="width:40px;padding:0 0 0 4px;"><img src="{{ tf('bread') }}" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border:0;"><img src="{{ tf('pretzel') }}" width="30" height="30" alt="" style="display:block;width:30px;height:30px;border:0;margin:8px 0 0 6px;"></td>
+    </tr></table>
+    <p style="margin:14px 0 0;font-size:0;line-height:0;">{{ ic('sparkle', 16) }}&nbsp;&nbsp;&nbsp;{{ ic('baguette', 26) }}&nbsp;&nbsp;&nbsp;{{ ic('donut', 22) }}&nbsp;&nbsp;&nbsp;{{ ic('sparkle', 16) }}</p>
+    {#- 호수는 독자에게 안 보임(관리자 화면에서만), 날짜만 (운영자 2026-11-01) -#}
+    <p style="margin:28px 0 0;font-size:17px;font-weight:700;color:#8a6a55;">{{ date }} &nbsp;|&nbsp; <a href="{{ web }}" style="color:#8a6a55;text-decoration:underline;">웹에서 보기</a></p>
+    </td></tr>
+    </table>
   </td></tr>
-  {#- 표지: 영문 귤색 SOBORU 로고 (운영자 2026-11-15 '우리 로고 넣어야 해, 영문 귤색') + 날짜 -#}
-  <tr><td style="padding:36px 24px 0;{{ F }}">
-    <a href="{{ site }}/" style="text-decoration:none;">{% if mark %}<img src="{{ mark }}" width="200" alt="SOBORU 소보루 레터" style="display:block;width:200px;max-width:60%;height:auto;border:0;">{% else %}<b style="{{ F }}font-size:36px;letter-spacing:-1px;color:{{ ACC }};">SOBORU</b>{% endif %}</a>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 0;border-top:1px solid {{ INK }};border-bottom:1px solid {{ LINE }};"><tr>
-      <td style="padding:10px 0;{{ F }}font-size:14px;font-weight:700;color:{{ INK }};white-space:nowrap;">소보루 레터 · {{ date }}</td>
-      <td align="right" style="padding:10px 0;{{ F }}font-size:14px;"><a href="{{ web }}" style="color:{{ SUB }};text-decoration:underline;white-space:nowrap;">웹에서 보기</a></td></tr></table>
-  </td></tr>
-  {% if L.intro %}
-  <tr><td style="padding:28px 24px 0;{{ F }}">
-    <p style="margin:0;font-size:18px;line-height:1.85;color:{{ INK }};word-break:keep-all;">{{ L.intro }}</p>
-    <p style="margin:10px 0 0;font-size:14px;font-weight:700;color:{{ SUB }};">by. 에디터 크로와상</p>
-  </td></tr>
-  {% endif %}
-  {#- 오늘의 레터 차례 (뉴닉식): 칸 이름만 짧게 -#}
-  {%- set toc = [] -%}
-  {%- if sec.comment %}{% set _ = toc.append(sec.comment.title) %}{% endif -%}
-  {%- set _ = toc.append(H.news_title.replace('갓 구운 ', '') ~ ' ' ~ L['items']|length ~ '개') -%}
-  {%- if sec.number %}{% set _ = toc.append('숫자로 보는 오늘 · ' ~ sec.number.value) %}{% endif -%}
-  {%- if sec.buzz %}{% set _ = toc.append(sec.buzz.title) %}{% endif -%}
-  {%- if sec.harm %}{% set _ = toc.append(sec.harm.title) %}{% endif -%}
-  {%- if sec.lawbox %}{% set _ = toc.append(sec.lawbox.title) %}{% endif -%}
-  {%- if sec.word %}{% set _ = toc.append('오늘의 경제 용어 · ' ~ sec.word.word) %}{% endif %}
-  <tr><td style="padding:28px 24px 0;{{ F }}">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff8ee;border-radius:12px;"><tr><td style="padding:18px 20px 10px;{{ F }}">
-      <p style="margin:0 0 10px;font-size:13px;font-weight:800;letter-spacing:2px;color:{{ ACC }};">TODAY</p>
-      {% for t in toc %}<p style="margin:0 0 8px;font-size:16px;line-height:1.55;color:{{ INK }};word-break:keep-all;"><b style="color:{{ ACC }};">{{ loop.index }}</b>&nbsp;&nbsp;{{ t }}</p>{% endfor %}
-    </td></tr></table>
+  <tr><td style="padding:28px 22px 0;{{ F }}">
+    {% if L.intro %}<p style="margin:0;font-size:18px;line-height:1.9;color:#3a3633;text-align:justify;word-break:normal;">{{ L.intro }} <span style="color:#ef7300;font-weight:800;white-space:nowrap;">by. 에디터 크로와상</span></p>{% endif %}
+    <div style="margin:28px 0 0;border-top:1px dashed #c9c2bb;font-size:0;line-height:0;">&nbsp;</div>
   </td></tr>
   {% if sec.market %}{% set M = sec.market %}
   {#- 시장 지표: 레터를 만들 때 받은 직전 거래일 값 -#}
-  <tr><td style="padding:28px 24px 0;{{ F }}" id="market">
-    {% for r in M.rows %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom:1px solid {{ LINE }};"><tr>
-      <td style="padding:9px 8px 9px 0;{{ F }}font-size:16px;font-weight:700;color:{{ TXT }};white-space:nowrap;">{{ r.label }}</td>
-      <td align="right" style="padding:9px 0;{{ F }}font-size:16px;"><b style="color:{{ INK }};white-space:nowrap;">{{ r.value }}</b>&nbsp;
-        <span style="color:{{ '#e5484d' if r.dir == 'up' else ('#3182f6' if r.dir == 'down' else SUB) }};font-weight:700;white-space:nowrap;">{{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }}{% if r.pct %} ({{ r.pct }}){% endif %}</span></td>
-    </tr></table>{% endfor %}
-    <p style="margin:8px 0 0;font-size:13px;color:{{ SUB }};">직전 거래일{% if M.at|length == 10 %}({{ M.at[5:7]|int }}월 {{ M.at[8:10]|int }}일){% endif %} 오후 3시 30분 기준 · 출처 네이버 증권</p>
+  <tr><td style="padding:26px 22px 0;{{ F }}" id="market">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #eee6dd;border-radius:16px;"><tr><td style="padding:14px 18px;{{ F }}">
+      {% for r in M.rows %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"{% if not loop.first %} style="border-top:1px solid #f4eee8;"{% endif %}><tr>
+        <td style="padding:8px 8px 8px 0;{{ F }}font-size:17px;font-weight:700;color:#3a3633;white-space:nowrap;">{{ r.label }}</td>
+        <td align="right" style="padding:8px 0;{{ F }}font-size:17px;"><b style="color:#1d1d1f;white-space:nowrap;">{{ r.value }}</b> 
+          <span style="color:{{ '#e5484d' if r.dir == 'up' else ('#3182f6' if r.dir == 'down' else '#8a827a') }};font-weight:700;white-space:nowrap;">{{ '▲' if r.dir == 'up' else ('▼' if r.dir == 'down' else '-') }} {{ r.change }}{% if r.pct %} ({{ r.pct }}){% endif %}</span></td>
+      </tr></table>{% endfor %}
+      <p style="margin:6px 0 0;font-size:14px;color:#9a928a;">직전 거래일{% if M.at|length == 10 %}({{ M.at[5:7]|int }}월 {{ M.at[8:10]|int }}일){% endif %} 오후 3시 30분 기준 · 출처 네이버 증권</p>
+    </td></tr></table>
   </td></tr>
   {% endif %}
+  {#- 갓 구운 오늘의 뉴스 (분야 칩 + 제목, 3문장, 기사 원문) -#}
+  <tr><td style="padding:34px 22px 0;{{ F }}" id="news">
+    {#- 갓 구운 뉴스 = 크라프트 빵 봉투: 위는 톱니로 자른 봉투 입구, 접힌 선(점선), 크라프트 종이 색 (운영자 2026-11-01) -#}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;background:#f3e7d3;"><tr><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #ffffff;font-size:0;line-height:0;"></div></td></tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ecdcc2;"><tr><td style="padding:10px 0 0;font-size:0;line-height:0;"><div style="border-top:2px dashed #d6bf9c;font-size:0;line-height:0;">&nbsp;</div></td></tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3e7d3;border-radius:0 0 10px 10px;"><tr><td style="padding:24px 26px 10px;{{ F }}">
+      <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 10px;border:2px solid #652D1C;border-radius:999px;background:#fffaf2;"><tr><td style="padding:4px 14px;{{ F }}font-size:14px;line-height:1.3;font-weight:800;letter-spacing:1.5px;color:#652D1C;white-space:nowrap;">{{ H.news_eyebrow }}</td></tr></table>
+      <p style="margin:0 0 22px;text-align:center;font-size:21px;line-height:1.4;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ H.news_title }} {{ L['items']|length }} {{ H.news_emoji }}</p>
+      {% for it in econ + policy %}
+      <div id="n{{ loop.index }}" style="margin:0 0 {{ '26px' if not loop.last else '16px' }};">
+        <p style="margin:0 0 8px;font-size:18px;line-height:1.5;font-weight:800;color:#1d1d1f;letter-spacing:-0.3px;"><span style="display:inline-block;margin:0 6px 0 0;padding:1px 9px;border-radius:999px;background:#ffe7c7;color:#CE6719;font-size:15px;font-weight:800;vertical-align:2px;">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</span>{{ it.title }}</p>
+        <p style="margin:0;font-size:18px;line-height:1.8;color:#3a3633;text-align:justify;word-break:normal;">{{ it.body|srclinks }} <a href="{{ it.src.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.more }}</a></p>
+      </div>
+      {% endfor %}
+    </td></tr></table>
+  </td></tr>
   {% if sec.comment %}{% set c = sec.comment %}
   {#- 에디터 코멘트: 오늘 가장 큰 경제 이슈를 깊게 -#}
-  {{ head("TODAY'S ISSUE", H.comment_eyebrow, 'comment') }}
-  <tr><td style="padding:20px 24px 0;{{ F }}">
-    {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:592px;height:auto;border:0;border-radius:8px;">{% if not PH.own %}<p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:{{ SUB }};">사진: <a href="{{ PH.credit_url }}" style="color:{{ SUB }};">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:{{ SUB }};">Unsplash</a></p>{% endif %}</div>{% endif %}
-    <h2 style="margin:0 0 {{ '8px' if c.tags else '16px' }};font-size:22px;line-height:1.45;font-weight:800;color:{{ INK }};letter-spacing:-0.5px;">{{ c.title }}</h2>
-    {% if c.tags %}<p style="margin:0 0 18px;font-size:14px;font-weight:700;color:{{ SUB }};">{% for t in c.tags %}#{{ t }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>{% endif %}
-    <p style="{{ P }}">{{ c.lead|srclinks }}</p>
-    {% for key in ('what', 'why', 'wallet') %}{% set b = c[key] %}{% set hd = plain(H[key]) if key != 'wallet' or not b.head else b.head %}
+  <tr><td style="padding:40px 22px 4px;{{ F }}" id="comment">
+    {#- 메인 뉴스 머리: 소보루가 계산대 위로 고개 내밂 + 제목만 — 상자 없이 깔끔하게 (운영자 2026-11-01, 다섯 안 중 5번) -#}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td align="center" style="padding:0;font-size:0;line-height:0;"><img src="{{ bounce }}" width="150" height="130" alt="소보루" style="display:block;margin:0 auto;width:150px;height:130px;border:0;"></td></tr>
+      <tr><td style="padding:0;font-size:0;line-height:0;"><div style="height:8px;background:#EF920E;border-radius:4px;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+      <tr><td style="padding:0 10px;font-size:0;line-height:0;"><div style="height:14px;background:#F8D59F;border-radius:0 0 8px 8px;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+      <tr><td align="center" style="padding:16px 0 0;{{ F }}font-size:12px;line-height:1.4;font-weight:800;letter-spacing:3px;color:#CE6719;white-space:nowrap;">{{ H.comment_kicker }}</td></tr>
+      <tr><td align="center" style="padding:2px 0 0;{{ F }}font-size:25px;line-height:1.4;font-weight:800;letter-spacing:-0.5px;color:#1d1d1f;white-space:nowrap;">{{ ic('baguette', 26) }}&nbsp; {{ H.comment_eyebrow }} &nbsp;{{ ic('butter', 24) }}</td></tr>
+    </table>
+    <div style="height:26px;font-size:0;line-height:0;">&nbsp;</div>
+    {% if c.photo %}{% set PH = c.photo %}<div style="margin:0 0 20px;"><img src="{{ PH.url }}" alt="{{ PH.alt }}" style="display:block;width:100%;max-width:656px;height:auto;border:0;border-radius:16px;">{% if not PH.own %}<p style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#9b9188;">사진: <a href="{{ PH.credit_url }}" style="color:#9b9188;">{{ PH.credit }}</a> / <a href="{{ PH.home }}" style="color:#9b9188;">Unsplash</a></p>{% endif %}</div>{% endif %}
+    <h2 style="margin:0 0 {{ '8px' if c.tags else '14px' }};font-size:25px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.6px;">{{ c.title }}</h2>
+    {% if c.tags %}<p style="margin:0 0 16px;font-size:16px;font-weight:700;color:#CE6719;">{% for t in c.tags %}#{{ t }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>{% endif %}
+    <p style="margin:0 0 26px;font-size:18px;line-height:1.9;color:#3a3633;text-align:justify;word-break:normal;">{{ c.lead|srclinks }}</p>
+    {% for key in ('what', 'why', 'wallet') %}{% set b = c[key] %}{% set head = H[key] if key != 'wallet' or not b.head else '👛 ' ~ b.head %}
     {% if b.body or b.points %}
-    <p style="margin:28px 0 10px;font-size:18px;line-height:1.5;font-weight:800;color:{{ INK }};"><span style="color:{{ ACC }};">Q.</span> {{ hd }}</p>
-    {% if b.body %}<p style="{{ P }}">{{ b.body|srclinks }}</p>{% endif %}
+    <p style="margin:0 0 10px;font-size:20px;line-height:1.5;font-weight:800;color:#1d1d1f;">{{ head }}</p>
+    {% if b.body %}<p style="margin:0 0 12px;font-size:18px;line-height:1.9;color:#3a3633;text-align:justify;word-break:normal;">{{ b.body|srclinks }}</p>{% endif %}
     {% for p in b.points or [] %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;"><tr>
-      <td width="18" valign="top" style="width:18px;{{ F }}font-size:17px;line-height:1.85;color:{{ ACC }};font-weight:800;">·</td>
-      <td valign="top" style="{{ F }}font-size:17px;line-height:1.85;color:{{ TXT }};word-break:keep-all;"><b style="color:{{ INK }};">{{ p.name }}:</b> {{ p.text|srclinks }}</td></tr></table>{% endfor %}
+      <td width="20" valign="top" style="width:20px;padding-top:11px;"><span style="display:block;width:7px;height:7px;border-radius:4px;background:#ef7300;font-size:0;line-height:0;">&nbsp;</span></td>
+      <td valign="top" style="{{ F }}font-size:18px;line-height:1.85;color:#3a3633;"><b style="color:#1d1d1f;">{{ p.name }}:</b> {{ p.text|srclinks }}</td></tr></table>{% endfor %}
+    <div style="height:18px;font-size:0;line-height:0;">&nbsp;</div>
     {% endif %}{% endfor %}
     {% if c.note %}
-    {#- 크로와상의 한마디: 왼쪽 귤색 선 하나만 -#}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px;"><tr>
-      <td width="3" style="width:3px;background:{{ ACC }};font-size:0;line-height:0;">&nbsp;</td>
-      <td style="padding:4px 0 4px 16px;{{ F }}">
-        <p style="margin:0 0 6px;font-size:14px;font-weight:800;color:{{ ACC }};">크로와상의 한마디</p>
-        <p style="margin:0;font-size:17px;line-height:1.85;color:{{ INK }};word-break:keep-all;">{{ c.note }}</p>
+    {#- 크로와상의 한마디: 메인 뉴스 끝, 크로와상 얼굴 + 말풍선 (운영자 2026-11-01) -#}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 24px;"><tr>
+      <td width="110" valign="top" style="width:110px;padding:8px 12px 0 0;"><img src="{{ editor_img }}" width="110" alt="에디터 크로와상" style="display:block;width:110px;height:auto;border:0;"></td>
+      <td valign="top" style="background:#FFF4E2;border-radius:4px 18px 18px 18px;padding:16px 20px 18px;{{ F }}">
+        <p style="margin:0 0 6px;font-size:15px;line-height:1.4;font-weight:800;color:#CE6719;">크로와상의 한마디</p>
+        <p style="margin:0;font-size:17px;line-height:1.85;color:#3a3633;text-align:justify;word-break:normal;">{{ c.note }}</p>
       </td></tr></table>
     {% endif %}
-    {% if c.srcs %}<p style="margin:16px 0 0;font-size:14px;line-height:1.7;color:{{ SUB }};word-break:keep-all;">참고한 기사: {% for s in c.srcs %}<a href="{{ s.url }}" style="color:{{ SUB }};text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+    {% if c.srcs %}<p style="margin:0;font-size:16px;line-height:1.7;color:#8a827a;text-align:justify;word-break:normal;">참고한 기사: {% for s in c.srcs %}<a href="{{ s.url }}" style="color:#8a827a;text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
   </td></tr>
   {% endif %}
-  {#- 오늘의 뉴스 (분야 + 제목, 3문장, 기사 원문) -#}
-  {{ head('NEWS', H.news_title.replace('갓 구운 ', '') ~ ' ' ~ L['items']|length, 'news') }}
-  <tr><td style="padding:8px 24px 0;{{ F }}">
-    {% for it in econ + policy %}
-    <div id="n{{ loop.index }}" style="padding:20px 0 4px;{{ ('border-top:1px solid ' ~ LINE ~ ';') if not loop.first }}">
-      <p style="margin:0 0 4px;font-size:13px;font-weight:800;color:{{ ACC }};">{{ it.cat or ('정책' if it.kind == 'policy' else '경제') }}</p>
-      <p style="margin:0 0 8px;font-size:18px;line-height:1.5;font-weight:800;color:{{ INK }};letter-spacing:-0.3px;word-break:keep-all;">{{ it.title }}</p>
-      <p style="{{ P }}">{{ it.body|srclinks }} <a href="{{ it.src.url }}" style="color:{{ LINK }};font-weight:700;text-decoration:none;white-space:nowrap;">{{ H.more }}</a></p>
-    </div>
-    {% endfor %}
-  </td></tr>
   {% if sec.number %}{% set b = sec.number %}
-  {{ head('NUMBER', '숫자로 보는 오늘', 'num') }}
-  <tr><td style="padding:20px 24px 0;{{ F }}">
-    <p style="margin:0;font-size:44px;line-height:1.15;font-weight:800;letter-spacing:-1px;color:{{ ACC }};">{{ b.value }}</p>
-    <p style="margin:6px 0 14px;font-size:16px;font-weight:700;color:{{ INK }};">{{ b.label }}</p>
-    <p style="{{ P }}">{{ b.body|srclinks }}</p>
-    {% if b.src and b.src.url %}<p style="margin:0;font-size:14px;color:{{ SUB }};">출처 {{ b.src.name or '기사' }} · <a href="{{ b.src.url }}" style="color:{{ SUB }};text-decoration:underline;">원문 보기</a></p>{% endif %}
+  {{ pill('숫자로 보는 오늘', False) }}
+  <tr><td align="center" style="padding:22px 22px 4px;{{ F }}" id="num">
+    {#- 숫자로 보는 오늘 = 계산대 감열지 영수증(톱니 위아래·점선·TOTAL 줄) — 수다방 영수증과 다른 모양 (운영자 2026-11-01) -#}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffe8c7;border-radius:18px;"><tr><td align="center" style="padding:26px 18px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:400px;margin:0 auto;"><tr><td>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;"><tr><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:7px solid #ffffff;font-size:0;line-height:0;"></div></td></tr></table>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;"><tr><td style="padding:14px 22px 8px;{{ F }}">
+        <p style="margin:0;text-align:center;font-family:'Courier New',Courier,monospace;font-size:17px;font-weight:700;letter-spacing:3px;color:#2b2622;">SOBORU BAKERY</p>
+        <p style="margin:2px 0 0;text-align:center;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:700;color:#5a5048;">*** 오늘의 숫자 ***<br>{{ date }}</p>
+        <div style="margin:14px 0;border-top:2px dashed #b9ad9b;font-size:0;line-height:0;">&nbsp;</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td valign="bottom" style="font-family:'Courier New',Courier,monospace;font-size:17px;font-weight:700;color:#1d1d1f;padding-bottom:8px;">{{ b.label }}</td></tr>
+          <tr><td style="padding:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom" style="font-family:'Courier New',Courier,monospace;font-size:18px;font-weight:700;color:#1d1d1f;padding-bottom:10px;">TOTAL</td><td align="right" valign="bottom" style="{{ F }}font-size:48px;line-height:1.1;font-weight:800;color:#e8590c;letter-spacing:-1px;white-space:nowrap;">{{ b.value }}</td></tr></table></td></tr></table>
+        <div style="margin:14px 0;border-top:2px dashed #b9ad9b;font-size:0;line-height:0;">&nbsp;</div>
+        <p style="margin:0;font-size:18px;line-height:1.75;color:#1d1d1f;text-align:justify;word-break:normal;">{{ b.body|srclinks }}</p>
+        <div style="margin:14px 0;border-top:2px dashed #b9ad9b;font-size:0;line-height:0;">&nbsp;</div>
+        {% if b.src and b.src.url %}<p style="margin:0;text-align:center;font-family:'Courier New',Courier,monospace;font-size:14px;color:#5a5048;">출처 {{ b.src.name or '기사' }} · <a href="{{ b.src.url }}" style="color:#5a5048;text-decoration:underline;">원문 보기</a></p>{% endif %}
+        <p style="margin:6px 0 0;text-align:center;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:700;color:#5a5048;">THANK YOU · 맛있는 하루 되세요</p>
+      </td></tr></table>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;"><tr><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td><td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #fffdf7;font-size:0;line-height:0;"></div></td></tr></table>
+    </td></tr></table>
+    </td></tr></table>
   </td></tr>
   {% endif %}
   {% if sec.buzz %}{% set b = sec.buzz %}
-  {#- 소비 트렌드(일주일에 한 번) -#}
-  {{ head('TREND', H.buzz, 'buzz') }}
-  <tr><td style="padding:20px 24px 0;{{ F }}">
-    <p style="margin:0 0 12px;font-size:20px;line-height:1.45;font-weight:800;color:{{ INK }};letter-spacing:-0.4px;word-break:keep-all;">{{ b.title }}</p>
-    {% if b.body %}<p style="{{ P }}">{{ b.body|srclinks }}</p>{% endif %}
-    {% for p in b.points %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;"><tr>
-      <td width="30" valign="top" style="width:30px;{{ F }}font-size:17px;line-height:1.7;font-weight:800;color:{{ ACC }};">{{ loop.index }}</td>
-      <td valign="top" style="{{ F }}"><p style="margin:0 0 4px;font-size:17px;line-height:1.7;font-weight:800;color:{{ INK }};">{{ p.name }}</p><p style="margin:0;font-size:17px;line-height:1.85;color:{{ TXT }};word-break:keep-all;">{{ p.text|srclinks }}</p></td></tr></table>{% endfor %}
-    {% if b.insight %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 14px;"><tr>
-      <td width="3" style="width:3px;background:{{ ACC }};font-size:0;line-height:0;">&nbsp;</td>
-      <td style="padding:4px 0 4px 16px;{{ F }}"><p style="margin:0 0 6px;font-size:14px;font-weight:800;color:{{ ACC }};">소보루의 트렌드 읽기</p><p style="margin:0;font-size:17px;line-height:1.85;color:{{ INK }};word-break:keep-all;">{{ b.insight }}</p></td></tr></table>{% endif %}
-    {% if b.tip %}<p style="margin:0 0 12px;font-size:16px;line-height:1.75;color:{{ TXT }};word-break:keep-all;"><b style="color:{{ INK }};">소비자 체크 포인트</b>&nbsp; {{ b.tip }}</p>{% endif %}
-    {% if b.srcs %}<p style="margin:12px 0 0;font-size:14px;line-height:1.7;color:{{ SUB }};">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" style="color:{{ SUB }};text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
-  </td></tr>
-  {% endif %}
-  {% if sec.harm %}{% set b = sec.harm %}
-  {{ head('CONSUMER', '소비자 피해 예방', 'harm') }}
-  <tr><td style="padding:20px 24px 0;{{ F }}">
-    <p style="margin:0 0 12px;font-size:20px;line-height:1.45;font-weight:800;color:{{ INK }};letter-spacing:-0.4px;word-break:keep-all;">{{ b.title }}</p>
-    {% for p in b.body|letter_paras %}<p style="{{ P }}">{{ p|srclinks }}</p>{% endfor %}
-    {% if b.steps %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff8ee;border-radius:12px;"><tr><td style="padding:16px 18px 8px;{{ F }}">
-      <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:{{ INK }};">이런 일을 겪었다면</p>
-      {% for st in b.steps %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;"><tr>
-        <td width="24" valign="top" style="width:24px;{{ F }}font-size:16px;line-height:1.6;font-weight:800;color:{{ ACC }};">{{ loop.index }}</td>
-        <td valign="top" style="{{ F }}font-size:16px;line-height:1.6;color:{{ TXT }};word-break:keep-all;">{{ st }}</td></tr></table>{% endfor %}
-    </td></tr></table>{% endif %}
-    {% if b.law %}<p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:{{ SUB }};">관련 법: {% if b.law.url %}<a href="{{ b.law.url }}" style="color:{{ SUB }};text-decoration:underline;">{{ b.law.label }}</a>{% else %}{{ b.law.label }}{% endif %}</p>{% endif %}
-    {% for s in b.srcs or [] %}<p style="margin:6px 0 0;font-size:14px;line-height:1.6;color:{{ SUB }};">{{ s.name or '기사' }}{% if s.date %} · {{ s.date.replace('-', '.') }}{% endif %} · <a href="{{ s.url }}" style="color:{{ LINK }};font-weight:700;text-decoration:none;">원문 보기 ›</a></p>{% endfor %}
-  </td></tr>
-  {% endif %}
-  {% if sec.lawbox %}{% set b = sec.lawbox %}
-  {{ head('LAW', '알아두면 좋은 법률·제도', 'law') }}
-  <tr><td style="padding:20px 24px 0;{{ F }}">
-    <p style="margin:0 0 4px;font-size:14px;font-weight:800;color:{{ SUB }};">{{ b.topic }}</p>
-    <p style="margin:0 0 12px;font-size:20px;line-height:1.45;font-weight:800;color:{{ INK }};letter-spacing:-0.4px;word-break:keep-all;">{{ b.title }}</p>
-    {% for p in b.body|letter_paras %}<p style="{{ P }}">{{ p|srclinks }}</p>{% endfor %}
-    {% if b.point %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td width="3" style="width:3px;background:{{ ACC }};font-size:0;line-height:0;">&nbsp;</td>
-      <td style="padding:4px 0 4px 16px;{{ F }}"><p style="margin:0 0 4px;font-size:14px;font-weight:800;color:{{ ACC }};">이것만 기억해요</p><p style="margin:0;font-size:17px;line-height:1.7;font-weight:700;color:{{ INK }};word-break:keep-all;">{{ b.point }}</p></td></tr></table>{% endif %}
-    {% if b.law %}<p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:{{ SUB }};">근거: {% if b.law.url %}<a href="{{ b.law.url }}" style="color:{{ SUB }};text-decoration:underline;">{{ b.law.label }}</a>{% else %}{{ b.law.label }}{% endif %} (국가법령정보센터)</p>{% endif %}
-  </td></tr>
-  {% endif %}
-  {% if sec.word %}{% set w = sec.word %}
-  {{ head('WORD', '오늘의 경제 용어', 'word') }}
-  <tr><td style="padding:20px 24px 0;{{ F }}">
-    <p style="margin:0 0 2px;font-size:14px;color:{{ SUB }};">{{ w.cat }}</p>
-    <p style="margin:0 0 10px;font-size:22px;font-weight:800;color:{{ INK }};letter-spacing:-0.5px;">{{ w.word }}</p>
-    <p style="{{ P }}">{{ w.text }}</p>
-    <a href="{{ site }}{{ w.url }}" style="font-size:15px;color:{{ LINK }};font-weight:700;text-decoration:none;">소비자·경제 사전 더 보기 ›</a>
+  {{ pill(H.buzz, False) }}
+  <tr><td style="padding:22px 22px 4px;{{ F }}" id="buzz">
+    {#- 소비 트렌드(일주일에 한 번): 그 주 주제에 맞는 가게 하나로 통째 꾸밈 — 지붕 모양·색·그림이 가게마다 다름 (SHOPS, 운영자 2026-11-01) -#}
+    {% set T = SHOPS.get(b.shop) or SHOPS['shop'] %}{% set R = T.roof %}
+    {% if R == 'awning' %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;"><tr>{% for i in range(12) %}<td height="26" style="height:26px;{{ 'border-radius:22px 0 0 0;' if loop.first }}{{ 'border-radius:0 22px 0 0;' if loop.last }}background:{{ T.main if i % 2 == 0 else T.sub }};font-size:0;line-height:0;">&nbsp;</td>{% endfor %}</tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;background:{{ T.bg }};"><tr>{% for i in range(12) %}<td style="font-size:0;line-height:0;"><div style="height:14px;border-radius:0 0 14px 14px;background:{{ T.main if i % 2 == 0 else T.sub }};font-size:0;line-height:0;">&nbsp;</div></td>{% endfor %}</tr></table>
+    {% elif R == 'noren' %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="14" style="height:14px;border-radius:22px 22px 0 0;background:{{ T.deep }};font-size:0;line-height:0;">&nbsp;</td></tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;background:{{ T.bg }};"><tr>
+      <td width="9%" align="center" valign="top" style="padding-top:4px;font-size:0;line-height:0;">{{ ic('lantern', 26) }}</td>
+      {% for ch in '소보루식당' %}<td align="center" valign="top" style="padding:0 3px;"><div style="background:{{ T.main }};border-radius:0 0 8px 8px;padding:8px 0 10px;{{ F }}font-size:18px;line-height:1.2;font-weight:800;color:#ffffff;text-align:center;">{{ ch }}</div></td>{% endfor %}
+      <td width="9%" align="center" valign="top" style="padding-top:4px;font-size:0;line-height:0;">{{ ic('lantern', 26) }}</td></tr></table>
+    {% elif R == 'board' %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ T.main }};border-radius:22px 22px 0 0;"><tr><td align="center" style="padding:12px 10px 11px;{{ F }}font-size:16px;line-height:1.3;font-weight:800;letter-spacing:3px;color:#fde8c8;white-space:nowrap;">{{ ic(T.shelf[0], 20) }}&nbsp; {{ T.en }} &nbsp;{{ ic(T.shelf[1], 20) }}</td></tr>
+      <tr><td height="6" style="height:6px;background:{{ T.deep }};font-size:0;line-height:0;">&nbsp;</td></tr></table>
+    {% elif R == 'neon' %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="8" style="height:8px;border-radius:22px 22px 0 0;background:{{ T.roof_icons[0] }};font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td height="6" style="height:6px;background:{{ T.roof_icons[1] }};font-size:0;line-height:0;">&nbsp;</td></tr><tr><td height="6" style="height:6px;background:{{ T.roof_icons[2] }};font-size:0;line-height:0;">&nbsp;</td></tr></table>
+    {% elif R == 'window' %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ T.main }};border-radius:22px 22px 0 0;"><tr><td style="padding:11px 18px;font-size:0;line-height:0;"><span style="display:inline-block;width:11px;height:11px;border-radius:6px;background:#ff6b6b;">&nbsp;</span>&nbsp;&nbsp;<span style="display:inline-block;width:11px;height:11px;border-radius:6px;background:#ffd43b;">&nbsp;</span>&nbsp;&nbsp;<span style="display:inline-block;width:11px;height:11px;border-radius:6px;background:#51cf66;">&nbsp;</span></td></tr></table>
+    {% elif R == 'ticket' %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ T.main }};border-radius:22px 22px 0 0;"><tr><td style="padding:11px 18px;{{ F }}font-size:14px;font-weight:800;letter-spacing:3px;color:#ffffff;white-space:nowrap;">{{ ic('plane', 18) }}&nbsp; BOARDING PASS</td><td align="right" style="padding:11px 18px;{{ F }}font-size:14px;font-weight:800;letter-spacing:2px;color:{{ T.sub }};white-space:nowrap;">GATE 7</td></tr></table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ T.bg }};"><tr><td style="padding:0 14px;font-size:0;line-height:0;"><div style="border-top:3px dashed {{ T.main }};font-size:0;line-height:0;">&nbsp;</div></td></tr></table>
+    {% endif %}
+    {% set top = R in ('bunting', 'garland', 'bulbs', 'rail') %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ T.bg }};border-radius:{{ '22px 22px 22px 22px' if top else '0 0 22px 22px' }};{{ ('border:3px solid ' ~ T.main ~ ';') if R == 'bulbs' }}"><tr><td style="padding:{{ '0' if top else '22px' }} 20px 20px;{{ F }}">
+      {% if R == 'bunting' %}
+      <div style="height:3px;background:{{ T.deep }};margin:16px -20px 0;font-size:0;line-height:0;">&nbsp;</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;margin:0 0 18px;"><tr>{% for i in range(9) %}<td align="center" style="font-size:0;line-height:0;"><div style="width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:24px solid {{ T.roof_icons[i % (T.roof_icons|length)] }};font-size:0;line-height:0;"></div></td>{% endfor %}</tr></table>
+      {% elif R == 'garland' %}
+      <div style="height:6px;background:{{ T.main }};border-radius:3px;margin:18px 0 0;font-size:0;line-height:0;">&nbsp;</div>
+      <p style="margin:-14px 0 16px;text-align:center;font-size:0;line-height:0;">{% for i in range(9) %}{{ ic(T.roof_icons[i % (T.roof_icons|length)], 26) }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>
+      {% elif R == 'bulbs' %}
+      <p style="margin:14px 0 16px;text-align:center;font-size:0;line-height:0;">{% for i in range(9) %}<span style="display:inline-block;width:12px;height:12px;margin:0 7px;border-radius:7px;background:{{ T.sub }};border:2px solid #ffffff;box-shadow:0 0 6px {{ T.sub }};">&nbsp;</span>{% endfor %}</p>
+      {% elif R == 'rail' %}
+      <div style="height:5px;background:{{ T.deep }};border-radius:3px;margin:20px 0 0;font-size:0;line-height:0;">&nbsp;</div>
+      <p style="margin:0 0 14px;text-align:center;font-size:0;line-height:0;">{% for n in T.roof_icons %}<span style="display:inline-block;width:2px;height:10px;background:{{ T.deep }};vertical-align:top;">&nbsp;</span>{{ ic(n, 30) }}{{ '&nbsp;&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>
+      {% endif %}
+      {% if R != 'board' %}<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px;background:#ffffff;border:2px solid {{ T.main }};border-radius:999px;"><tr><td style="padding:8px 18px;{{ F }}font-size:15px;font-weight:800;color:{{ T.deep }};white-space:nowrap;">{{ ic(T.icons[0], 18) }}&nbsp; {{ T.en }} &nbsp;{{ ic(T.icons[1], 18) }}</td></tr></table>{% endif %}
+      <p style="margin:0 0 6px;text-align:center;font-size:14px;font-weight:800;letter-spacing:2px;color:{{ T.deep }};">{{ T.ko }}</p>
+      <p style="margin:0 0 10px;text-align:center;font-size:22px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ b.title }}</p>
+      {% if b.body %}<p style="margin:0 0 18px;font-size:17px;line-height:1.85;color:#3a3633;text-align:justify;word-break:normal;">{{ b.body|srclinks }}</p>{% endif %}
+      {% for p in b.points %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;background:#ffffff;border:2px dashed {{ T.main }};border-radius:18px;"><tr>
+        <td width="66" valign="top" style="width:66px;padding:16px 0 14px 14px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" width="52" height="52" style="width:52px;height:52px;border-radius:26px;background:{{ T.bg }};">{{ ic(T.icons[loop.index0 % 3], 34) }}</td></tr></table></td>
+        <td valign="top" style="padding:15px 16px 15px 10px;{{ F }}"><p style="margin:0 0 5px;font-size:18px;font-weight:800;color:{{ T.deep }};">{{ p.name }} <span style="display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;background:{{ T.main }};color:#ffffff;font-size:12px;font-weight:800;vertical-align:2px;">HOT</span></p><p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;text-align:justify;word-break:normal;">{{ p.text|srclinks }}</p></td></tr></table>{% endfor %}
+      {% if b.insight %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 12px;background:#ffffff;border-radius:18px;"><tr><td style="padding:20px 20px 18px;{{ F }}">
+        <p style="margin:0 0 8px;font-size:15px;font-weight:800;color:{{ T.deep }};">{{ ic('bulb', 18) }}&nbsp; 소보루의 트렌드 읽기</p>
+        <p style="margin:0;font-size:17px;line-height:1.9;color:#3a3633;text-align:justify;word-break:normal;">{{ b.insight }}</p></td></tr></table>{% endif %}
+      {% if b.tip %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 6px;background:{{ T.sub }};border-radius:14px;"><tr><td style="padding:14px 18px;{{ F }}font-size:16px;line-height:1.75;color:#3a3633;"><b style="color:{{ T.deep }};">소비자 체크 포인트</b> &nbsp;{{ b.tip }}</td></tr></table>{% endif %}
+      <p style="margin:16px 0 0;text-align:center;font-size:0;line-height:0;">{% for n in T.shelf %}{{ ic(n, 28) }}{{ '&nbsp;&nbsp;'|safe if not loop.last }}{% endfor %}</p>
+      <div style="margin:4px 20px 0;height:6px;border-radius:3px;background:{{ T.deep }};opacity:0.35;font-size:0;line-height:0;">&nbsp;</div>
+      {% if b.srcs %}<p style="margin:14px 0 0;text-align:center;font-size:14px;line-height:1.7;color:#8a827a;">참고한 기사 · {% for s in b.srcs %}<a href="{{ s.url }}" style="color:#8a827a;text-decoration:underline;">{{ s.name or '기사' }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+    </td></tr></table>
   </td></tr>
   {% endif %}
   {% if sec.market and sec.market.top %}{% set M = sec.market %}
-  {{ head('MARKET', '코스피 시가총액 TOP ' ~ M.top|length, 'top') }}
-  <tr><td style="padding:12px 24px 0;{{ F }}">
-    {% for r in M.top %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom:1px solid {{ LINE }};"><tr>
-      <td width="26" style="width:26px;padding:9px 0;{{ F }}font-size:15px;font-weight:800;color:{{ ACC }};">{{ loop.index }}</td>
-      <td style="padding:9px 6px 9px 0;{{ F }}font-size:16px;font-weight:700;color:{{ TXT }};word-break:break-all;">{{ r.label }}</td>
-      <td align="right" style="padding:9px 0;{{ F }}font-size:15px;white-space:nowrap;"><span style="color:{{ INK }};">{{ r.value }}</span>&nbsp;
-        <b style="color:{{ '#e5484d' if r.dir == 'up' else ('#3182f6' if r.dir == 'down' else SUB) }};">{{ r.pct or '0.00%' }}</b></td>
-    </tr></table>{% endfor %}
-    <p style="margin:8px 0 0;font-size:13px;color:{{ SUB }};">종가(원)와 직전 거래일 대비 등락률 · 출처 네이버 증권 · 투자 권유가 아닌 시장 정보예요</p>
+  {{ pill('코스피 시가총액 TOP ' ~ M.top|length, False) }}
+  <tr><td style="padding:22px 22px 4px;{{ F }}" id="top">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #eee6dd;border-radius:16px;"><tr><td style="padding:8px 12px;{{ F }}">
+      {% for r in M.top %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"{% if not loop.first %} style="border-top:1px solid #f4eee8;"{% endif %}><tr>
+        <td width="26" style="width:26px;padding:9px 0;{{ F }}font-size:16px;font-weight:800;color:#CE6719;">{{ loop.index }}</td>
+        <td style="padding:9px 6px 9px 0;{{ F }}font-size:17px;font-weight:700;color:#3a3633;word-break:break-all;">{{ r.label }}</td>
+        <td align="right" style="padding:9px 0;{{ F }}font-size:16px;white-space:nowrap;"><span style="color:#1d1d1f;">{{ r.value }}</span>&nbsp;
+          <b style="color:{{ '#e5484d' if r.dir == 'up' else ('#3182f6' if r.dir == 'down' else '#8a827a') }};">{{ r.pct or '0.00%' }}</b></td>
+      </tr></table>{% endfor %}
+    </td></tr></table>
+    <p style="margin:8px 0 0;font-size:14px;color:#9a928a;">종가(원)와 직전 거래일 대비 등락률 · 출처 네이버 증권 · 투자 권유가 아닌 시장 정보예요</p>
+  </td></tr>
+  {% endif %}
+  {% if sec.harm %}{% set b = sec.harm %}
+  {{ pill('소비자 피해 예방', False) }}
+  <tr><td style="padding:22px 22px 4px;{{ F }}" id="harm">
+    <p style="margin:0 0 12px;font-size:22px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ ic('siren', 24) }}&nbsp; {{ b.title }}</p>
+    {% for p in b.body|letter_paras %}<p style="margin:0 0 14px;font-size:18px;line-height:1.85;color:#3a3633;text-align:justify;word-break:normal;">{{ p|srclinks }}</p>{% endfor %}
+    {% if b.steps %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f6;border-radius:16px;"><tr><td style="padding:16px 18px 8px;{{ F }}">
+      <p style="margin:0 0 10px;font-size:16px;font-weight:800;color:#652D1C;">{{ ic('shield', 18) }}&nbsp; 이런 일을 겪었다면</p>
+      {% for st in b.steps %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;"><tr>
+        <td width="28" valign="top" style="width:28px;"><span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:10px;background:#ef7300;color:#fff;font-size:14px;font-weight:800;text-align:center;">{{ loop.index }}</span></td>
+        <td valign="top" style="{{ F }}font-size:18px;line-height:1.6;color:#3a3633;">{{ st }}</td></tr></table>{% endfor %}
+    </td></tr></table>{% endif %}
+    {% if b.law %}<p style="margin:12px 0 0;font-size:16px;line-height:1.6;color:#6b6f76;text-align:justify;word-break:normal;">{{ ic('scale', 18) }}&nbsp; 관련 법: {% if b.law.url %}<a href="{{ b.law.url }}" style="color:#652D1C;text-decoration:underline;">{{ b.law.label }}</a>{% else %}{{ b.law.label }}{% endif %}</p>{% endif %}
+    {% for s in b.srcs or [] %}<p style="margin:6px 0 0;font-size:16px;line-height:1.6;color:#6b6f76;text-align:justify;word-break:normal;">{{ ic('news', 18) }}&nbsp; {{ s.name or '기사' }}{% if s.date %} · {{ s.date.replace('-', '.') }}{% endif %} · <a href="{{ s.url }}" style="color:#ef7300;font-weight:700;text-decoration:none;">원문 보기 ›</a></p>{% endfor %}
+  </td></tr>
+  {% endif %}
+  {% if sec.lawbox %}{% set b = sec.lawbox %}
+  {{ pill('알아두면 좋은 법률·제도', False) }}
+  <tr><td style="padding:22px 22px 4px;{{ F }}" id="law">
+    <p style="margin:0 0 6px;font-size:16px;font-weight:800;color:#ef7300;letter-spacing:0.4px;">{{ b.topic }}</p>
+    <p style="margin:0 0 12px;font-size:22px;line-height:1.45;font-weight:800;color:#1d1d1f;letter-spacing:-0.5px;">{{ ic('scale', 24) }}&nbsp; {{ b.title }}</p>
+    {% for p in b.body|letter_paras %}<p style="margin:0 0 14px;font-size:18px;line-height:1.85;color:#3a3633;text-align:justify;word-break:normal;">{{ p|srclinks }}</p>{% endfor %}
+    {% if b.point %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff6ec;border-radius:16px;"><tr><td style="padding:14px 18px;{{ F }}">
+      <p style="margin:0 0 3px;font-size:16px;font-weight:800;color:#ef7300;">이것만 기억해요</p>
+      <p style="margin:0;font-size:18px;line-height:1.65;color:#652D1C;font-weight:600;text-align:justify;word-break:normal;">{{ b.point }}</p></td></tr></table>{% endif %}
+    {% if b.law %}<p style="margin:12px 0 0;font-size:16px;line-height:1.6;color:#6b6f76;text-align:justify;word-break:normal;">{{ ic('books', 18) }}&nbsp; 근거: {% if b.law.url %}<a href="{{ b.law.url }}" style="color:#652D1C;text-decoration:underline;">{{ b.law.label }}</a>{% else %}{{ b.law.label }}{% endif %} <span style="color:#a39d97;">(국가법령정보센터)</span></p>{% endif %}
+  </td></tr>
+  {% endif %}
+  {% if sec.word %}{% set w = sec.word %}
+  {{ pill('오늘의 경제 용어', False) }}
+  <tr><td style="padding:22px 22px 4px;{{ F }}" id="word">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #eee6dd;border-radius:18px;"><tr><td style="padding:20px 22px;{{ F }}">
+      <p style="margin:0 0 4px;font-size:16px;color:#a39d97;">{{ w.cat }}</p>
+      <p style="margin:0 0 10px;font-size:25px;font-weight:800;color:#652D1C;letter-spacing:-0.5px;">{{ ic('memo', 22) }}&nbsp; {{ w.word }}</p>
+      <p style="margin:0 0 10px;font-size:18px;line-height:1.75;color:#3a3633;text-align:justify;word-break:normal;">{{ w.text }}</p>
+      <a href="{{ site }}{{ w.url }}" style="font-size:16px;color:#ef7300;font-weight:700;text-decoration:none;">소비자·경제 사전 더 보기 ›</a>
+    </td></tr></table>
   </td></tr>
   {% endif %}
   {% if sec.life %}
-  {#- 운영자 2026-11-05: 매거진 기사 축약본 -#}
-  {% set m = 'https://soboru.co.kr' %}{% set a = sec.life[0] %}
-  {{ head(a.en or 'MAGAZINE', '오늘의 기사', 'magazine') }}
-  <tr><td style="padding:20px 24px 0;{{ F }}">
-    {% if a.photo %}<a href="{{ m }}{{ a.url }}" style="display:block;text-decoration:none;"><img src="{{ a.photo }}" width="592" alt="" style="display:block;width:100%;max-width:592px;height:auto;border:0;border-radius:8px;"></a>{% endif %}
-    {% if a.photo and a.credit %}<p style="margin:6px 0 0;font-size:12px;color:{{ SUB }};">사진 <a href="{{ a.credit.url }}" style="color:{{ SUB }};">{{ a.credit.name }}</a> / <a href="{{ a.credit.home }}" style="color:{{ SUB }};">Unsplash</a></p>{% endif %}
-    <a href="{{ m }}{{ a.url }}" style="display:block;margin-top:16px;font-size:20px;line-height:1.45;font-weight:800;letter-spacing:-0.4px;color:{{ INK }};text-decoration:none;">{{ a.title }}</a>
+  {#- 운영자 2026-11-05: 콘텐츠를 더 — 매거진 기사를 레터 다른 칸과 완전히 다른 매거진식 디자인으로 (네모, 검은 가는 선, 영문 분야, 큰 사진 + 번호 줄) -#}
+  {% set m = 'https://soboru.co.kr' %}
+  <tr><td style="padding:44px 22px 4px;{{ F }}" id="magazine">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:3px solid #111111;"><tr>
+      <td style="padding:12px 0 0;{{ F }}font-size:15px;font-weight:900;letter-spacing:3px;color:#111111;white-space:nowrap;">SOBORU MAGAZINE</td>
+      <td align="right" style="padding:12px 0 0;{{ F }}font-size:14px;font-weight:700;color:#8a827a;">오늘의 기사 축약본</td></tr></table>
+    {% set a = sec.life[0] %}
+    <a href="{{ m }}{{ a.url }}" style="display:block;margin:18px 0 0;text-decoration:none;">{% if a.photo %}<img src="{{ a.photo }}" width="556" alt="" style="display:block;width:100%;max-width:556px;height:auto;border:0;">{% endif %}</a>
+    {% if a.photo and a.credit %}<p style="margin:6px 0 0;font-size:12px;color:#a39d97;">사진 <a href="{{ a.credit.url }}" style="color:#a39d97;">{{ a.credit.name }}</a> / <a href="{{ a.credit.home }}" style="color:#a39d97;">Unsplash</a></p>{% endif %}
+    {% if a.en %}<p style="margin:16px 0 8px;font-size:13px;font-weight:900;letter-spacing:3px;color:#EF920E;">{{ a.en }}</p>{% endif %}
+    <a href="{{ m }}{{ a.url }}" style="display:block;margin-top:{{ '0' if a.en else '16px' }};font-size:24px;line-height:1.4;font-weight:900;letter-spacing:-0.8px;color:#111111;text-decoration:none;">{{ a.title }}</a>
     {% if a.digest %}
-    {% for b in a.digest %}{% if b.h %}<p style="margin:22px 0 6px;font-size:17px;line-height:1.5;font-weight:800;color:{{ INK }};">{{ b.h }}</p>{% else %}<p style="margin:12px 0 0;font-size:17px;line-height:1.85;color:{{ TXT }};word-break:keep-all;">{{ b.p }}</p>{% endif %}{% endfor %}
-    {% elif a.summary %}<p style="margin:12px 0 0;font-size:17px;line-height:1.85;color:{{ TXT }};word-break:keep-all;">{{ a.summary }}</p>{% endif %}
-    <p style="margin:16px 0 0;"><a href="{{ m }}{{ a.url }}" style="font-size:15px;font-weight:700;color:{{ LINK }};text-decoration:none;">전체 기사 읽기 ›</a></p>
+    {% for b in a.digest %}{% if b.h %}<p style="margin:24px 0 8px;padding-top:14px;border-top:1px solid #111111;font-size:18px;line-height:1.5;font-weight:900;letter-spacing:-0.4px;color:#111111;">{{ b.h }}</p>{% else %}<p style="margin:14px 0 0;font-size:17px;line-height:1.9;color:#2b2723;text-align:left;word-break:keep-all;">{{ b.p }}</p>{% endif %}{% endfor %}
+    {% elif a.summary %}<p style="margin:12px 0 0;font-size:17px;line-height:1.9;color:#2b2723;text-align:left;word-break:keep-all;">{{ a.summary }}</p>{% endif %}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 6px;"><tr><td align="center" style="border:2px solid #111111;padding:14px 12px;{{ F }}"><a href="{{ m }}{{ a.url }}" style="display:block;font-size:16px;font-weight:900;letter-spacing:-0.2px;color:#111111;text-decoration:none;">매거진에서 전체 기사 읽기 →</a></td></tr></table>
   </td></tr>
   {% endif %}
-  {#- 소비자고발제보센터 바로 가기 (운영자 2026-11-04). 링크엔 utm_source=letter (방문 통계 '들어온 곳') -#}
-  <tr><td style="padding:52px 24px 0;{{ F }}">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid {{ LINE }};border-radius:12px;"><tr><td style="padding:24px 22px;{{ F }}">
-      <p style="margin:0 0 4px;font-size:13px;font-weight:800;letter-spacing:2px;color:{{ ACC }};">REPORT</p>
-      <p style="margin:0 0 10px;font-size:20px;line-height:1.45;font-weight:800;letter-spacing:-0.4px;color:{{ INK }};">억울한 소비자 피해, 혼자 삭이지 마세요</p>
-      <p style="margin:0 0 18px;font-size:16px;line-height:1.8;color:{{ TXT }};word-break:keep-all;">환불을 안 해 주거나, 광고와 다른 물건이 왔거나, 고객센터가 답이 없다면 소비자고발제보센터에 겪은 일을 올려 주세요. 기업에 답변을 요청하고, 검토해서 기사로 다룰 사안이면 기사로 알려요.</p>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#FE9800" style="background:#FE9800;border-radius:10px;padding:14px 12px;{{ F }}"><a href="{{ jebo }}/?utm_source=letter" style="display:block;color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;">소비자고발제보센터 바로 가기</a></td></tr></table>
+  {#- 소비자고발제보센터 바로 가기 (운영자 2026-11-04): 레터를 다시 시작하며 맺음 앞에 큰 카드 하나. 링크엔 utm_source=letter (방문 통계 '들어온 곳') -#}
+  <tr><td style="padding:40px 22px 0;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff4e2;border-radius:22px;"><tr><td style="padding:28px 24px 26px;{{ F }}">
+      <a href="{{ jebo }}/?utm_source=letter" style="text-decoration:none;"><img src="{{ jebo }}/static/img/jebo-logo-mail-t.png" width="240" alt="소비자고발제보센터 by SOBORU" style="display:block;width:240px;max-width:100%;height:auto;border:0;margin:0 0 20px;"></a>
+      <p style="margin:0 0 10px;font-size:22px;line-height:1.45;font-weight:800;letter-spacing:-0.4px;color:#191f28;">{{ ic('mega', 24) }}&nbsp; 억울한 소비자 피해,<br>혼자 삭이지 마세요</p>
+      <p style="margin:0 0 20px;font-size:17px;line-height:1.8;color:#4e5968;">환불을 안 해 주거나, 광고와 다른 물건이 왔거나, 고객센터가 답이 없다면 소비자고발제보센터에 겪은 일을 올려 주세요. 기업에 답변을 요청하고, 검토해서 기사로 다룰 사안이면 기사로 알려요.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#EF920E" style="background:#EF920E;border-radius:16px;padding:16px 12px;{{ F }}"><a href="{{ jebo }}/?utm_source=letter" style="display:block;color:#ffffff;font-size:18px;font-weight:800;text-decoration:none;">소비자고발제보센터 바로 가기 ›</a></td></tr></table>
     </td></tr></table>
   </td></tr>
-  {#- 맺음 + 의견 -#}
-  <tr><td style="padding:44px 24px 0;{{ F }}">
-    <div style="height:1px;background:{{ LINE }};font-size:0;line-height:0;">&nbsp;</div>
-    <p style="margin:28px 0 6px;font-size:17px;font-weight:800;color:{{ INK }};">오늘의 소보루 레터는 여기까지</p>
-    {% if L.outro %}<p style="margin:0;font-size:16px;line-height:1.8;color:{{ TXT }};word-break:keep-all;">{{ L.outro }}</p>{% endif %}
-    <p style="margin:6px 0 0;font-size:14px;font-weight:700;color:{{ SUB }};">에디터 크로와상 드림</p>
-    <p style="margin:24px 0 8px;font-size:15px;font-weight:800;color:{{ INK }};">오늘의 레터는 어땠나요?</p>
-    <p style="margin:0;font-size:15px;line-height:1.8;color:{{ LINE }};"><a href="{{ site }}/letter/{{ L.no }}/fb/good" style="color:{{ LINK }};font-weight:700;text-decoration:underline;">좋았어요</a>&nbsp; | &nbsp;<a href="{{ site }}/letter/{{ L.no }}/fb/meh" style="color:{{ LINK }};font-weight:700;text-decoration:underline;">아쉬웠어요</a></p>
-  </td></tr>
-  <tr><td style="padding:44px 24px 40px;{{ F }}">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f9fafb;border-radius:12px;"><tr><td style="padding:24px 22px;{{ F }}">
-      <a href="{{ site }}/" style="text-decoration:none;">{% if mark %}<img src="{{ mark }}" width="110" alt="SOBORU 소보루" style="display:block;width:110px;height:auto;border:0;margin:0 0 12px;">{% else %}<b style="font-size:20px;color:{{ ACC }};">SOBORU</b>{% endif %}</a>
-      <p style="margin:0 0 4px;font-size:14px;line-height:1.6;font-weight:700;color:{{ TXT }};">{{ name }} · 매일 아침, 경제·소비자 소식</p>
-      {% if op.email %}<p style="margin:0;font-size:13px;line-height:1.8;color:{{ SUB }};">{{ op.email }}</p>{% endif %}
-      {% if op.address %}<p style="margin:0;font-size:13px;line-height:1.8;color:{{ SUB }};">{{ op.address }}</p>{% endif %}
-      <p style="margin:12px 0 0;font-size:13px;line-height:1.8;"><a href="{{ site }}/letter" style="color:{{ SUB }};text-decoration:underline;">소보루 레터 구독하기</a> &nbsp; <a href="{{ web }}" style="color:{{ SUB }};text-decoration:underline;">웹에서 보기</a> &nbsp; <a href="{{ unsub }}" style="color:{{ SUB }};text-decoration:underline;">수신거부 Unsubscribe</a></p>
+  {#- 맺음: 스티비 템플릿처럼 회색 상자 → 구독 버튼 → 작은 바닥글, 색·로고는 소보루 (운영자 2026-11-01) -#}
+  <tr><td style="padding:34px 22px 0;{{ F }}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fdf7ed;"><tr><td align="center" style="padding:28px 22px 26px;text-align:center;{{ F }}">
+      <img src="{{ editor_img }}" width="220" alt="에디터 크로와상" style="display:block;width:220px;height:auto;border:0;margin:0 auto 10px;">
+      <p style="margin:0 0 6px;font-size:18px;font-weight:800;color:#652D1C;">오늘의 소보루 레터는 여기까지</p>
+      {% if L.outro %}<p style="margin:0;font-size:17px;line-height:1.8;color:#3a3633;text-align:center;word-break:keep-all;">{{ L.outro }}</p>{% endif %}
+      <p style="margin:6px 0 0;font-size:16px;font-weight:700;color:#8a6a55;">에디터 크로와상 드림</p>
+      <p style="margin:22px 0 6px;font-size:18px;font-weight:800;color:#652D1C;">오늘의 레터는 어땠나요?</p>
+      <p style="margin:0;font-size:17px;line-height:1.8;color:#c9b9aa;text-align:center;word-break:keep-all;"><a href="{{ site }}/letter/{{ L.no }}/fb/good" style="color:#ef7300;font-weight:700;text-decoration:underline;">맛있었어요! 😋</a>&nbsp; | &nbsp;<a href="{{ site }}/letter/{{ L.no }}/fb/meh" style="color:#ef7300;font-weight:700;text-decoration:underline;">음, 잘 모르겠어요 🤔</a></p>
     </td></tr></table>
+  </td></tr>
+  <tr><td align="center" style="padding:30px 22px 0;{{ F }}">
+    <a href="{{ site }}/letter" style="display:inline-block;padding:13px 30px;border:2px solid #ef920e;border-radius:999px;color:#ef7300;font-size:18px;font-weight:800;text-decoration:none;">소보루 레터 구독하기</a>
+  </td></tr>
+  <tr><td align="center" style="padding:30px 22px 40px;text-align:center;{{ F }}">
+    <a href="{{ site }}/" style="text-decoration:none;">{% if mark_brown %}<img src="{{ mark_brown }}" width="150" alt="SOBORU 소보루" style="display:block;width:150px;height:auto;border:0;margin:0 auto 14px;">{% else %}<b style="font-size:22px;color:#652D1C;">SOBORU</b>{% endif %}</a>
+    <p style="margin:0 0 6px;font-size:15px;line-height:1.6;font-weight:700;color:#8a6a55;text-align:center;word-break:keep-all;">{{ name }} · 매일 아침, 경제·소비자 소식</p>
+    <p style="margin:0;font-size:14px;line-height:1.8;color:#9a928a;">소보루</p>
+    {% if op.email %}<p style="margin:0;font-size:14px;line-height:1.8;color:#9a928a;">{{ op.email }}</p>{% endif %}
+    {% if op.address %}<p style="margin:0;font-size:14px;line-height:1.8;color:#9a928a;">{{ op.address }}</p>{% endif %}
+    <p style="margin:10px 0 0;font-size:14px;line-height:1.8;"><a href="{{ web }}" style="color:#9a928a;text-decoration:underline;">웹에서 보기</a> &nbsp; <a href="{{ unsub }}" style="color:#9a928a;text-decoration:underline;">수신거부 Unsubscribe</a></p>
   </td></tr>
 </table>
 </td></tr>
