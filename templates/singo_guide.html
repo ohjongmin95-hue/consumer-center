@@ -14,9 +14,9 @@
       {% for emo, name, desc, go in flow %}
       <li><span class="sg-ic tf" aria-hidden="true">{{ emo }}</span><div class="sg-tx"><b>{{ loop.index }}. {{ name }}</b><small>{{ desc }}</small>
         {% if go == 'letter' %}<span class="sg-links"><a href="{{ url_for('singo_letter') }}">{{ ui('guide2.go_letter', '내용증명 쓰기') }} ›</a></span>
-        {% elif go == 'help' %}<span class="sg-links"><a href="tel:1372">{{ ui('singo.call', '전화') }} 1372</a><a href="https://www.ccn.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_ccn', '온라인 상담') }} ›</a><a href="https://www.kca.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_kca', '한국소비자원') }} ›</a></span>
-        {% elif go == 'ccn' %}<span class="sg-links"><a href="tel:1372">{{ ui('singo.call', '전화') }} 1372</a><a href="https://www.ccn.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_ccn', '온라인 상담') }} ›</a></span>
-        {% elif go == 'kca' %}<span class="sg-links"><a href="https://www.kca.go.kr" target="_blank" rel="noopener">{{ ui('guide2.go_kca', '한국소비자원') }} ›</a></span>{% endif %}
+        {% elif go == 'help' %}<span class="sg-links"><a href="tel:1372">{{ ui('singo.call', '전화') }} 1372</a><a href="{{ ccn_apply }}" target="_blank" rel="noopener">{{ ui('guide2.go_ccn', '온라인 상담') }} ›</a><a href="{{ kca_relief }}" target="_blank" rel="noopener">{{ ui('guide2.go_pg', '피해구제 신청') }} ›</a><a href="{{ kca_adr }}" target="_blank" rel="noopener">{{ ui('guide2.go_bj', '분쟁조정 신청') }} ›</a></span>
+        {% elif go == 'ccn' %}<span class="sg-links"><a href="tel:1372">{{ ui('singo.call', '전화') }} 1372</a><a href="{{ ccn_apply }}" target="_blank" rel="noopener">{{ ui('guide2.go_ccn', '온라인 상담') }} ›</a></span>
+        {% elif go == 'kca' %}<span class="sg-links"><a href="{{ kca_relief }}" target="_blank" rel="noopener">{{ ui('guide2.go_pg', '피해구제 신청') }} ›</a></span>{% endif %}
       </div></li>
       {% endfor %}
     </ol>

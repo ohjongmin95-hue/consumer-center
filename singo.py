@@ -7,10 +7,16 @@
 """
 from flask import abort, g, redirect, render_template, request, session, url_for
 
+# 신청 페이지 바로가기 (운영자 2026-11-15: 기관 첫 화면 말고 신청 화면으로)
+CCN_APPLY = 'https://www.ccn.go.kr/contents/view.ccn?gSiteCode=2&gMenuCode=3&nMenuCode=54'  # 1372 인터넷 상담 신청
+KCA_RELIEF = 'https://www.kca.go.kr/odr/pg/ma/pgProcssInfo2.do'  # 한국소비자원 피해구제 신청
+KCA_ADR = 'https://www.kca.go.kr/odr/bj/ma/bjInfo.do'  # 소비자분쟁조정위원회 분쟁조정 신청
+
 # 기관: 이름, 한 줄 설명, 대표 번호(없으면 ''), 공식 주소
 PLACES = {
-    'ccn': ('1372 소비자상담센터', '모든 소비자 문제를 먼저 상담해요. 해결이 안 되면 한국소비자원 피해구제로 넘겨 줘요.', '1372', 'https://www.ccn.go.kr'),
-    'kca': ('한국소비자원 피해구제', '1372 상담을 거친 뒤 신청해요. 사실을 조사하고 업체에 합의를 권고해요.', '', 'https://www.kca.go.kr'),
+    'ccn': ('1372 소비자상담센터', '모든 소비자 문제를 먼저 상담해요. 해결이 안 되면 한국소비자원 피해구제로 넘겨 줘요.', '1372', CCN_APPLY),
+    'kca': ('한국소비자원 피해구제', '1372 상담을 거친 뒤 신청해요. 사실을 조사하고 업체에 합의를 권고해요.', '', KCA_RELIEF),
+    'adr': ('소비자분쟁조정위원회', '피해구제로 합의가 안 되면 조정을 신청해요. 결정은 재판상 화해와 같은 효력이 있어요.', '', KCA_ADR),
     'ecmc': ('전자거래분쟁조정위원회', '온라인으로 사고판 거래의 분쟁을 조정해요. 신청 비용은 없어요.', '', 'https://www.ecmc.or.kr'),
     'ftc': ('공정거래위원회 신고', '청약철회 방해, 거짓·과장 광고처럼 법을 어긴 업체를 신고해요.', '', 'https://www.ftc.go.kr'),
     'kcdrc': ('통신분쟁조정위원회', '휴대폰·인터넷·IPTV 요금과 계약 분쟁을 조정해요.', '', 'https://www.kcdrc.kr'),
@@ -71,7 +77,9 @@ FLOW = [('🤝', '업체에 먼저 요구해요', '날짜를 정해 글로 요�
 ADR_NOTE = '피해구제에서 합의가 안 되면 한국소비자원이 소비자분쟁조정위원회로 넘겨요. 따로 신청하지 않아도 돼요. 30일 안에 조정안이 나오고, 15일 안에 거부하지 않으면 받아들인 것으로 봐요.'
 LINKS = [('📘', '소비자분쟁해결기준', '품목별로 환불·교환·배상 기준을 찾아봐요', 'https://www.consumer.go.kr'),
          ('📂', '피해구제·분쟁조정 사례', '나와 비슷한 사례가 어떻게 해결됐는지 봐요', 'https://www.kca.go.kr'),
-         ('🖥️', '1372 온라인 상담 신청', '전화가 어려우면 온라인으로 상담을 신청해요', 'https://www.ccn.go.kr')]
+         ('🖥️', '1372 온라인 상담 신청', '전화가 어려우면 온라인으로 상담을 신청해요', CCN_APPLY),
+         ('📝', '한국소비자원 피해구제 신청', '상담으로 안 풀리면 피해구제를 신청해요', KCA_RELIEF),
+         ('⚖️', '소비자분쟁조정 신청', '피해구제로 합의가 안 되면 조정을 신청해요', KCA_ADR)]
 FAQ = [('비용이 드나요?', '1372 상담, 한국소비자원 피해구제, 분쟁조정 모두 무료예요.'),
        ('1372 상담 없이 바로 피해구제를 신청할 수 있나요?', '보통은 1372 상담을 먼저 받아야 해요. 상담으로 해결이 안 되면 상담 내용이 그대로 피해구제로 넘어가서 다시 설명하지 않아도 돼요.'),
        ('중고거래처럼 개인끼리 거래해도 되나요?', '피해구제와 분쟁조정은 소비자와 사업자 사이의 거래만 다뤄요. 개인 사이의 거래에서 돈을 보냈는데 연락이 끊겼다면 경찰에 사기로 신고해요.'),
@@ -111,6 +119,7 @@ def install(S):
     app.jinja_env.globals['singo_apply'] = lambda category, cid: url_for('singo_type', key=FROM_CATEGORY.get(category or '', 'shop'), case=cid) + '#sg-write'
 
     app.jinja_env.globals['singo_types'] = TYPES
+    app.jinja_env.globals.update(ccn_apply=CCN_APPLY, kca_relief=KCA_RELIEF, kca_adr=KCA_ADR)
 
     def in_app():
         return 'SoboruApp/' in (request.headers.get('User-Agent') or '')

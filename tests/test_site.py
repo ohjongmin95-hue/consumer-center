@@ -947,7 +947,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('피해구제·분쟁조정 신청도 도와드릴게요', html)
         apply_url = re.search(r'href="(/doumi/shop\?case=\d+)#sg-write"', html)[1]
         filled = self.client.get(apply_url).get_data(as_text=True)
-        self.assertIn('value="테스트 업체"', filled); self.assertIn('테스트 내용</textarea>', filled); self.assertIn('피해구제 신청하러 가기 (1372)', filled)
+        self.assertIn('value="테스트 업체"', filled); self.assertIn('테스트 내용</textarea>', filled); self.assertIn('1372 상담 신청하러 가기', filled)
         self.assertNotIn('value="테스트 업체"', self.site.app.test_client().get(apply_url).get_data(as_text=True))
         token = self.csrf(self.client, '/lookup')
         wrong = self.client.post('/lookup', data={'_csrf': token, 'mode': 'phone', 'phone': '01012345678', 'password': '9999'})

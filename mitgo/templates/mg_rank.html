@@ -1,0 +1,53 @@
+{% extends 'mg_base.html' %}
+{% block title %}{{ area }} {{ cat or '동네 가게' }} 순위 · 믿고가게{% endblock %}
+{% macro row(s, i) %}{% set t = st.get(s.id) %}<li><a href="{{ url_for('store', sid=s.id) }}">
+  <span class="no">{{ i }}</span>
+  <span class="th">{% if s.photo %}<img src="{{ url_for('img', name=s.photo) }}" alt="" loading="lazy">{% else %}<img class="ci" src="{{ ic(s.cat) }}" alt="">{% endif %}</span>
+  <span class="tx"><b>{{ s.name }}{% if t and t.pick %} <span class="pk">믿고 갈 가게</span>{% endif %}</b>
+    <small>{% if t %}<em class="star">★ {{ t.avg }}</em> · 후기 {{ t.n }}{% if t.v %} · 방문 인증 {{ t.v }}{% endif %}{% else %}아직 후기가 없어요{% endif %} · {{ s.cat }}{% if far and far.get(s.id) is not none %} · {{ far[s.id] }}km{% endif %}</small>
+    {% if t and t.top %}<small class="kw">“{{ t.top[0][0] }}”</small>{% endif %}
+    {% if s.id in offers %}<small class="deal">사장님 혜택 있음</small>{% endif %}</span>
+</a></li>{% endmacro %}
+{% block body %}
+<section class="wrap hero slim">
+  <form class="search" action="{{ url_for('rank') }}" method="get">
+    {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+    <input name="q" value="{{ q }}" placeholder="{{ area }}에서 어떤 가게를 찾으세요?" aria-label="가게 찾기">
+  </form>
+</section>
+<nav class="cats wrap" aria-label="분야">
+  <a href="{{ url_for('rank', q=q or None) }}"{% if not cat %} class="on"{% endif %}><i><img src="{{ url_for('static', filename='ic/all.svg') }}" alt=""></i>전체</a>
+  {% for name, em in cats %}<a href="{{ url_for('rank', cat=name, q=q or None) }}"{% if cat == name %} class="on"{% endif %}><i><img src="{{ ic(name) }}" alt=""></i>{{ name }}</a>{% endfor %}
+</nav>
+{% if picks and not q %}<section class="picks">
+  <div class="wrap"><h2>믿고 갈 가게</h2><p class="lead">방문 인증 후기가 쌓이고 별점이 높은 곳만 저절로 올라와요. 돈으로 못 들어와요.</p></div>
+  <div class="pscroll">{% for s in picks %}{% set t = st.get(s.id) %}<a class="pcard" href="{{ url_for('store', sid=s.id) }}">
+    <span class="pimg">{% if s.photo %}<img src="{{ url_for('img', name=s.photo) }}" alt="" loading="lazy">{% else %}<img class="ci" src="{{ ic(s.cat) }}" alt="">{% endif %}</span>
+    <b>{{ s.name }}</b><small><em class="star">★ {{ t.avg }}</em> · 방문 인증 {{ t.v }}</small></a>{% endfor %}</div>
+</section>{% endif %}
+<section class="wrap card">
+  <h2>{{ area }} {{ cat or '동네 가게' }} 순위</h2>
+  <p class="lead">별점과 방문 인증 후기로만 정해요. 돈을 내도 순서는 바뀌지 않아요.</p>
+  <div class="sorts">{% for k, n in sorts %}{% if k == 'near' %}<a href="#" id="near"{% if sort == 'near' %} class="on"{% endif %}>{{ ui('pin') }} {{ n }}</a>{% else %}<a href="{{ url_for('rank', cat=cat or None, q=q or None, sort=k, v=1 if only_v else None) }}"{% if sort == k %} class="on"{% endif %}>{{ n }}</a>{% endif %}{% endfor %}
+    <a href="{{ url_for('rank', cat=cat or None, q=q or None, sort=sort, v=None if only_v else 1, lat=lat, lng=lng) }}" class="tog{% if only_v %} on{% endif %}">✓ 방문 인증만</a></div>
+  {% if stores %}<ol class="rank">{% for s in stores %}{{ row(s, loop.index) }}{% endfor %}</ol>
+  {% else %}<p class="empty">{% if q %}'{{ q }}'에 맞는 가게가 아직 없어요.{% else %}이 분야 가게가 곧 들어와요.{% endif %}</p>{% endif %}
+</section>
+{% if recent %}<section class="wrap card">
+  <h2>새로 올라온 후기</h2>
+  {% for r in recent %}{% set u = lv.get((r.who or '').split(':')[0]) %}<a class="mini" href="{{ url_for('store', sid=r.store_id) }}#r{{ r.id }}">
+    <div class="who"><b>{{ r.sname }}</b><span class="star">{{ '★' * r.stars }}</span>{% if r.visited %}<span class="vb">방문 인증</span>{% endif %}</div>
+    <p>{{ r.body }}</p><small>{{ r.nick or '동네 손님' }}{% if u and u.lv %} · {{ u.lv }}{% endif %} · {{ ago(r.created) }}</small></a>{% endfor %}
+</section>{% endif %}
+<section class="wrap promise">
+  <b>믿고가게의 약속</b>
+  <ul><li>체험단, 후기 이벤트, 돈 받은 후기는 받지 않아요.</li><li>사장님은 후기를 지울 수 없어요. 답글로 말해요.</li><li>돈을 내도 별점과 순위는 그대로예요. 사장님 혜택도 후기와 상관없어요.</li></ul>
+  <a href="{{ url_for('about') }}">자세히 보기 ›</a>
+</section>
+{% endblock %}
+{% block script %}<script>
+document.getElementById('near').addEventListener('click',function(e){e.preventDefault();var a=this;
+if(!navigator.geolocation){a.textContent='위치를 못 써요';return}a.textContent='찾는 중…';
+navigator.geolocation.getCurrentPosition(function(p){var u=new URL(location.href);u.searchParams.set('sort','near');u.searchParams.set('lat',p.coords.latitude.toFixed(5));u.searchParams.set('lng',p.coords.longitude.toFixed(5));location.href=u},
+function(){a.textContent='위치를 허용해 주세요'},{timeout:8000,maximumAge:600000})});
+</script>{% endblock %}

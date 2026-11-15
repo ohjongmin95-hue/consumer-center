@@ -1,0 +1,52 @@
+{% extends 'mg_base.html' %}
+{% block title %}{{ s.name }} 후기 · {{ s.area or area }} {{ s.cat }} · 믿고가게{% endblock %}
+{% block desc %}{{ s.name }} 진짜 후기{% if st %} {{ st.n }}개, 평균 ★{{ st.avg }}{% endif %}. 광고나 이벤트 없이 손님이 직접 쓴 후기만 모았어요.{% endblock %}
+{% block bodyclass %}has-bar{% endblock %}
+{% block head %}<script type="application/ld+json">{{ {'@context': 'https://schema.org', '@type': 'LocalBusiness', 'name': s.name, 'address': s.addr or None, 'telephone': s.phone or None,
+  'aggregateRating': {'@type': 'AggregateRating', 'ratingValue': st.avg, 'reviewCount': st.n} if st else None}|tojson }}</script>{% endblock %}
+{% block body %}
+{% if from_qr %}<div class="qrhint">✓ 스티커로 들어왔어요. 지금 쓰는 후기에는 방문 인증이 붙어요.</div>{% endif %}
+{% if photos %}<div class="gal">{% for p in photos %}<img src="{{ url_for('img', name=p) }}" alt="" loading="lazy">{% endfor %}</div>
+{% else %}<div class="shero"><span><img class="ci" src="{{ ic(s.cat) }}" alt=""></span></div>{% endif %}
+<section class="wrap sinfo">
+  <div class="sh"><h1>{{ s.name }}</h1>
+    <form method="post" action="{{ url_for('save', sid=s.id) }}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="heart{% if saved %} on{% endif %}" aria-label="찜">{{ ui('heart', saved) }}</button></form></div>
+  <p class="badges">{% if st and st.pick %}<span class="pk">믿고 갈 가게</span>{% endif %}{% if s.code %}<span class="tb">스티커 가게</span>{% endif %}</p>
+  <p class="meta">{{ s.cat }}{% if s.hours %} · {{ s.hours }}{% endif %}</p>
+  {% if s.tags %}<p class="tags">{% for t in s.tags.split() %}<span>#{{ t }}</span>{% endfor %}</p>{% endif %}
+  {% if s.intro %}<p class="intro">{{ s.intro }}</p>{% endif %}
+  <ul class="acts">
+    {% if s.addr %}<li><a href="https://map.naver.com/p/search/{{ s.addr|urlencode }}" target="_blank" rel="noopener">{{ ui('pin') }} {{ s.addr }}<span>지도 ›</span></a></li>{% endif %}
+    {% if s.phone %}<li><a href="tel:{{ s.phone }}">{{ ui('phone') }} {{ s.phone }}<span>전화 ›</span></a></li>{% endif %}
+    {% if s.reserve_url %}<li><a href="{{ s.reserve_url }}" target="_blank" rel="noopener nofollow">{{ ui('cal') }} 예약·웨이팅<span>예약 ›</span></a></li>{% endif %}
+  </ul>
+</section>
+{% if offers %}<section class="wrap card deals">
+  <h2>사장님 혜택</h2><p class="lead">후기를 쓰지 않아도 누구나 받을 수 있어요. 별점·순위와는 상관없어요.</p>
+  {% for o in offers %}<form method="post" action="{{ url_for('offer_claim', oid=o.id) }}" class="deal-row"><input type="hidden" name="_csrf" value="{{ csrf() }}">
+    <div><b>{{ o.title }}</b>{% if o.body %}<small>{{ o.body }}</small>{% endif %}{% if o.until %}<small>{{ o.until }}까지</small>{% endif %}</div><button class="btn sm">받기</button></form>{% endfor %}
+</section>{% endif %}
+<section class="wrap card">
+  {% if st %}
+  <div class="score"><b>{{ st.avg }}</b><span class="star">{{ '★' * (st.avg|round|int) }}</span><span class="mute">후기 {{ st.n }} · 방문 인증 {{ st.v }}</span></div>
+  {% if st.subs|select|list %}<div class="subs">{% for name in subs %}{% set v = st.subs[loop.index0] %}<div><small>{{ name }}</small><b>{{ v if v else '-' }}</b></div>{% endfor %}</div>{% endif %}
+  <div class="dist">{% for k, n in dist.items() %}<span>{{ k }}점</span><span class="pb"><i style="width:{{ (n / st.n * 100)|round|int if st.n else 0 }}%"></i></span><span>{{ n }}</span>{% endfor %}</div>
+  {% if st.top %}<div class="chips">{% for ch, n in st.top %}<span class="chip">{{ ch }} {{ n }}</span>{% endfor %}</div>{% endif %}
+  {% else %}<p class="empty">아직 후기가 없어요. 첫 후기를 남겨 주세요.</p>{% endif %}
+</section>
+{% if st %}<nav class="wrap rsort">{% for k, n in [('v','방문 인증 먼저'),('new','최신순'),('low','낮은 별점'),('photo','사진 후기')] %}<a href="{{ url_for('store', sid=s.id, o=k) }}#rs"{% if order == k %} class="on"{% endif %}{% if loop.first %} id="rs"{% endif %}>{{ n }}</a>{% endfor %}</nav>{% endif %}
+{% for r in reviews %}{% set u = lv.get((r.who or '').split(':')[0]) %}
+<article class="wrap rv" id="r{{ r.id }}">
+  <div class="who"><span><b>{{ r.nick or '동네 손님' }}</b>{% if u and u.lv %} <span class="lvb">{{ u.lv }}</span>{% endif %}{% if r.visited %} <span class="vb">방문 인증</span>{% endif %}</span><span>{{ ago(r.created) }}</span></div>
+  <div class="star">{{ '★' * r.stars }}<span class="off">{{ '★' * (5 - r.stars) }}</span>
+    {% if r.s1 or r.s2 or r.s3 or r.s4 %}<span class="sublist">{% for name in subs %}{% set v = r['s' ~ loop.index] %}{% if v %}{{ name }} {{ v }} {% endif %}{% endfor %}</span>{% endif %}</div>
+  {% if r.chips %}<div class="chips sm">{% for ch in r.chips.split('|') %}<span class="chip">{{ ch }}</span>{% endfor %}</div>{% endif %}
+  {% if r.body %}<p>{{ r.body }}</p>{% endif %}
+  {% if r.photos %}<div class="rph">{% for p in r.photos.split('|') %}<img src="{{ url_for('img', name=p) }}" alt="" loading="lazy">{% endfor %}</div>{% endif %}
+  {% if r.reply %}<div class="reply"><b>사장님 답글</b>{{ r.reply }}</div>{% endif %}
+  <div class="rfoot"><form method="post" action="{{ url_for('helpful', rid=r.id) }}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="help{% if r.id in mine %} on{% endif %}">{{ ui('thumb') }} 도움돼요{% if r.helpful %} {{ r.helpful }}{% endif %}</button></form>
+  <details class="rep"><summary>신고</summary><form method="post" action="{{ url_for('report', rid=r.id) }}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input name="reason" placeholder="어떤 점이 문제인가요? (광고, 욕설, 다른 가게 얘기 등)" maxlength="200"><button class="link">신고하기</button></form></details></div>
+</article>
+{% endfor %}
+{% endblock %}
+{% block bar %}<div class="bar"><a class="btn" href="{{ url_for('review', sid=s.id) }}">후기 남기기</a></div>{% endblock %}

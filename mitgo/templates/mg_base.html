@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<title>{% block title %}믿고가게 · {{ area }} 동네 가게 진짜 후기{% endblock %}</title>
+{% set desc %}{% block desc %}광고나 이벤트 없는 진짜 후기. 가게 스티커를 찍고 쓴 방문 인증 후기로 {{ area }} 미용실·세탁소·헬스장·수리점을 골라요.{% endblock %}{% endset %}
+<meta name="description" content="{{ desc|trim }}">
+<link rel="canonical" href="{{ request.base_url }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="믿고가게">
+<meta property="og:title" content="{{ self.title()|trim }}">
+<meta property="og:description" content="{{ desc|trim }}">
+<meta property="og:image" content="{{ url_for('static', filename='og.png', _external=True) }}">
+<meta name="twitter:card" content="summary_large_image">
+{% if naver_code %}<meta name="naver-site-verification" content="{{ naver_code }}">{% endif %}
+{% if google_code %}<meta name="google-site-verification" content="{{ google_code }}">{% endif %}
+<link rel="icon" href="{{ url_for('static', filename='mark.svg') }}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='mitgo.css') }}?v={{ css_v }}">
+{% block head %}{% endblock %}
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+{% block gnb %}<header class="gnb"><div class="gnb-in">
+  <a class="logo" href="{{ url_for('home') }}" aria-label="믿고가게 홈"><img src="{{ url_for('static', filename='wordmark.svg') }}" alt="믿고가게" height="26"><small>by SOBORU</small></a>
+  <nav><a href="{{ url_for('my') }}"{% if request.endpoint == 'my' %} class="on"{% endif %}>내 활동</a><a href="{{ url_for('about') }}"{% if request.endpoint == 'about' %} class="on"{% endif %}>약속</a><a href="{{ url_for('join') }}"{% if request.endpoint == 'join' %} class="on"{% endif %}>사장님</a></nav>
+</div></header>{% endblock %}
+<main class="app">
+{% with msgs = get_flashed_messages() %}{% if msgs %}<div class="wrap flashes">{% for m in msgs %}<div class="flash" role="status">{{ m }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+{% block body %}{% endblock %}
+{% block foot %}<footer class="foot wrap">
+  <b>믿고가게 by SOBORU</b>
+  <p>광고나 이벤트 없는 진짜 후기. 체험단·후기 이벤트·돈 받은 후기는 받지 않아요.</p>
+  {% if footer %}<p>{{ footer }}</p>{% endif %}
+  {% if contact %}<p>문의 {{ contact }}</p>{% endif %}
+  <p><a href="{{ url_for('about') }}">진짜 후기 약속</a> · <a href="{{ url_for('policy') }}">이용약관·개인정보</a> · <a href="{{ url_for('join') }}">사장님 스티커 신청</a></p>
+</footer>{% endblock %}
+{% block bar %}{% endblock %}
+</main>
+{% block script %}{% endblock %}
+</body>
+</html>

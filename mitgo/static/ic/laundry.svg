@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="7" y="4" width="34" height="40" rx="8" fill="#FE9800"/>
+<rect x="7" y="4" width="34" height="9" rx="4" fill="#E57A00" opacity=".35"/>
+<circle cx="14" cy="8.5" r="2" fill="#FFFFFF"/><circle cx="20" cy="8.5" r="2" fill="#FFFFFF" opacity=".7"/>
+<circle cx="24" cy="28" r="11" fill="#FFFFFF"/>
+<clipPath id="c"><circle cx="24" cy="28" r="8.5"/></clipPath><path clip-path="url(#c)" d="M14 28 q5 -3.5 10 0 t10 0 V40 H14z" fill="#FFD08A"/></svg>
