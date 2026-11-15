@@ -843,6 +843,29 @@ class SiteTest(unittest.TestCase):
                 admin.post('/admin/public-data', data={'_csrf': self.csrf(admin, '/admin/public-data')})
             th.assert_called_once()
 
+    def test_report_sigungu_list(self):
+        # 운영자 2026-11-15: 시·군·구는 치는 대신 시/도를 고르면 목록에서 고름 (sigungu.py)
+        page = self.client.get('/report').get_data(as_text=True)
+        self.assertIn('id="r-sgg"', page); self.assertIn(json.dumps('수원시')[1:-1], page); self.assertNotIn('시·군·구 (예: 강남구)', page)
+        from sigungu import SIGUNGU
+        self.assertEqual(len(SIGUNGU['서울']), 25); self.assertEqual(sum(len(v) for v in SIGUNGU.values()), 229)  # 기초자치단체 226 + 세종 + 제주 행정시 2
+
+    def test_admin_article_drafts(self):
+        # 운영자 2026-11-15: 기사 초안을 관리자에서 보고 고침. content/drafts 의 기획기사 6컷이 들어와 있어야 함 (article_drafts.py)
+        admin = self.login_admin()
+        page = admin.get('/admin/drafts').get_data(as_text=True)
+        self.assertIn('AI가 골라 준 장바구니, 믿어도 될까', page); self.assertIn('싼 아이 우산, 그 안에 든 것', page)
+        did = int(re.search(r'/admin/drafts/(\d+)', page)[1])
+        one = admin.get(f'/admin/drafts/{did}').get_data(as_text=True)
+        self.assertIn('제목·본문 복사하기', one); self.assertIn('[가상', one)
+        r = admin.post(f'/admin/drafts/{did}', data={'_csrf': self.csrf(admin, f'/admin/drafts/{did}'), 'title': '고친 제목', 'body': '본문\n\n## 소제목', 'source': '출처: 테스트', 'status': 'ready'})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('고친 제목', admin.get('/admin/drafts').get_data(as_text=True))
+        import article_drafts
+        from types import SimpleNamespace
+        self.assertEqual(article_drafts.load_files(SimpleNamespace(conn=self.site.conn, now=self.site.now)), 0)  # 다시 읽어도 덮어쓰지 않음
+        self.assertEqual(self.client.get('/admin/drafts').status_code, 302)
+
     def test_phone_start_signup_and_login(self):
         # 운영자 2026-11-03 (밤): 카카오 아니면 휴대폰 번호(문자 인증). 닉네임 비우면 자동, 같은 번호로 다시 오면 로그인
         sent = []

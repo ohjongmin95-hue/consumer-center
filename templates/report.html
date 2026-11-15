@@ -61,7 +61,13 @@
       <div class="field"><label for="r-sido">{{ ui('report.f_region', '지역 (선택)') }}</label>
         <div class="field-row field-row-3">
           <select id="r-sido" name="region_sido" aria-label="{{ ui('report.f_sido', '시/도') }}"><option value="">{{ ui('report.f_sido', '시/도') }}</option>{% for x in sido %}<option{% if request.form.get('region_sido') == x %} selected{% endif %}>{{ x }}</option>{% endfor %}</select>
-          <input name="region_sigungu" maxlength="40" placeholder="{{ ui('report.f_sigungu', '시·군·구 (예: 강남구)') }}" aria-label="{{ ui('report.f_sigungu', '시·군·구 (예: 강남구)') }}" value="{{ request.form.get('region_sigungu','') }}">
+          <select id="r-sgg" name="region_sigungu" aria-label="{{ ui('report.f_sigungu2', '시·군·구') }}" data-v="{{ request.form.get('region_sigungu','') }}" disabled><option value="">{{ ui('report.f_sigungu2', '시·군·구') }}</option></select>
+          <script>/* 운영자 2026-11-15: 시·군·구는 시/도를 고르면 목록에서 고름 (sigungu.py) */
+          (function () { var L = {{ sigungu|tojson }}, a = document.getElementById('r-sido'), b = document.getElementById('r-sgg');
+            function fill() { var v = b.value || b.dataset.v, list = L[a.value] || []; b.length = 1;
+              list.forEach(function (x) { var o = new Option(x, x); if (x === v) o.selected = true; b.add(o); });
+              b.disabled = !list.length; b.dataset.v = ''; }
+            a.addEventListener('change', fill); fill(); })();</script>
           <input name="region_detail" maxlength="120" placeholder="{{ ui('report.f_region_detail', '읍·면·동까지 (선택)') }}" aria-label="{{ ui('report.f_region_detail', '읍·면·동까지 (선택)') }}" value="{{ request.form.get('region_detail','') }}">
         </div>
       </div>

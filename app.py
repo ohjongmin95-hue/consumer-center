@@ -804,6 +804,7 @@ CONSENT_FIELDS={'privacy':'consent','share':'share_company','copyright':'use_con
 def required_consents():
     # 제보하기 화면에 남아 있는 동의 항목만 필수 (관리자 '제보하기 동의 항목')
     return [CONSENT_FIELDS.get(r.get('kind'),'consent_custom_%d'%i) for i,r in enumerate(g.lists.get('report_consents',[]))]
+from sigungu import SIGUNGU  # 시·도별 시·군·구 목록 (운영자 2026-11-15)
 SIDO=['서울','부산','대구','인천','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주']
 GENDERS=['남성','여성']
 AGE_GROUPS=['10대','20대','30대','40대','50대','60대','70대 이상']
@@ -815,7 +816,7 @@ def file_ok(suffix,head):
     return ((kind=='pdf' and head.startswith(b'%PDF-')) or (kind=='png' and head.startswith(b'\x89PNG')) or (kind=='jpg' and head.startswith(b'\xff\xd8'))
             or (kind=='webp' and head[8:12]==b'WEBP') or (kind in ('mp4','mov') and head[4:8]==b'ftyp'))
 def report_form(status=200):
-    return render_template('report.html',scan_on=bool(companydesk.ai_key_for('report_talk')),categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,max_total=MAX_UPLOAD_TOTAL,today=datetime.date.today().isoformat()),status
+    return render_template('report.html',scan_on=bool(companydesk.ai_key_for('report_talk')),categories=report_categories(),industries=g.lists.get('report_industries',[]),intake_enabled=os.getenv('ENABLE_INTAKE')=='1',sido=SIDO,sigungu=SIGUNGU,genders=GENDERS,ages=AGE_GROUPS,max_files=MAX_FILES,max_total=MAX_UPLOAD_TOTAL,today=datetime.date.today().isoformat()),status
 def report_login_needed():
     """운영자 2026-11-04: 로그인 없이도 제보 (11-03 로그인 의무화 뒤 제보가 끊겨 되돌림). REPORT_LOGIN=1이면 다시 로그인해야 제보. 앱에서는 늘 로그인."""
     if g.get('user'):return False
@@ -3293,7 +3294,8 @@ import crosslogin;crosslogin.install(types.SimpleNamespace(**globals()))  # 소�
 import scamwatch;scamwatch.install(types.SimpleNamespace(**globals()))  # 사기 주의: 사기 사이트·번호 신고·검색·지역 지도 (scamwatch.py)
 import aialert;aialert.install(types.SimpleNamespace(**globals()))  # OpenAI 충전금이 바닥나면 관리자 화면에 알림 (aialert.py)
 import aiusage;aiusage.install(types.SimpleNamespace(**globals()))  # 기능별 AI 호출 횟수·토큰 기록 (aiusage.py)
-import public_data;public_data.install(types.SimpleNamespace(**globals()))  # 공공데이터: 서버가 매일 받아 두고 관리자에서 봄 (public_data.py)
+import public_data;public_data.install(types.SimpleNamespace(**globals()))
+import article_drafts;article_drafts.install(types.SimpleNamespace(**globals()))  # 기사 초안함: 기사 스레드 초안을 관리자에서 고치고 복사 (운영자 2026-11-15)  # 공공데이터: 서버가 매일 받아 두고 관리자에서 봄 (public_data.py)
 import phoneauth;phoneauth.install(types.SimpleNamespace(**globals()))  # 휴대폰 번호로 시작하기 (phoneauth.py)
 import soboru_cm;soboru_cm.install(types.SimpleNamespace(**globals()))  # 소보루 커뮤니티: 내돈내산 후기 피드·골라주세요·수다방·사장님 소식 (soboru_cm.py)
 import storeqr;storeqr.install(types.SimpleNamespace(**globals()))  # 매장 QR: 스티커 QR을 찍으면 /q/<번호>에서 별점·칩으로 사장님께 후기 (storeqr.py)
