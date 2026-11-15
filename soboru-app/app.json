@@ -20,7 +20,11 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "제보나 글에 붙일 사진을 찍을 때 카메라를 써요.",
         "NSPhotoLibraryUsageDescription": "제보나 글에 붙일 사진을 고를 때 사진 보관함을 써요.",
-        "NSMicrophoneUsageDescription": "동영상을 찍어 붙일 때 마이크를 써요."
+        "NSMicrophoneUsageDescription": "동영상을 찍어 붙일 때 마이크를 써요.",
+        "CFBundleDevelopmentRegion": "ko",
+        "CFBundleLocalizations": [
+          "ko"
+        ]
       }
     },
     "android": {

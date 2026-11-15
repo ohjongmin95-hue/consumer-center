@@ -10,7 +10,11 @@
       "supportsTablet": false,
       "bundleIdentifier": "kr.co.soboru.cs",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "ko",
+        "CFBundleLocalizations": [
+          "ko"
+        ]
       }
     },
     "android": {

@@ -193,7 +193,7 @@ class SiteTest(unittest.TestCase):
         self.client = self.site.app.test_client()
         self.site.app.config['ADMIN_FACE'] = 'soboru'  # 옛 소보루 사이트 편집 시험 (실제 관리자는 소비자제보센터가 기본)
         with self.site.conn() as db:
-            for table in ('group_members', 'damage_groups', 'company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings', 'user_identities', 'company_memberships', 'company_requests', 'company_contacts', 'answer_files', 'company_notices', 'user_blocks', 'member_alerts', 'push_subscriptions', 'apple_tokens'):
+            for table in ('group_members', 'damage_groups', 'company_users', 'companies', 'notifications', 'internal_notes', 'company_invites', 'attachments', 'messages', 'cases', 'site_content', 'site_lists', 'takedown_requests', 'board_votes', 'comments', 'posts', 'users', 'login_attempts', 'staff', 'case_log', 'admin_settings', 'user_identities', 'company_memberships', 'company_requests', 'company_contacts', 'answer_files', 'company_notices', 'user_blocks', 'member_alerts', 'push_subscriptions', 'apple_tokens', 'case_comments'):
                 db.execute('DELETE FROM ' + table)
 
     def old_guide(self):
@@ -5777,6 +5777,34 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(data['webcredentials']['apps'], ['ABCDE12345.kr.co.consumerjebo.soboru'])
         with patch.dict(os.environ, {'APPLE_TEAM_ID': 'ABCDE12345', 'IOS_BUNDLE_ID': 'kr.example.ios'}):
             self.assertIn('ABCDE12345.kr.example.ios', self.client.get('/.well-known/apple-app-site-association').get_data(as_text=True))
+
+    def test_case_report_and_block_for_app_review(self):
+        # 애플 심사 1.2 (운영자 2026-11-15): 고발 글 신고, 글쓴이·댓글쓴이 차단
+        alice, a_id = self.member_client('alice_c', '앨리스씨')
+        bob, b_id = self.member_client('bob_c', '밥밥씨')
+        now = datetime.datetime.now().isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            cid = db.execute("INSERT INTO cases(receipt,lookup_hash,category,industry,company,subject,description,request_text,created,public_consent,published,user_id) VALUES('CJ-BLK1','x','배송·환불','쇼핑·유통','차단가게','밥이 올린 고발 제목','밥이 올린 고발 본문','환불',?,1,1,?)", (now, b_id)).lastrowid
+            db.execute("INSERT INTO case_comments(case_id,nickname,pw_hash,body,ip_hash,created,user_id) VALUES(?,'밥밥씨','','밥이 단 고발 댓글','x',?,?)", (cid, now, b_id))
+            kid = db.execute('SELECT id FROM case_comments WHERE case_id=?', (cid,)).fetchone()[0]
+        def tidy():
+            with self.site.conn() as db: db.execute('DELETE FROM case_comments WHERE id=?', (kid,)); db.execute('DELETE FROM user_blocks')
+        self.addCleanup(tidy)
+        self.assertIn('밥이 올린 고발 제목', alice.get('/reports').get_data(as_text=True))
+        self.assertIn('밥이 단 고발 댓글', alice.get('/reports/%d' % cid).get_data(as_text=True))
+        # 신고: 손님도 할 수 있고 처리 기록에 남음
+        post = lambda c, path, data: c.post(path, data={'_csrf': self.csrf(c, '/reports/%d' % cid), **data})
+        post(self.client, '/reports/%d/flag' % cid, {'reason': '허위 사실'})
+        with self.site.conn() as db:
+            self.assertTrue(db.execute("SELECT 1 FROM case_log WHERE case_id=? AND action LIKE '이용자 신고: 허위 사실%'", (cid,)).fetchone())
+        # 댓글쓴이 차단 → 댓글 안 보임, 글쓴이 차단 → 목록에서 빠지고 글 본문 대신 안내
+        post(alice, '/reports/comment/%d/block' % kid, {})
+        self.assertNotIn('밥이 단 고발 댓글', alice.get('/reports/%d' % cid).get_data(as_text=True))
+        self.assertNotIn('밥이 올린 고발 제목', alice.get('/reports').get_data(as_text=True))
+        self.assertIn('밥이 올린 고발 제목', self.client.get('/reports').get_data(as_text=True))  # 차단은 나에게만
+        post(bob, '/reports/%d/block' % cid, {})
+        with self.site.conn() as db:
+            self.assertFalse(db.execute('SELECT 1 FROM user_blocks WHERE blocker=? AND blocked=?', (b_id, b_id)).fetchone())  # 내 글은 차단 안 됨
 
     def test_members_can_block_and_unblock(self):
         alice, a_id = self.member_client('alice_b', '앨리스')

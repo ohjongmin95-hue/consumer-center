@@ -39,10 +39,11 @@ def install(S):
         with conn() as db:
             counts = {k: db.execute('SELECT COUNT(*) FROM board_votes WHERE kind=? AND target=?', (k, 'case:%d' % case_id)).fetchone()[0] for k in KINDS}
             mine = {r['kind'] for r in db.execute('SELECT kind FROM board_votes WHERE target=? AND voter=?', ('case:%d' % case_id, voter))}
-            rows = db.execute('SELECT * FROM case_comments WHERE case_id=? AND hidden=0 ORDER BY id', (case_id,)).fetchall()
+            rows = [r for r in db.execute('SELECT * FROM case_comments WHERE case_id=? AND hidden=0 ORDER BY id', (case_id,)).fetchall()
+                    if not (r['user_id'] and r['user_id'] in S.blocked_ids())]  # 차단한 회원의 댓글은 안 보임 (애플 1.2, 2026-11-15)
             pros = experts.labels(db, [r['user_id'] for r in rows])  # 승인된 전문가 (experts.py)
         comments = [dict(id=r['id'], nickname=r['nickname'], body=S.mask_personal(r['body']), created=r['created'], by_reporter=bool(r['by_reporter']),
-                         own=bool(g.get('user') and r['user_id'] == g.user['id']), member=bool(r['user_id']), expert=(pros.get(r['user_id']) or {}).get('field', ''), expert_photo=(pros.get(r['user_id']) or {}).get('photo', ''), expert_label=(pros.get(r['user_id']) or {}).get('label', '전문가')) for r in rows]
+                         own=bool(g.get('user') and r['user_id'] == g.user['id']), member=bool(r['user_id']), uid=r['user_id'], expert=(pros.get(r['user_id']) or {}).get('field', ''), expert_photo=(pros.get(r['user_id']) or {}).get('photo', ''), expert_label=(pros.get(r['user_id']) or {}).get('label', '전문가')) for r in rows]
         return {'counts': counts, 'mine': mine, 'comments': comments, 'kinds': KINDS, 'reporter': session.get('case_id') == case_id}
 
     def talk_counts(ids):
@@ -97,6 +98,38 @@ def install(S):
             db.execute('UPDATE case_comments SET flags=?,hidden=? WHERE id=?', (flags, int(flags >= S.FLAG_HIDE_THRESHOLD), comment_id))
         flash(S.ui_text('msg.m14', '알려 주셔서 고마워요. 운영자가 확인할게요.'))
         return back(c['case_id'])
+
+    # 운영자 2026-11-15 (애플 심사 1.2): 고발 글 신고, 글쓴이·댓글쓴이 차단. 신고는 운영자가 처리 기록에서 보고 24시간 안에 확인
+    @app.route('/reports/<int:case_id>/flag', methods=['POST'])
+    def case_flag(case_id):
+        reason = (request.form.get('reason') or '').strip()[:200]
+        with conn() as db:
+            if not open_case(db, case_id): abort(404)
+            target = 'cf:%d' % case_id
+            if db.execute('INSERT OR IGNORE INTO board_votes(kind,target,voter,created) VALUES(?,?,?,?)', ('flag', target, S.voter_id(), stamp())).rowcount:
+                db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)', (case_id, '이용자', '이용자 신고' + (f': {reason}' if reason else '') + ' (24시간 안에 확인)', stamp()))
+        flash(S.ui_text('msg.case_flagged', '신고했어요. 운영자가 24시간 안에 확인하고 처리할게요.'))
+        return back(case_id, 'more')
+
+    def block(uid, case_id):
+        if not g.get('user'): flash(S.ui_text('msg.block_login', '로그인하면 차단할 수 있어요.')); return redirect(url_for('login', next=url_for('public_case', case_id=case_id)))
+        if not uid: abort(404)
+        if uid == g.user['id']: flash(S.ui_text('msg.block_self', '내 글은 차단할 수 없어요.')); return back(case_id)
+        with conn() as db: db.execute('INSERT OR IGNORE INTO user_blocks(blocker,blocked,created) VALUES(?,?,?)', (g.user['id'], uid, stamp()))
+        flash(S.ui_text('msg.blocked', '차단했어요. 이제 이 사용자의 글과 댓글이 보이지 않아요. 내 정보에서 풀 수 있어요.'))
+        return None
+
+    @app.route('/reports/<int:case_id>/block', methods=['POST'])
+    def case_block(case_id):
+        with conn() as db: c = db.execute('SELECT user_id FROM cases WHERE id=?', (case_id,)).fetchone()
+        if not c: abort(404)
+        return block(c['user_id'], case_id) or redirect(url_for('home'))
+
+    @app.route('/reports/comment/<int:comment_id>/block', methods=['POST'])
+    def case_comment_block(comment_id):
+        with conn() as db: c = db.execute('SELECT case_id,user_id FROM case_comments WHERE id=?', (comment_id,)).fetchone()
+        if not c: abort(404)
+        return block(c['user_id'], c['case_id']) or back(c['case_id'])
 
     @app.route('/reports/comment/<int:comment_id>/delete', methods=['POST'])
     def case_comment_delete(comment_id):
