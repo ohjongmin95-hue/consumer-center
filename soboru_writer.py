@@ -79,6 +79,26 @@ WORD_TOPICS = {'택배 분실': ['택배 파손', '택배 지연', '택배 보�
                '소비기한': ['유통기한', '소비기한 지난', '유통기한 지난'], '보증기간': ['무상 AS', '유상 수리', 'AS 거부'],
                '웨딩홀 위약금': ['스드메 환불', '웨딩 계약 해지', '예식장 계약']}
 
+# 소보루 기획 컷 (운영자 2026-11-15): 글 종류마다 어느 컷으로 나가는지 정함. 더 라벨(인터뷰)은 사람이 만나야 해서 AI 틀이 없음
+CUTS = {'소비의 뒷면': '가격·광고 뒤에 숨은 피해와 구조를 파헤친다',
+        '영수증 너머': '값과 요금이 왜 이렇게 매겨졌는지 영수증 너머를 따져 본다',
+        '체크아웃': '결제하기 전에 알아야 할 권리와 조건을 확인한다',
+        '더 라벨': '브랜드와 사람을 직접 만나 이야기를 듣는다',
+        '취향수집': '요즘 소비자가 어디에 마음과 돈을 쓰는지 모은다',
+        '넥스트 카트': '쇼핑이 어디로 가는지, 새 방식과 그 함정을 본다'}
+CUT_OF = {'trend': '취향수집', 'shopping': '넥스트 카트', 'news': '소비의 뒷면', 'reports': '소비의 뒷면', 'law': '체크아웃', 'issue': '영수증 너머',
+          'rights': '체크아웃', 'word': '취향수집', 'shopcat': '넥스트 카트', 'fix': '체크아웃', 'stat': '영수증 너머', 'feature': '소비의 뒷면'}
+# 네이버 뉴스제휴 '자체기사' (운영자 2026-11-15): 보도자료·통계를 옮기기만 한 글이 아니라 기자가 직접 취재한 흔적이 본문에 있어야 함.
+# AI는 사람 말·사례를 지어내지 않고, 기자가 채울 자리를 [취재 필요]로 본문에 넣어 둔다. 이 표시가 남아 있으면 게시하지 않는다
+TODO = '[취재 필요'
+SELF = ('[자체기사 취재 자리] 이 초안은 기자가 직접 취재해 완성하는 자체기사다. 사람의 말·사례·답변은 지어내지 않고, 기자가 채울 자리를 "reporting"에 적는다. '
+        '각 항목은 기자에게 하는 짧은 지시 한 문장이다(숫자는 쓰지 않는다).\n'
+        '"reporting": {"case": 도입 뒤에 넣을 소비자 사례(소보루 제보자나 독자 한 명을 만나 무엇을 들을지), '
+        '"answer": 기사에 나온 기업·기관 이름과 그쪽에 물을 질문 1~2개(반론·해명. 기업이 없으면 담당 기관), '
+        '"expert": 어떤 분야 전문가(교수·변호사·소비자단체)에게 무엇을 물을지, '
+        '"data": 소보루 제보·자체 조사로 덧붙일 숫자(예: 같은 피해 제보 건수, 기자가 직접 비교한 가격), '
+        '"photo": 기자가 직접 찍을 사진(현장·화면 갈무리)}\n')
+
 # 글 종류: 이름, 필요한 자료(SOURCES), 기본 분야·그림·바탕색, AI에게 줄 설명
 KINDS = {
     'trend': dict(name='검색 추이 분석', needs=('naver',), category='생활', emoji='📈', tone='t2',
@@ -306,7 +326,14 @@ def _plain(s, n=2000, hl=False):
     return ' '.join(s.split())[:n].replace('\x00', '**').replace('\x01', '**')
 
 
-def assemble(out, kind):
+REPORT_DEFAULT = {'case': '같은 일을 겪은 소비자(소보루 제보자) 한 명을 만나 어떤 일이 있었는지 직접 듣고 실명 또는 성·나이로 넣는다.',
+                  'answer': '기사에 나온 기업·기관에 사실 확인과 입장을 묻고 답(답이 없으면 답하지 않았다는 사실)을 넣는다.',
+                  'expert': '소비자학 교수나 변호사에게 이 문제를 어떻게 보는지 묻고 한두 문장을 넣는다.',
+                  'data': '소보루에 들어온 같은 유형 제보 건수나 기자가 직접 조사한 숫자를 넣는다.',
+                  'photo': '현장이나 화면을 기자가 직접 찍은 사진을 넣는다.'}
+
+
+def assemble(out, kind, self_on=True):
     """AI JSON → (제목, 요약 세 줄, 본문, 분야). 형식이 틀리면 RuntimeError."""
     if not isinstance(out, dict): raise RuntimeError('AI 응답 형식이 달라요')
     title = _plain(out.get('title'), 120)
@@ -348,6 +375,15 @@ def assemble(out, kind):
         if paras: parts.append('## ' + (_plain(end.get('heading'), 60) or '맺으며') + '\n\n' + '\n\n'.join(paras))
     hl = _plain(out.get('highlight'), 200)
     # 운영자 2026-11-05: '핵심만 쏙' 상자(토스식)는 매거진에서 뺌 — highlight는 받지만 본문에 넣지 않음
+    rep = out.get('reporting') if isinstance(out.get('reporting'), dict) else {}
+    def todo(key, label):
+        t = re.sub(r'\d', '○', _plain(rep.get(key), 300))  # 숫자 검사에 걸리지 않게 (지시문에는 숫자가 필요 없음)
+        return f'{TODO} · {label}] ' + (t or REPORT_DEFAULT[key])
+    if parts and self_on:  # 운영자 2026-11-15: 자체기사 — 기자가 채울 자리를 본문 흐름 안에 (사례는 도입 뒤, 반론은 첫 소제목 끝, 전문가는 둘째 소제목 끝, 자체 자료·사진은 맺음 앞)
+        parts[0] += '\n\n' + todo('answer', '기업·기관 답변')
+        parts[min(1, len(parts) - 1)] += '\n\n' + todo('expert', '전문가 멘트')
+        parts.insert(max(len(parts) - 1, 0), todo('data', '자체 자료') + '\n\n' + todo('photo', '직접 찍은 사진'))
+    intro = intro + [todo('case', '소비자 사례')] if intro and self_on else intro
     if intro and parts: parts.insert(0, '\n\n'.join(intro))  # 소제목 없는 도입 (뉴닉처럼 말 걸며 시작)
     if not title or not parts: raise RuntimeError('AI가 기사를 채우지 못했어요')
     cat = out.get('category') if out.get('category') in CATS else KINDS[kind]['category']
@@ -1004,18 +1040,21 @@ def install(S):
         per = s.get('per_run') if s.get('v') == 3 and s.get('per_run') in PER_RUN else DEFAULT_PER_RUN
         # cats: 분야(CATS)마다 하루 한 편씩 기획 기사 (운영자 요청 2026-11-05: '각 카테고리당 하루 1편씩'), 아침·오후·저녁에 나눠 씀
         return {'auto': 0 if s.get('auto') == 0 else 1, 'per_run': per, 'per_day': per * len(SLOTS), 'publish': 0 if s.get('publish') == 0 else 1,
-                'cats': 0 if s.get('cats') == 0 else 1}
+                'cats': 0 if s.get('cats') == 0 else 1,
+                # self: 네이버 자체기사용 [취재 필요] 자리를 본문에 넣음 (운영자 2026-11-15). 켜 두면 그 자리가 남은 글은 자동 게시되지 않음
+                'self': 0 if s.get('self') == 0 else 1}
 
-    def save_settings(auto, per_run, publish, cats=None):
+    def save_settings(auto, per_run, publish, cats=None, self_on=None):
         cats = settings()['cats'] if cats is None else cats
-        put('writer', {'auto': auto, 'per_run': per_run if per_run in PER_RUN else DEFAULT_PER_RUN, 'publish': publish, 'cats': cats, 'v': 3})
+        self_on = settings()['self'] if self_on is None else self_on
+        put('writer', {'auto': auto, 'per_run': per_run if per_run in PER_RUN else DEFAULT_PER_RUN, 'publish': publish, 'cats': cats, 'self': self_on, 'v': 3})
 
     def log(entry):
         rows = setting('writer_log', [])
         put('writer_log', ([dict(entry, at=stamp())] + rows)[:30])
 
     # ---- AI로 쓰기 · 저장 -------------------------------------------------------
-    def ask_ai(kind, facts, topic=None, long_form=False):
+    def ask_ai(kind, facts, topic=None, long_form=False, self_on=True):
         k = KINDS[kind]
         # 매거진 기사처럼 (운영자 2026-10-21 뉴닉 롱리드 분량 → 2026-10-24 '글이 아티클 같지 않아': 안내문·블로그가 아니라 잡지 기사로)
         long = ("[분량·구성] 생활 매거진의 피처 기사다. 블로그 안내문이나 사용 설명서처럼 쓰지 않는다. 본문은 {len}자. "
@@ -1026,7 +1065,7 @@ def install(S):
                 "소제목은 '~하는 법', '~하기 위한 조건' 같은 안내문 꼴이 아니라 짧고 맛이 있는 표제로 쓴다(예: '치킨에 진심인 나라', '5년 전보다 저렴해진 닭'). "
                 "소제목마다 문단 {paras}개, 문단은 3~5문장으로 앞 문단을 받아 이어지게 쓰고, 문장마다 새 줄을 띄우지 않는다. 목록·번호는 꼭 필요할 때 한 소제목에서만 points로 쓴다(요점마다 짧은 제목 + 2~4문장). "
                 "숫자는 문장 속 근거로 녹이고, 바로 뒤에 그것이 독자의 생활에 어떤 뜻인지 기사 문장으로 풀어 준다. 어려운 말은 문장 안에서 풀거나 terms로 따로 풀이한다. "
-                "지어낸 인용·전문가 말·사례 인물은 쓰지 않는다. 같은 말을 되풀이하거나 분량을 채우려고 늘이지 않는다. "
+                "지어낸 인용·전문가 말·사례 인물은 쓰지 않는다(그 자리는 reporting으로 남긴다). 같은 말을 되풀이하거나 분량을 채우려고 늘이지 않는다. "
                 "소제목마다 독자가 바로 써먹을 것(확인할 곳, 준비할 것, 물어볼 말)을 자료가 말하는 범위에서 하나 이상 담고, '주의하세요' 같은 뻔한 말로만 끝내지 않는다. "
                 "제목은 기사 제목처럼 핵심 사실이나 물음을 담아 쓰고(무엇이, 왜, 얼마나) 낚시성 표현은 쓰지 않는다. "
                 "closing은 기사의 한 줄 결론과 앞으로 지켜볼 점으로 맺고, 글과 맞는 소보루 기능 하나를 자연스럽게 권한다: "
@@ -1036,7 +1075,8 @@ def install(S):
         if long_form: size = ('3500~4500', '3~5', '3~5', 12000)
         else: size = (k.get('length') or '1300~1700', '2~3', '2', 5000)
         long = long.replace('{len}', size[0]).replace('{heads}', size[1]).replace('{paras}', size[2])
-        user = (f"[글 종류] {k['name']}: {k['about']}\n" + (f"[주제] {topic}\n" if topic else '') + long + "[분야 목록] " + ', '.join(CATS) + "\n"
+        cut = CUT_OF.get(kind, '소비의 뒷면')
+        user = (f"[글 종류] {k['name']}: {k['about']}\n" + f"[컷] {cut}: {CUTS[cut]}. 이 컷의 시선으로 쓴다.\n" + (f"[주제] {topic}\n" if topic else '') + long + (SELF if self_on else '') + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
         return chat(SYSTEM, user, size[3], AI_TIMEOUT * 3)
 
@@ -1112,7 +1152,7 @@ def install(S):
                 except Exception: pass
                 got['facts'] = dict(got['facts'], **CONST)
             else: got = collect(kind, topic)
-            title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic, long_form=False), kind)
+            title, summary, body, cat = assemble(ask_ai(kind, got['facts'], topic, long_form=False, self_on=settings()['self'] == 1), kind, settings()['self'] == 1)
             summary, body = drop_meta(summary), drop_meta(body)  # 자료 이야기 문장은 쓰지 않음 (운영자 2026-11-05)
         except Skip as e: res = {'status': 'skip', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
         except RuntimeError as e: res = {'status': 'error', 'reason': str(e), 'topic': topic}; log(dict(res, kind=kind, trigger=trigger)); return res
@@ -1144,7 +1184,7 @@ def install(S):
             if problems:
                 with conn() as db: db.execute('UPDATE ai_articles SET check_ok=0,problems=? WHERE article_id=?', (json.dumps(problems, ensure_ascii=False), aid))
         with conn() as db:
-            published = trigger in ('daily', 'letter') and not problems and settings()['publish'] == 1
+            published = trigger in ('daily', 'letter') and not problems and settings()['publish'] == 1 and TODO not in body  # [취재 필요]가 남은 자체기사 초안은 자동 게시하지 않음
             if published: db.execute("UPDATE articles SET status='published',published_at=?,updated=? WHERE id=?", (stamp(), stamp(), aid))
         art = app.extensions.get('soboru_art')  # 저장한 글처럼 AI 일러스트 자동 그리기 (키가 있을 때만)
         if art: art['auto']('life', aid, wait=trigger in ('daily', 'letter'))
@@ -1299,7 +1339,7 @@ def install(S):
             return redirect(url_for('admin_life_ai_job'))
         with conn() as db:
             rows = db.execute("SELECT a.id,a.title,a.status,a.category,a.created,x.* FROM ai_articles x JOIN articles a ON a.id=x.article_id AND a.origin='ai' ORDER BY a.id DESC LIMIT 60").fetchall()
-        kinds = [dict(KINDS[k], key=k, ready=kind_ready(k)[0], why=kind_ready(k)[1]) for k in dict.fromkeys(ORDER + EXTRA) if k not in PAUSED]
+        kinds = [dict(KINDS[k], key=k, cut=CUT_OF.get(k, ''), ready=kind_ready(k)[0], why=kind_ready(k)[1]) for k in dict.fromkeys(ORDER + EXTRA) if k not in PAUSED]
         items = [dict(ai_info(r), id=r['id'], title=r['title'], status=r['status'], category=r['category']) for r in rows]
         return render_template('admin_life_ai.html', kinds=kinds, items=items, cfg=settings(), cats_n=len(CATS), series_n=len(SERIES), ai_ready=desk.ai_ready(), logs=setting('writer_log', [])[:10],
                                per_run=PER_RUN, sources={k: f()[0] for k, f in SOURCES.items()})
@@ -1329,7 +1369,7 @@ def install(S):
             on = request.form.get('act') == 'start'; save_settings(1, settings()['per_run'], int(on))
             flash('자동 게시를 다시 켰어요. 검사를 통과한 글은 바로 올라가요.' if on else '자동 게시를 멈췄어요. 글은 계속 써서 올릴 글(초안)에 쌓아 둬요.')
             return redirect(url_for('admin_life_ai'))
-        save_settings(1 if request.form.get('auto') else 0, per, 1 if request.form.get('publish') else 0, 1 if request.form.get('cats') else 0)
+        save_settings(1 if request.form.get('auto') else 0, per, 1 if request.form.get('publish') else 0, 1 if request.form.get('cats') else 0, 1 if request.form.get('self') else 0)
         flash('자동 쓰기 설정을 저장했어요.')
         return redirect(url_for('admin_life_ai'))
 
