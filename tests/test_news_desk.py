@@ -46,3 +46,13 @@ class KcaTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class YamaTest(unittest.TestCase):
+    def test_mail_lists_todays_yamas(self):
+        """운영자 2026-11-15: 서버가 뉴스로 잡은 소비자 취재 야마를 데스크 메일에도"""
+        y = [('배달비 올랐는데 라이더는?', '소비자 쪽 각도', 'https://consumerjebo.co.kr/admin/life/3')]
+        subject, text, html = news_desk.render(datetime.date(2026, 11, 16), [], [], [], (), (), y)
+        self.assertIn('소비자 취재 야마 1건', html)
+        self.assertIn('https://consumerjebo.co.kr/admin/life/3', text)
+        self.assertEqual(news_desk.today_yamas(datetime.date(1999, 1, 1)), [])
