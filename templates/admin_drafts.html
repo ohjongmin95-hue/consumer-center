@@ -1,0 +1,59 @@
+{% extends 'console.html' %}
+{% block title %}기사 초안 | {{ site_name() }}{% endblock %}
+{% block content %}
+{# 운영자 2026-11-15: 기사 스레드에서 쓴 초안을 관리자에서 보고 고침 (article_drafts.py) #}
+<main class="cs-page ad">
+{% if not d %}
+  <h1 class="cs-title">기사 초안</h1>
+  <p class="au-help">기사 초안이 여기에 모여요. 노란색 [가상] 부분을 실제 취재로 채운 뒤 복사해서 신문 사이트에 올리면 돼요.</p>
+  {% if rows %}<div class="cs-panel ad-list">{% for r in rows %}
+    <a class="ad-row" href="{{ url_for('admin_draft', did=r.id) }}">
+      <span class="ad-cut">{{ r.cut or r.section }}</span>
+      <b>{{ r.title }}</b>
+      <small>{{ status[r.status] }} · {{ '{:,}'.format(r.n) }}자 · {{ r.updated[:16].replace('T', ' ') }}{% if r.origin %} · {{ r.origin }}{% endif %}</small>
+    </a>{% endfor %}</div>
+  {% else %}<div class="cs-panel">아직 초안이 없어요.</div>{% endif %}
+{% else %}
+  <a class="ad-back" href="{{ url_for('admin_drafts') }}">‹ 기사 초안</a>
+  <p class="ad-cut">{{ d.cut or d.section }}</p>
+  <h1 class="cs-title">{{ d.title }}</h1>
+  {% if d.note %}<div class="ad-note"><b>보강할 것</b><p>{{ d.note }}</p></div>{% endif %}
+  <div class="cs-panel ad-view" id="ad-view">{% for para in d.body.split('\n\n') %}{% if para.startswith('## ') %}<h2>{{ para[3:] }}</h2>{% else %}<p>{{ para }}</p>{% endif %}{% endfor %}{% if d.source %}<p class="ad-src">{{ d.source }}</p>{% endif %}</div>
+  <button type="button" class="cs-btn cs-btn-main ad-wide" id="ad-copy">제목·본문 복사하기</button>
+  <p class="ad-msg" id="ad-msg" role="status"></p>
+  <form method="post" class="cs-panel ad-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>제목<input name="title" value="{{ d.title }}" maxlength="300"></label>
+    <label>본문 <small>문단은 빈 줄로, 소제목은 ## 로 시작해요</small><textarea name="body" id="ad-body" rows="24">{{ d.body }}</textarea></label>
+    <label>출처<input name="source" value="{{ d.source }}" maxlength="2000"></label>
+    <label>상태<select name="status">{% for k, v in status.items() %}<option value="{{ k }}"{% if d.status == k %} selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+    <button class="cs-btn cs-btn-main ad-wide" type="submit">저장하기</button>
+  </form>
+  <script>
+  (function () {
+    var view = document.getElementById('ad-view');
+    view.innerHTML = view.innerHTML.replace(/\[가상[^\]]*\]/g, function (m) { return '<mark>' + m + '</mark>'; });
+    var btn = document.getElementById('ad-copy'), msg = document.getElementById('ad-msg');
+    btn.onclick = function () {
+      var body = document.getElementById('ad-body').value.replace(/^## /gm, '');
+      var t = document.querySelector('.ad-form [name=title]').value + '\n\n' + body + '\n\n' + document.querySelector('.ad-form [name=source]').value;
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { msg.textContent = '복사했어요. 신문 사이트 기사 쓰기 칸에 붙여 넣으세요.'; },
+        function () { var a = document.getElementById('ad-body'); a.focus(); a.select(); msg.textContent = '본문을 골라 뒀어요. 복사해서 붙여 넣으세요.'; });
+    };
+  })();
+  </script>
+{% endif %}
+</main>
+<style>
+.ad-list{padding:4px 0}.ad-row{display:block;padding:16px 20px;border-bottom:1px solid #F2F4F6;color:#191F28;text-decoration:none}.ad-row:last-child{border-bottom:0}
+.ad-row b{display:block;font-size:17px;margin:2px 0 4px;word-break:keep-all}.ad-row small{color:#8B95A1;font-size:13px}
+.ad-cut{display:inline-block;margin:0;font-size:13px;font-weight:700;color:#FB8800}
+.ad-back{display:inline-block;margin:0 0 12px;color:#6B7684;text-decoration:none;font-size:14px}
+.ad-note{background:#FFF3E0;border-radius:12px;padding:14px 16px;margin:0 0 14px;font-size:14px;line-height:1.6}.ad-note p{margin:4px 0 0;white-space:pre-wrap}
+.ad-view{font-size:16px;line-height:1.8;color:#333D4B;word-break:keep-all}.ad-view h2{font-size:18px;margin:24px 0 8px;color:#191F28}.ad-view p{margin:0 0 14px}
+.ad-view mark{background:#FFE58F;color:#191F28;border-radius:4px;padding:0 2px}.ad-src{font-size:13px;color:#8B95A1}
+.ad-wide{display:block;width:100%;margin:12px 0 0}.ad-msg{margin:6px 0 16px;font-size:14px;color:#4E5968;min-height:20px}
+.ad-form label{display:block;margin:0 0 14px;font-weight:700;font-size:14px;color:#4E5968}.ad-form small{font-weight:400;color:#8B95A1}
+.ad-form input,.ad-form textarea,.ad-form select{display:block;width:100%;margin-top:6px;padding:12px 14px;border:1px solid #E5E8EB;border-radius:12px;font:inherit;font-weight:400;font-size:15px;color:#191F28;box-sizing:border-box}
+.ad-form textarea{line-height:1.7;resize:vertical}
+</style>
+{% endblock %}
