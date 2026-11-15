@@ -4649,7 +4649,7 @@ class SiteTest(unittest.TestCase):
                 x = db.execute('SELECT * FROM ai_articles WHERE article_id=?', (aid,)).fetchone()
             self.assertEqual((a['status'], a['origin'], a['ext_key']), ('draft', 'ai', 'ai:reports:' + datetime.date.today().isoformat()))
             self.assertIsNone(a['published_at']); self.assertEqual(a['source_name'], '소보루 공개 제보 통계')
-            self.assertEqual(len(a['summary'].split('\n')), 3); self.assertIn('## 이렇게 대비하자', a['body'])
+            self.assertEqual(len(a['summary'].split('\n')), 3); self.assertTrue(a['body'].endswith(self.site.soboru_writer.AI_NOTE))  # 신문 기사체: 소제목·팁 목록 없이 (운영자 2026-11-15)
             self.assertEqual(x['check_ok'], 1)
             edit = admin.get(f'/admin/life/{aid}').get_data(as_text=True)
             self.assertIn('숫자 확인됨', edit); self.assertIn('AI에 넘긴 자료 보기', edit)
@@ -4894,12 +4894,26 @@ class SiteTest(unittest.TestCase):
             self.assertIn('최근 관련 뉴스(제목·요약만)', got['facts'])
             self.assertTrue(any('뉴스' in s['name'] or '·' in s['name'] for s in got['sources']))
             r = w['generate']('trend', 'daily'); self.assertEqual(r['status'], 'made')
-        prompt = [b for b in sent if b['messages'][0]['content'].startswith('너는 소보루')][-1]['messages'][1]['content']
-        self.assertIn('[분량·구성]', prompt); self.assertIn('1300~1700자', prompt); self.assertNotIn('3500~4500자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+        prompt = [b for b in sent if b['messages'][0]['content'].startswith(('너는 소보루', '너는 「소비자를위한신문」'))][-1]['messages'][1]['content']
+        self.assertIn('[분량·구성]', prompt); self.assertIn('1200~1300자', prompt); self.assertNotIn('3500~4500자', prompt); self.assertIn('최근 관련 뉴스', prompt)
+
+    def test_writer_newspaper_style(self):
+        """운영자 2026-11-15: AI 기사 틀은 모두 신문 기사체(경기일보 오민주 기자 문체), 1200~1300자, 소제목 없음, 끝에 AI 활용 표시"""
+        import soboru_writer as sw
+        out = {'title': "배달앱 '이중 가격'…\"매장보다 비싸\"", 'summary': ['하나', '둘', '셋'], 'intro': ['리드다.', '취재를 종합하면 그렇다.'],
+               'sections': [{'heading': '소제목', 'paragraphs': ['문제는 가격이다.'], 'points': [{'title': '요점', 'text': '설명이다.'}], 'terms': [{'word': '말', 'meaning': '풀이'}]}],
+               'tips': ['팁'], 'closing': {'heading': '맺음', 'paragraphs': ['관계자는 답했다.']}}
+        body = sw.assemble(out, 'news', False)[2]
+        self.assertNotIn('## ', body); self.assertNotIn('###', body); self.assertNotIn('※', body); self.assertNotIn('- 팁', body)
+        self.assertTrue(body.endswith(sw.AI_NOTE))
+        self.assertIn('경기일보 오민주', sw.SYSTEM_NEWS); self.assertIn('취재를 종합하면', sw.SYSTEM_NEWS); self.assertNotIn('매거진도 언론', sw.SYSTEM_NEWS)
+        self.assertEqual(sw.NEWS_LEN, '1200~1300')
 
     def test_writer_long_read_format(self):
         # 뉴닉 롱리드처럼: 소제목 없는 도입 → 핵심 상자 → 소제목 + 번호 요점 + 용어 풀이 → 이렇게 하세요 → 마무리 (운영자 2026-10-21)
+        # 운영자 2026-11-15부터는 신문 기사체가 기본 (test_writer_newspaper_style). 매거진 꼴은 NEWS_STYLE을 끄면 그대로
         import soboru_writer as sw
+        self.enterContext(patch.object(sw, 'NEWS_STYLE', False))
         out = {'title': '첫 신용카드, 이것부터 알아 두세요', 'summary': ['하나', '둘', '셋'], 'highlight': '결제일을 놓치면 신용점수가 떨어질 수 있어요.',
                'intro': ['처음이라는 말은 늘 설레요.', '이 글은 첫 카드를 앞둔 분께 전하고 싶은 이야기예요.'],
                'sections': [{'emoji': '💳', 'heading': '쓰면서 꼭 기억해야 할 것들', 'paragraphs': ['처음부터 습관이 중요해요.'],
@@ -4933,7 +4947,7 @@ class SiteTest(unittest.TestCase):
         fake = self.writer_ai(sent)
         def ai(url, headers, body, timeout):  # 새 기사 제목에 '외식'을 넣어 비슷한 주제로 만듦
             st, res = fake(url, headers, body, timeout)
-            if body['messages'][0]['content'].startswith('너는 소보루'):
+            if body['messages'][0]['content'].startswith(('너는 소보루', '너는 「소비자를위한신문」')):
                 out = json.loads(res['choices'][0]['message']['content']); out['title'] = '외식 물가, 요즘 얼마나 올랐을까 ' + out['title']
                 res = {'model': 'test-model', 'choices': [{'message': {'content': json.dumps(out, ensure_ascii=False)}}]}
             return st, res
@@ -5002,7 +5016,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(got['facts']['전체 물가(총지수) 1년 상승률(%)'], round(3 / 110 * 100, 1))
             self.assertEqual(len(got['facts']['달별 지수']), 13)
             r = w['generate']('stat', 'daily'); self.assertIn(r['status'], ('made', 'skip'))
-        prompts = [b['messages'][1]['content'] for b in sent if b['messages'][0]['content'].startswith('너는 소보루')]
+        prompts = [b['messages'][1]['content'] for b in sent if b['messages'][0]['content'].startswith(('너는 소보루', '너는 「소비자를위한신문」'))]
         self.assertTrue(prompts); self.assertIn('[분량·구성]', prompts[-1]); self.assertIn('쌀', prompts[-1])
 
     def test_writer_uses_luna_only(self):

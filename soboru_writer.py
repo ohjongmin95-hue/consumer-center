@@ -219,6 +219,28 @@ SYSTEM = ('너는 소보루 매거진(소비자 라이프스타일 매거진)의
           '이모지·느낌표·말 거는 질문 남발은 쓰지 않는다. 제목·소제목 끝에 마침표를 찍지 않는다.')
 
 
+# 운영자 2026-11-15: '전부다' — AI 기사 틀은 모두 매거진이 아니라 신문 기사체(경기일보 오민주 기자 문체), 1200~1300자. 소제목 없이 짧은 문단
+NEWS_STYLE = True
+NEWS_LEN = '1200~1300'
+NEWS = ('너는 「소비자를위한신문」 기자다. 신문 스트레이트·기획 기사체(경기일보 오민주 기자 문체)로 쓴다. 매거진·칼럼체가 아니다. 해요체·말 거는 질문·장면 묘사 도입·여운 있는 맺음은 쓰지 않는다.\n'
+        '[신문 기사체]\n'
+        "- title: 주체+사안 '핵심어'…\"인용 또는 수치\" 꼴(예: 경기도 '똑버스'의 배신…\"예산 수백억 쓰는데 30분 대기\"). 35자 이내. 수치·인용은 자료에 있는 것만.\n"
+        '- summary: 부제 두 줄 + 한 줄 요약. 부제는 숫자 대비 / 문제…대안 필요 식으로 명사형으로 끝낸다.\n'
+        '- 리드(intro 첫 문단) 한 문장: "~하고 있지만 정작 ~하지 못하고 있는 것으로 나타났다." 또는 "~하면서 ~에 나섰다." 꼴.\n'
+        '- 둘째 문단은 "{d}일 소비자를위한신문 취재를 종합하면,"으로 시작해 자료의 숫자를 제시한다.\n'
+        '- 문단은 모두 8~11개, 문단마다 1~3문장. 소제목은 쓰지 않는다(sections의 heading은 빈 문자열). 중간에 한 문장 전환 문단 "문제는 ~다."를 하나 넣는다.\n'
+        '- 끝맺음은 ~했다·~것으로 나타났다·~그쳤다·~셈이다·~지적이다·~전망이다·~방침이다.\n'
+        '- 숫자는 1만8천104건, 1억1천100만원, 439억원처럼 쓰고 자료 안의 숫자끼리 비율·배수로 견준다(새 계산은 하지 않는다). 연도는 첫 언급에 "지난해(2025년)"처럼 밝힌다.\n'
+        '- 마지막 문단은 해당 기업·기관의 해명이나 대책이 들어갈 자리다(reporting.answer).\n')
+SYSTEM_NEWS = (NEWS + SOURCE.replace('소보루 매거진도 언론이다', '소비자를위한신문은 언론이다').replace('매거진 기사처럼', '신문 기사로').replace('매거진 기사도 기사다', '신문 기사다')
+               + SYSTEM[SYSTEM.index('지켜야 할 것:'):SYSTEM.index('JSON 객체 하나로만')]
+               + 'JSON 객체 하나로만 답한다: {"title": 제목, "summary": [부제 두 줄과 한 줄 요약, 문자열 3개], "highlight": 가장 중요한 한 문장, '
+               '"intro": [리드 문단과 "취재를 종합하면" 문단], "sections": [{"heading": "", "paragraphs": [문단 2~3개], "points": [], "terms": []}] 2~3개, '
+               '"tips": [], "closing": {"heading": "", "paragraphs": [마지막 문단 1개]}, "category": 분야 목록 중 하나}\n'
+               '이모지·느낌표·강조 기호는 쓰지 않는다.')
+AI_NOTE = '이 기사는 공개 자료 조사와 통계 정리에 AI를 활용했습니다.'
+
+
 class Skip(Exception):
     """이 종류는 지금 만들 수 없음 (자료 없음·키 없음). 운영자에게 보여 줄 쉬운 말."""
 
@@ -372,15 +394,15 @@ def assemble(out, kind, self_on=True):
         if isinstance(paras, str): paras = re.split(r'\n\s*\n|\n', paras)
         paras = [_plain(p, hl=True) for p in paras if _plain(p)][:6]
         if not paras: continue
-        head = _plain(sec.get('heading'), 60)
+        head = '' if NEWS_STYLE else _plain(sec.get('heading'), 60)
         emo = str(sec.get('emoji') or '').strip().replace('\ufe0f', '')
         # 운영자 2026-11-05: 매거진은 기사체 — 소제목에 이모지를 붙이지 않음
         block = ('## ' + head + '\n\n' if head else '') + '\n\n'.join(paras)
-        for pt in (sec.get('points') or [])[:8]:  # '### 제목' + 설명. 번호는 화면에서 붙임 (본문에 숫자를 넣으면 숫자 검사에 걸림)
+        for pt in ([] if NEWS_STYLE else (sec.get('points') or [])[:8]):  # '### 제목' + 설명. 번호는 화면에서 붙임 (본문에 숫자를 넣으면 숫자 검사에 걸림)
             if not isinstance(pt, dict): continue
             t, x = _plain(pt.get('title'), 80), _plain(pt.get('text'), 800, hl=True)
             if t and x: block += '\n\n### ' + re.sub(r'^\s*\d+[.)]\s*', '', t) + '\n\n' + x
-        for tm in (sec.get('terms') or [])[:3]:  # '※ 낱말: 풀이' 용어 풀이
+        for tm in ([] if NEWS_STYLE else (sec.get('terms') or [])[:3]):  # '※ 낱말: 풀이' 용어 풀이
             if not isinstance(tm, dict): continue
             w, mean = _plain(tm.get('word'), 40), _plain(tm.get('meaning'), 300)
             if w and mean: block += '\n\n※ ' + w + ': ' + mean
@@ -391,13 +413,13 @@ def assemble(out, kind, self_on=True):
     tips = out.get('tips') or []
     if isinstance(tips, str): tips = tips.split('\n')
     tips = [re.sub(r'^\s*(\d+[.)]|[-•·])\s*', '', _plain(t, 300)) for t in tips if _plain(t)][:5]
-    if tips: parts.append('## 이렇게 대비하자\n' + '\n'.join('- ' + t for t in tips))
+    if tips and not NEWS_STYLE: parts.append('## 이렇게 대비하자\n' + '\n'.join('- ' + t for t in tips))
     end = out.get('closing')
     if isinstance(end, dict):
         paras = end.get('paragraphs') or []
         if isinstance(paras, str): paras = [paras]
         paras = [_plain(p) for p in paras if _plain(p)][:3]
-        if paras: parts.append('## ' + (_plain(end.get('heading'), 60) or '맺으며') + '\n\n' + '\n\n'.join(paras))
+        if paras: parts.append(('' if NEWS_STYLE else '## ' + (_plain(end.get('heading'), 60) or '맺으며') + '\n\n') + '\n\n'.join(paras))
     hl = _plain(out.get('highlight'), 200)
     # 운영자 2026-11-05: '핵심만 쏙' 상자(토스식)는 매거진에서 뺌 — highlight는 받지만 본문에 넣지 않음
     rep = out.get('reporting') if isinstance(out.get('reporting'), dict) else {}
@@ -415,6 +437,7 @@ def assemble(out, kind, self_on=True):
     if not title or not parts: raise RuntimeError('AI가 기사를 채우지 못했어요')
     cat = out.get('category') if out.get('category') in CATS else KINDS[kind]['category']
     if memo: parts.insert(0, f'{TODO} · 취재 메모] 기사가 아니라 취재 계획이에요. 취재한 뒤 기사로 다시 써 주세요.')
+    elif NEWS_STYLE: parts.append(AI_NOTE)  # 신문 기사 끝 AI 활용 표시 (네이버 제휴 규정)
     return title, '\n'.join(summary), '\n\n'.join(parts), cat
 
 
@@ -1105,6 +1128,9 @@ def install(S):
                 "소비자 제보(피해를 남기면 기업에 전달해 답을 받아 줘요), 커뮤니티(직접 사서 써 본 후기, 골라주세요 투표, 수다방), 사기 주의(돈 보내기 전에 사이트 주소·전화번호·계좌번호 검색), "
                 "법률 질문(소비자 법 궁금증), 기업 답변(기업별 제보와 소보루 등급).\n")
         # 운영자 2026-11-06: 매거진 기사는 어떤 글도 길게 쓰지 않고 1500자 정도로 (AI 값). long_form은 나중에 다시 켤 때를 위해 남겨 둠(지금은 안 씀)
+        if NEWS_STYLE and not long_form:
+            long = (f"[분량·구성] 신문 기사다. 본문은 공백 포함 {NEWS_LEN}자. 리드 한 문장 → 취재를 종합하면(숫자) → 왜 그런가(구조·제도) → 문제는 ~다 → 소비자 피해·영향 → 대안·전문가 자리 → 기업·기관 해명 자리 순서. "
+                    "지어낸 인용·전문가 말·사례 인물은 쓰지 않는다(그 자리는 reporting으로 남긴다). 같은 말을 되풀이하거나 분량을 채우려고 늘이지 않는다.\n")
         if long_form: size = ('3500~4500', '3~5', '3~5', 12000)
         else: size = (k.get('length') or '1300~1700', '2~3', '2', 5000)
         long = long.replace('{len}', size[0]).replace('{heads}', size[1]).replace('{paras}', size[2])
@@ -1114,7 +1140,8 @@ def install(S):
         else: cut_line = f"[컷] {cut}: {CUTS[cut]}. 이 컷의 시선으로 쓴다.\n"
         user = (f"[글 종류] {k['name']}: {k['about']}\n" + cut_line + (f"[주제] {topic}\n" if topic else '') + long + (SELF if self_on else '') + "[분야 목록] " + ', '.join(CATS) + "\n"
                 f"[자료]\n{json.dumps(facts, ensure_ascii=False, indent=1)}")
-        return chat(SYSTEM, user, size[3], AI_TIMEOUT * 3)
+        sysmsg = SYSTEM_NEWS.replace('{d}', str(datetime.date.today().day)) if NEWS_STYLE else SYSTEM
+        return chat(sysmsg, user, size[3], AI_TIMEOUT * 3)
 
     def long_cat(day):
         """그날 길게 쓰는 기획 기사 분야 하나 (날마다 분야를 돌아가며)"""
