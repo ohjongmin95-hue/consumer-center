@@ -243,10 +243,49 @@ def install(S):
     BODY_EMOJI = set(soboru_writer.EMOJI) | {'☕', '📨'}  # 토스페이스 글꼴에 있는 것만 이모지 칸으로
     LIFE_DEFAULT_EMOJI = ('📌', '🔍', '💬', '📊', '👀')
 
+    CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳'
+    ORDINAL = (('첫',), ('두', '둘'), ('세', '셋'), ('네', '넷'), ('다섯',), ('여섯',), ('일곱',), ('여덟',), ('아홉',), ('열',))
+    STEP_RE = re.compile(r'^(?:([%s])\s*|(\d{1,2})[.)]\s+|((?:첫|두|둘|세|셋|네|넷|다섯|여섯|일곱|여덟|아홉|열)(?:째|\s?번째))(?=[\s,.는은:]))' % CIRCLED)
+
+    def life_step(line):
+        """번호 붙은 줄(①, 1. , 1) , 첫째·두 번째…) → (번호, 글). 운영자 2026-11-15: 블로그에서 붙여 넣은 목록도 정돈된 번호 목록으로"""
+        m = STEP_RE.match(line)
+        if not m: return None
+        if m.group(1): return CIRCLED.index(m.group(1)) + 1, line[m.end():].strip()
+        if m.group(2): return int(m.group(2)), line[m.end():].strip()
+        word = m.group(3); n = next(i for i, ws in enumerate(ORDINAL) if any(word.startswith(w) for w in ws)) + 1
+        return n, line  # 첫째·첫 번째는 글 그대로 (말이 이어지게)
+
+    def life_plain_heads(text):
+        """## 없이 붙여 넣은 글(블로그 복사 등)의 소제목을 알아봄: 앞뒤가 빈 줄인 짧은 한 줄이고 문장으로 끝나지 않으면 소제목 (운영자 2026-11-15)"""
+        blocks = re.split(r'(\n\s*\n)', (text or '').strip())
+        paras = [i for i in range(0, len(blocks), 2)]
+        if sum(1 for i in paras if blocks[i].lstrip().startswith('## ')) >= 2: return text  # 이미 소제목을 쓴 글은 그대로
+        for k, i in enumerate(paras):
+            line = blocks[i].strip()
+            if k == 0 or k == len(paras) - 1 or '\n' in line: continue
+            if not (4 <= len(line) <= 40) or not re.search(r'[가-힣]', line): continue
+            if line[0] in '-※>|[#*' or life_step(line) or re.search(r'[.!?…:;,"\'”’)\]]$|[다요죠까]$', line): continue
+            nxt = blocks[paras[k + 1]].strip()
+            if len(nxt) < 15 and not life_step(nxt): continue  # 다음이 본문이어야 소제목
+            blocks[i] = '## ' + line
+        return ''.join(blocks)
+
     def life_body(text):
+        text = life_plain_heads(text)
         # 본문: 빈 줄은 문단, "## "는 소제목(앞에 이모지), "### "는 번호 붙은 요점, "※ 낱말: 풀이"는 용어 풀이, "- "는 목록, "> "는 '핵심만 쏙' 상자. HTML은 쓰지 않음.
         # 매거진처럼 (운영자 2026-10-24: 토스처럼 깔끔하게): 소제목은 큰 글씨에 작은 이모지, 이어진 용어 풀이는 상자 하나로, 소제목마다 차례용 id(s1, s2…).
         out, items, terms, n_head, check, n_point, sec = [], [], [], 0, False, 0, 0
+        steps = []  # 번호 목록: 빈 줄을 사이에 두고 이어져도 한 목록
+
+        def flush_steps():
+            if not steps: return
+            def li(n, t):
+                head, dot, rest = t.partition('. ')
+                body = (Markup('<b>%s.</b> %s') % (hl(head), hl(rest))) if dot and rest and len(head) <= 60 else hl(t)
+                return Markup('<li><span class="sb-step-n" aria-hidden="true">%d</span><p>%s</p></li>') % (n, body)
+            out.append(Markup('<ol class="sb-steps">') + Markup('').join(li(n, t) for n, t in steps) + Markup('</ol>'))
+            steps.clear()
         points = [0]  # 소제목(## )마다 요점(### ) 수
         for l in (text or '').split('\n'):
             if l.strip().startswith('## '): points.append(0)
@@ -264,8 +303,12 @@ def install(S):
             lines = [l.strip() for l in block.split('\n') if l.strip()]
             tbl = life_table(lines)
             if tbl is not None:  # 운영자 2026-11-15: | 칸 | 칸 | 으로 적으면 표로
-                flush(); out.append(tbl); continue
+                flush(); flush_steps(); out.append(tbl); continue
             for line in lines:
+                st = life_step(line)
+                if st and not line.startswith('### '):
+                    flush(); steps.append(st); continue
+                flush_steps()
                 if line.startswith('- '):
                     if terms: flush()
                     items.append(line[2:]); continue
@@ -282,7 +325,7 @@ def install(S):
                     emo, head = life_head(line, n_head)
                     n_head += 1; check = emo == '✅'
                     out.append(Markup('<h2 class="sb-h" id="s%d"><span class="sb-h-emo" aria-hidden="true">%s</span><span class="sb-h-t"><small>%02d</small>%s</span></h2>') % (n_head, emo, n_head, head))
-                elif re.fullmatch(r'\[사진 (/art/body/body-\d{14}-\d{3}\.webp|https://images\.unsplash\.com/[^\s|\]]+)(?:\s*\|\s*([^\]]*))?\]', line):
+                elif re.fullmatch(r'\[사진 (/art/body/body-\d{14}-\d{3}\.webp|https://images\.unsplash\.com/[^\s|\]]+|https://(?:[a-z0-9-]+\.)*consumertimes\.kr/[^\s|\]"<>]+)(?:\s*\|\s*([^\]]*))?\]', line):  # 신문 연동 기사 사진 (mag_feed.py)
                     # 운영자 2026-11-05: 매거진 CMS의 '본문에 사진 넣기' — [사진 주소 | 설명]
                     m = re.fullmatch(r'\[사진 (\S+)(?:\s*\|\s*([^\]]*))?\]', line); cap = (m[2] or '').strip()
                     if cap == '사진 설명': cap = ''
@@ -298,6 +341,7 @@ def install(S):
                     out.append(Markup('<aside class="sb-callout"><span class="sb-h-emo" aria-hidden="true">%s</span><div><b>%s</b><p>%s</p></div></aside>') % (emo, S.ui_text('life.callout', '핵심만 쏙'), note))
                 else: out.append(Markup('<p>%s</p>') % hl(line))
             flush()
+        flush_steps()
         return Markup('\n').join(out)
 
     def life_table(lines):
@@ -329,7 +373,7 @@ def install(S):
 
     def life_toc(text):
         # 차례: 소제목 (번호, 이모지, 제목). life_body의 id(s1, s2…)와 같은 순서
-        heads = [l.strip() for l in (text or '').split('\n') if l.strip().startswith('## ')]
+        heads = [l.strip() for l in life_plain_heads(text or '').split('\n') if l.strip().startswith('## ')]
         return [(i + 1,) + life_head(h, i) for i, h in enumerate(heads)]
 
     # ---- 이달의 기업 답변 순위 (숫자로만) ------------------------------------

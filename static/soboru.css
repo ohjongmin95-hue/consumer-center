@@ -3357,3 +3357,10 @@ main img,main video,main iframe,main table{max-width:100%}
 .sb-table td:first-child{font-weight:600;color:#191f28}
 .sb-table .sb-t-center{text-align:center}.sb-table .sb-t-right{text-align:right}
 @media (max-width:600px){.sb-table table{font-size:14px}.sb-table th,.sb-table td{padding:10px 12px}.sb-table td{min-width:96px}}
+
+/* 번호 목록 (운영자 2026-11-15: 블로그에서 붙여 넣은 ①·1.·첫째 목록도 정돈되게) */
+.sb-steps{list-style:none;margin:0 0 30px;padding:0;display:grid;gap:14px}
+.sb-steps li{display:flex;gap:12px;align-items:flex-start}
+.sb-steps .sb-step-n{flex:none;width:26px;height:26px;margin-top:3px;border-radius:50%;background:#FE9800;color:#fff;font-size:14px;font-weight:700;line-height:26px;text-align:center}
+.sb-steps p{margin:0!important;min-width:0}
+.sb-steps p b{color:#191f28;font-weight:700}
