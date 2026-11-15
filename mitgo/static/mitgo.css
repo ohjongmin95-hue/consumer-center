@@ -126,3 +126,9 @@ body.adm .card{margin:0 0 12px;padding-left:16px;padding-right:16px}
 .toprow{display:flex;align-items:center;gap:10px}.city{font-weight:800;font-size:18px;white-space:nowrap}.toprow .search{flex:1;min-width:0}.toprow .search input{padding:12px 16px;border-radius:999px}
 .tagline{margin:14px 0 0;font-size:14px;color:var(--sub)}.tagline b{color:var(--or)}
 .hero:has(.toprow){padding-top:14px}
+/* 업종 아이콘: 3D (Fluent Emoji 3D, MIT) */
+.grid8 i img,.cats i img{width:44px;height:44px;display:block}
+.cats i{background:none}.cats a.on i{background:none;box-shadow:none}.cats a.on{color:var(--or)}
+.ci{width:62%;height:62%;object-fit:contain}.pimg .ci{width:56%;height:56%}.shero .ci{width:96px;height:96px}
+.cs{width:16px;height:16px;vertical-align:-3px;margin-right:2px}
+.logo img{height:28px}

@@ -2,7 +2,7 @@
 {% block title %}내 활동 · 믿고가게{% endblock %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% macro list(rows) %}<ol class="rank plain">{% for s in rows %}{% set t = st.get(s.id) %}<li><a href="{{ url_for('store', sid=s.id) }}">
-  <span class="th">{% if s.photo %}<img src="{{ url_for('img', name=s.photo) }}" alt="">{% else %}{{ cat_emoji.get(s.cat, '🏪') }}{% endif %}</span>
+  <span class="th">{% if s.photo %}<img src="{{ url_for('img', name=s.photo) }}" alt="">{% else %}<img class="ci" src="{{ ic(s.cat) }}" alt="">{% endif %}</span>
   <span class="tx"><b>{{ s.name }}</b><small>{% if t %}<em class="star">★ {{ t.avg }}</em> · 후기 {{ t.n }} · {% endif %}{{ s.cat }}</small></span></a></li>{% endfor %}</ol>{% endmacro %}
 {% block body %}
 <section class="wrap me">
