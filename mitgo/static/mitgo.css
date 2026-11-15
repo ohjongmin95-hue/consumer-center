@@ -6,7 +6,7 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit;c
 .gnb{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
 .gnb-in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px;height:56px;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
 .logo{display:flex;align-items:center;gap:7px;font-weight:800;font-size:20px;letter-spacing:-.6px}.logo small{font-size:11px;font-weight:600;color:var(--mute);letter-spacing:0;margin-left:-2px;align-self:flex-end;margin-bottom:4px}
-.gnb nav{margin-left:auto;display:flex;gap:16px;font-size:14px;font-weight:600;color:var(--sub)}.gnb nav a.on{color:var(--fg)}
+.gnb nav{margin-left:auto;display:flex;gap:14px;white-space:nowrap;font-size:14px;font-weight:600;color:var(--sub)}.gnb nav a.on{color:var(--fg)}
 .app{max-width:640px;margin:0 auto;padding-bottom:32px}
 body.has-bar .app{padding-bottom:110px}
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -132,3 +132,5 @@ body.adm .card{margin:0 0 12px;padding-left:16px;padding-right:16px}
 .ci{width:62%;height:62%;object-fit:contain}.pimg .ci{width:56%;height:56%}.shero .ci{width:96px;height:96px}
 .cs{width:16px;height:16px;vertical-align:-3px;margin-right:2px}
 .logo img{height:28px}
+.ui{display:inline-block;vertical-align:-3px;flex:none}
+.heart .ui{width:24px;height:24px;vertical-align:middle}.heart.on{color:var(--accent,#FE9800)}

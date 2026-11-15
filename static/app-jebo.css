@@ -428,3 +428,5 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ac-more-b.ghost{background:#F2F4F6;color:#333D4B}
 .ac-more-f small{font-size:13px;line-height:19.5px;color:#8B95A1}
 .ac-blocked{color:#8B95A1}
+/* 로그인 화면 바탕 흰색 (운영자 2026-11-15) */
+body:has(.auth-page-login),.auth-page-login{background:#fff!important}

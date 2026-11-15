@@ -16,7 +16,7 @@
   </form>
 </section>
 <nav class="cats wrap" aria-label="분야">
-  <a href="{{ url_for('rank', q=q or None) }}"{% if not cat %} class="on"{% endif %}><i><img src="{{ url_for('static', filename='ic/all.webp') }}" alt=""></i>전체</a>
+  <a href="{{ url_for('rank', q=q or None) }}"{% if not cat %} class="on"{% endif %}><i><img src="{{ url_for('static', filename='ic/all.svg') }}" alt=""></i>전체</a>
   {% for name, em in cats %}<a href="{{ url_for('rank', cat=name, q=q or None) }}"{% if cat == name %} class="on"{% endif %}><i><img src="{{ ic(name) }}" alt=""></i>{{ name }}</a>{% endfor %}
 </nav>
 {% if picks and not q %}<section class="picks">
@@ -28,7 +28,7 @@
 <section class="wrap card">
   <h2>{{ area }} {{ cat or '동네 가게' }} 순위</h2>
   <p class="lead">별점과 방문 인증 후기로만 정해요. 돈을 내도 순서는 바뀌지 않아요.</p>
-  <div class="sorts">{% for k, n in sorts %}{% if k == 'near' %}<a href="#" id="near"{% if sort == 'near' %} class="on"{% endif %}>📍 {{ n }}</a>{% else %}<a href="{{ url_for('rank', cat=cat or None, q=q or None, sort=k, v=1 if only_v else None) }}"{% if sort == k %} class="on"{% endif %}>{{ n }}</a>{% endif %}{% endfor %}
+  <div class="sorts">{% for k, n in sorts %}{% if k == 'near' %}<a href="#" id="near"{% if sort == 'near' %} class="on"{% endif %}>{{ ui('pin') }} {{ n }}</a>{% else %}<a href="{{ url_for('rank', cat=cat or None, q=q or None, sort=k, v=1 if only_v else None) }}"{% if sort == k %} class="on"{% endif %}>{{ n }}</a>{% endif %}{% endfor %}
     <a href="{{ url_for('rank', cat=cat or None, q=q or None, sort=sort, v=None if only_v else 1, lat=lat, lng=lng) }}" class="tog{% if only_v %} on{% endif %}">✓ 방문 인증만</a></div>
   {% if stores %}<ol class="rank">{% for s in stores %}{{ row(s, loop.index) }}{% endfor %}</ol>
   {% else %}<p class="empty">{% if q %}'{{ q }}'에 맞는 가게가 아직 없어요.{% else %}이 분야 가게가 곧 들어와요.{% endif %}</p>{% endif %}
@@ -47,7 +47,7 @@
 {% endblock %}
 {% block script %}<script>
 document.getElementById('near').addEventListener('click',function(e){e.preventDefault();var a=this;
-if(!navigator.geolocation){a.textContent='위치를 못 써요';return}a.textContent='📍 찾는 중…';
+if(!navigator.geolocation){a.textContent='위치를 못 써요';return}a.textContent='찾는 중…';
 navigator.geolocation.getCurrentPosition(function(p){var u=new URL(location.href);u.searchParams.set('sort','near');u.searchParams.set('lat',p.coords.latitude.toFixed(5));u.searchParams.set('lng',p.coords.longitude.toFixed(5));location.href=u},
-function(){a.textContent='📍 위치를 허용해 주세요'},{timeout:8000,maximumAge:600000})});
+function(){a.textContent='위치를 허용해 주세요'},{timeout:8000,maximumAge:600000})});
 </script>{% endblock %}

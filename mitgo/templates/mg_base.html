@@ -24,7 +24,7 @@
 </head>
 <body class="{% block bodyclass %}{% endblock %}">
 {% block gnb %}<header class="gnb"><div class="gnb-in">
-  <a class="logo" href="{{ url_for('home') }}" aria-label="믿고가게 홈"><img src="{{ url_for('static', filename='wordmark.svg') }}" alt="믿고가게" height="30"><small>by SOBORU</small></a>
+  <a class="logo" href="{{ url_for('home') }}" aria-label="믿고가게 홈"><img src="{{ url_for('static', filename='wordmark.svg') }}" alt="믿고가게" height="26"><small>by SOBORU</small></a>
   <nav><a href="{{ url_for('my') }}"{% if request.endpoint == 'my' %} class="on"{% endif %}>내 활동</a><a href="{{ url_for('about') }}"{% if request.endpoint == 'about' %} class="on"{% endif %}>약속</a><a href="{{ url_for('join') }}"{% if request.endpoint == 'join' %} class="on"{% endif %}>사장님</a></nav>
 </div></header>{% endblock %}
 <main class="app">

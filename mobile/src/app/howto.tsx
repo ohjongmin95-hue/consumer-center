@@ -20,9 +20,9 @@ const STEPS: [string, string, string][] = [
   ['shield', '해결 확인', '해결됐는지 알려 주시면 마무리돼요'],
 ];
 const RELIEF: [string, string, string][] = [
-  ['1372 소비자상담센터', '전화 1372 또는 온라인으로 상담해요', 'https://www.ccn.go.kr'],
-  ['한국소비자원 피해구제', '상담 뒤 피해구제를 신청해요', 'https://www.kca.go.kr'],
-  ['소비자분쟁조정위원회', '합의가 안 되면 조정을 요청해요', 'https://www.kca.go.kr'],
+  ['1372 소비자상담센터', '전화 1372 또는 온라인으로 상담해요', 'https://www.ccn.go.kr/contents/view.ccn?gSiteCode=2&gMenuCode=3&nMenuCode=54'],
+  ['한국소비자원 피해구제', '상담 뒤 피해구제를 신청해요', 'https://www.kca.go.kr/odr/pg/ma/pgProcssInfo2.do'],
+  ['소비자분쟁조정위원회', '합의가 안 되면 조정을 신청해요', 'https://www.kca.go.kr/odr/bj/ma/bjInfo.do'],
 ];
 const FAQ: [string, string][] = [
   ['고객 연락처는 어떻게 받나요?', '고객이 기업 전달에 동의한 경우에만 이름과 연락처, 접수 내용이 사장님께 전달돼요.'],

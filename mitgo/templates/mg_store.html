@@ -10,15 +10,15 @@
 {% else %}<div class="shero"><span><img class="ci" src="{{ ic(s.cat) }}" alt=""></span></div>{% endif %}
 <section class="wrap sinfo">
   <div class="sh"><h1>{{ s.name }}</h1>
-    <form method="post" action="{{ url_for('save', sid=s.id) }}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="heart{% if saved %} on{% endif %}" aria-label="찜">{{ '♥' if saved else '♡' }}</button></form></div>
+    <form method="post" action="{{ url_for('save', sid=s.id) }}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="heart{% if saved %} on{% endif %}" aria-label="찜">{{ ui('heart', saved) }}</button></form></div>
   <p class="badges">{% if st and st.pick %}<span class="pk">믿고 갈 가게</span>{% endif %}{% if s.code %}<span class="tb">스티커 가게</span>{% endif %}</p>
   <p class="meta">{{ s.cat }}{% if s.hours %} · {{ s.hours }}{% endif %}</p>
   {% if s.tags %}<p class="tags">{% for t in s.tags.split() %}<span>#{{ t }}</span>{% endfor %}</p>{% endif %}
   {% if s.intro %}<p class="intro">{{ s.intro }}</p>{% endif %}
   <ul class="acts">
-    {% if s.addr %}<li><a href="https://map.naver.com/p/search/{{ s.addr|urlencode }}" target="_blank" rel="noopener">📍 {{ s.addr }}<span>지도 ›</span></a></li>{% endif %}
-    {% if s.phone %}<li><a href="tel:{{ s.phone }}">📞 {{ s.phone }}<span>전화 ›</span></a></li>{% endif %}
-    {% if s.reserve_url %}<li><a href="{{ s.reserve_url }}" target="_blank" rel="noopener nofollow">🗓️ 예약·웨이팅<span>예약 ›</span></a></li>{% endif %}
+    {% if s.addr %}<li><a href="https://map.naver.com/p/search/{{ s.addr|urlencode }}" target="_blank" rel="noopener">{{ ui('pin') }} {{ s.addr }}<span>지도 ›</span></a></li>{% endif %}
+    {% if s.phone %}<li><a href="tel:{{ s.phone }}">{{ ui('phone') }} {{ s.phone }}<span>전화 ›</span></a></li>{% endif %}
+    {% if s.reserve_url %}<li><a href="{{ s.reserve_url }}" target="_blank" rel="noopener nofollow">{{ ui('cal') }} 예약·웨이팅<span>예약 ›</span></a></li>{% endif %}
   </ul>
 </section>
 {% if offers %}<section class="wrap card deals">
@@ -44,7 +44,7 @@
   {% if r.body %}<p>{{ r.body }}</p>{% endif %}
   {% if r.photos %}<div class="rph">{% for p in r.photos.split('|') %}<img src="{{ url_for('img', name=p) }}" alt="" loading="lazy">{% endfor %}</div>{% endif %}
   {% if r.reply %}<div class="reply"><b>사장님 답글</b>{{ r.reply }}</div>{% endif %}
-  <div class="rfoot"><form method="post" action="{{ url_for('helpful', rid=r.id) }}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="help{% if r.id in mine %} on{% endif %}">👍 도움돼요{% if r.helpful %} {{ r.helpful }}{% endif %}</button></form>
+  <div class="rfoot"><form method="post" action="{{ url_for('helpful', rid=r.id) }}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="help{% if r.id in mine %} on{% endif %}">{{ ui('thumb') }} 도움돼요{% if r.helpful %} {{ r.helpful }}{% endif %}</button></form>
   <details class="rep"><summary>신고</summary><form method="post" action="{{ url_for('report', rid=r.id) }}"><input type="hidden" name="_csrf" value="{{ csrf() }}"><input name="reason" placeholder="어떤 점이 문제인가요? (광고, 욕설, 다른 가게 얘기 등)" maxlength="200"><button class="link">신고하기</button></form></details></div>
 </article>
 {% endfor %}

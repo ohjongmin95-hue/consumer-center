@@ -2130,3 +2130,5 @@ body:not(.sb) .ev-field .ev-txt small,.ev-field .ev-txt small{font-size:13.5px;c
 .rp-talk-go{display:flex;align-items:center;justify-content:center;height:52px;border-radius:14px;background:#8B7CF6;color:#fff;font-size:16px;font-weight:700}
 .rp-talk:hover .rp-talk-go{background:#7A6AF0}
 @media(max-width:680px){.rp-alt.rp-talk{padding:20px 16px}.rp-b{max-width:88%}}
+/* 로그인 화면 바탕 흰색 (운영자 2026-11-15) */
+body:has(.auth-page-login),body:has(.auth-page-login) main,.auth-page-login{background:#fff!important}

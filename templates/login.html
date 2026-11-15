@@ -5,7 +5,6 @@
 <main class="auth-page auth-page-login">
   {# 토스식: 큰 제목과 한 줄 설명은 카드 위, 회원가입 안내는 카드 아래 #}
   <h1 class="auth-title auth-title-out auth-title-logo"><img src="{{ asset('img/soboru-wordmark-orange.png') }}" alt="소보루" width="644" height="120"><span>{{ ui('common.login', '로그인') }}</span></h1>
-  {% if request.args.get('next', '').startswith('/report') %}<p class="auth-note">{{ ui('login.report_note', '고발하려면 먼저 로그인해 주세요. 진행 소식을 바로 알려 드려요.') }}</p>{% endif %}
   {% if enabled and 'kakao' in social_providers() %}<p class="auth-lead auth-lead-out">{{ ui('member.login_lead2', '카카오·네이버로 3초 만에 시작해요') if 'naver' in social_providers() else ui('member.login_lead', '카카오로 3초 만에 시작해요') }}</p>{% endif %}
   {# 운영자 2026-11-13: 앱은 헤이마오 账号登录 배치 그대로 (번호·인증번호 한 화면, 처음이면 바로 가입, 아래 동그라미로 카카오·네이버) #}
   {% if enabled and phone_login_ready() and app_jebo is defined and app_jebo() and not request.args.get('id') and request.method == 'GET' %}

@@ -27,7 +27,7 @@
       {% else %}<span class="fq"><span class="fs">{{ '★' * r.stars }}</span>{{ r.body|truncate(70, True, '…') }}</span>{% endif %}
       <span class="fb">{% if ph and r.body %}<span class="ft">{{ r.body|truncate(44, True, '…') }}</span>{% endif %}
         <span class="fst"><img class="cs" src="{{ ic(r.scat) }}" alt="">{{ r.sname }}{% if r.visited %} <span class="vb">방문 인증</span>{% endif %}</span>
-        <span class="fu"><span>{{ r.nick or '동네 손님' }}{% if u and u.lv %} · {{ u.lv.split(' ')[0] }}{% endif %}</span><span>👍 {{ r.helpful }}</span></span></span>
+        <span class="fu"><span>{{ r.nick or '동네 손님' }}{% if u and u.lv %} · {{ u.lv.split(' ')[0] }}{% endif %}</span><span>{{ ui('thumb') }} {{ r.helpful }}</span></span></span>
     </a>{% endfor %}</div>
   {% else %}<p class="wrap empty">첫 후기를 기다리고 있어요.</p>{% endif %}
 </section>

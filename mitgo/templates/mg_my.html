@@ -11,7 +11,7 @@
     {% if nxt %}<small>후기 {{ nxt[0] - n }}개 더 쓰면 {{ nxt[1] }}</small>{% endif %}</div>
   <p class="note">로그인 없이 이 브라우저에 저장돼요. 다른 폰에서는 따로 보여요.</p>
 </section>
-<section class="wrap card"><h2>찜한 가게</h2>{% if saved %}{{ list(saved) }}{% else %}<p class="empty">가게 화면에서 ♡를 누르면 여기 모여요.</p>{% endif %}</section>
+<section class="wrap card"><h2>찜한 가게</h2>{% if saved %}{{ list(saved) }}{% else %}<p class="empty">가게 화면에서 하트를 누르면 여기 모여요.</p>{% endif %}</section>
 <section class="wrap card"><h2>가 본 곳</h2><p class="lead">스티커를 찍은 가게예요.</p>{% if been %}{{ list(been) }}{% else %}<p class="empty">가게 스티커를 찍으면 여기 남아요.</p>{% endif %}</section>
 {% if deals %}<section class="wrap card"><h2>받은 혜택</h2>{% for d in deals %}<a class="mini" href="{{ url_for('store', sid=d.sid) }}"><div class="who"><b>{{ d.sname }}</b></div><p>{{ d.title }} · 번호 {{ d.code }}</p></a>{% endfor %}</section>{% endif %}
 <section class="wrap card"><h2>내가 쓴 후기</h2>

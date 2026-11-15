@@ -24,7 +24,22 @@ from flask import Flask, abort, flash, redirect, render_template, request, send_
 BASE = Path(__file__).parent
 CATS = [('미용', '💇'), ('세탁', '🧺'), ('운동', '🏋️'), ('수리', '🔧'), ('학원', '📚'), ('병원·약국', '🏥'), ('반려동물', '🐶'), ('그 밖의 가게', '🏪')]
 CAT_EMOJI = dict(CATS)
-CAT_IC = {'미용': 'beauty', '세탁': 'laundry', '운동': 'fitness', '수리': 'repair', '학원': 'academy', '병원·약국': 'clinic', '반려동물': 'pet', '그 밖의 가게': 'shop'}  # static/ic/*.webp: Fluent Emoji 3D (MIT)
+# 화면 작은 아이콘 (이모지 대신, currentColor 선 아이콘)
+_UI = {
+    'pin': '<path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    'phone': '<path d="M6.6 3.5h2.6l1.4 4.2-2 1.6a12 12 0 0 0 6.1 6.1l1.6-2 4.2 1.4v2.6a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z"/>',
+    'cal': '<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+    'thumb': '<path d="M7 11v9H4.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1H7zm0 0 4-7.5a2 2 0 0 1 3 1.9L13.4 9H19a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.8 20H7"/>',
+    'heart': '<path d="M12 20s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.3 4.2 4.2 0 0 1 19.5 10C19.5 15.4 12 20 12 20z"/>',
+}
+
+
+def ui_icon(name, fill=False):
+    from markupsafe import Markup
+    f = 'currentColor' if fill else 'none'
+    return Markup(f'<svg class="ui" viewBox="0 0 24 24" width="16" height="16" fill="{f}" stroke="currentColor" stroke-width="2" '
+                  f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{_UI[name]}</svg>')
+CAT_IC = {'미용': 'beauty', '세탁': 'laundry', '운동': 'fitness', '수리': 'repair', '학원': 'academy', '병원·약국': 'clinic', '반려동물': 'pet', '그 밖의 가게': 'shop'}  # static/ic/*.svg: 직접 그린 업종 아이콘
 GOOD = ['설명이 꼼꼼해요', '실력이 좋아요', '친절해요', '가격이 정직해요', '깨끗해요', '약속을 잘 지켜요', '기다림이 짧아요', '다시 갈래요']
 BAD = ['설명이 부족해요', '가격이 예상과 달라요', '기다림이 길어요', '불친절해요', '결과가 아쉬워요']
 STAR_WORD = {1: '별로였어요', 2: '아쉬웠어요', 3: '보통이에요', 4: '좋았어요', 5: '최고예요'}
@@ -751,7 +766,7 @@ def create_app(db_path=None):
         return render_template('mg_msg.html', title='찾을 수 없어요', text='주소가 바뀌었거나 내려간 가게예요.', link=url_for('home'), label='처음으로'), 404
 
     mg.jinja_env.globals.update(GOOD=GOOD, BAD=BAD, STAR_WORD=STAR_WORD,
-                                ic=lambda cat: url_for('static', filename=f"ic/{CAT_IC.get(cat, 'shop')}.webp"))
+                                ui=ui_icon, ic=lambda cat: url_for('static', filename=f"ic/{CAT_IC.get(cat, 'shop')}.svg"))
     return mg
 
 
