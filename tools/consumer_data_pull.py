@@ -15,7 +15,8 @@ import calendar, collections, datetime, json, os, re, shutil, sys, time, urllib.
 from pathlib import Path
 
 NAMES = {
-    'ccn1372': '공정거래위원회_1372 소비자상담',
+    'ccn1372': '공정거래위원회_1372 소비자상담 상술유형별 접수통계 서비스',  # 서버 키로 되는 것 확인 (2026-11-15 --scan)
+    'franchise': '공정거래위원회_가맹정보 주요 업종별 가맹점수, 개폐점률 현황 제공 서비스',
     'online': '공정거래위원회_소비자 온라인 상거래 소비자상담 내역',
     'kca_answer': '한국소비자원_소비자상담 표준답변',
 }
