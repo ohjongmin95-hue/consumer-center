@@ -71,6 +71,7 @@ del.disabled=true;del.textContent='지우는 중…'})})();</script>
       <div class="mz-toolbar" role="toolbar" aria-label="본문 도구">
         <button type="button" data-md="## ">소제목</button>
         <button type="button" data-md="- ">목록</button>
+        <button type="button" id="mz-tbl" title="| 칸 | 칸 | 으로 적으면 기사에서 표로 보여요">표</button>
         <label class="mz-tb-photo">사진 넣기<input type="file" id="mz-photo" accept="image/jpeg,image/png,image/webp" hidden></label>
         <label class="mz-tb-photo">영상 넣기<input type="file" id="mz-video" accept="video/mp4,video/quicktime,video/webm" hidden></label>
         <button type="button" class="mz-tb-ai" id="mz-ai-open" aria-controls="mz-ai">AI 도움</button>
@@ -135,6 +136,8 @@ ti.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault()
 t.addEventListener('input',function(){grow(t,Math.round(innerHeight*.6));count()});grow(t,Math.round(innerHeight*.6));count();
 function insertAt(text,lineStart){var p=t.selectionStart,v=t.value;if(lineStart){var s=v.lastIndexOf('\n',p-1)+1;t.value=v.slice(0,s)+text+v.slice(s);p+=text.length}else{t.value=v.slice(0,p)+text+v.slice(p);p+=text.length}t.focus();t.setSelectionRange(p,p);grow(t,Math.round(innerHeight*.6));count()}
 document.querySelectorAll('.mz-toolbar [data-md]').forEach(function(b){b.onclick=function(){insertAt(b.dataset.md,true)}});
+/* 운영자 2026-11-15: 표 넣기 — 마크다운 표 틀을 넣으면 기사 화면에서 표로 그려짐 (soboru.py life_table) */
+var tb=document.getElementById('mz-tbl');if(tb)tb.onclick=function(){var v=t.value,p=t.selectionStart,pre=(p&&v[p-1]!=='\n'?'\n\n':(p>1&&v[p-2]!=='\n'?'\n':''));insertAt(pre+'| 항목 | 내용 | 비고 |\n|---|---|---|\n| 칸 1 | 칸 2 | 칸 3 |\n| 칸 1 | 칸 2 | 칸 3 |\n\n')};
 function say(x){m.hidden=!x;m.textContent=x||''}
 // 운영자 2026-11-05: 사진·영상을 고르면 먼저 얼굴 가리기 창(static/mosaic.js)을 거쳐서 올라감
 var CSRF=document.querySelector('#write [name=_csrf]').value,pos=0;

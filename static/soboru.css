@@ -3347,3 +3347,13 @@ main img,main video,main iframe,main table{max-width:100%}
 .nm-end-sub{margin:16px 0 0;font-size:17px;font-weight:700;color:#fff}
 @media(max-width:900px){.nm-sub-in{grid-template-columns:minmax(0,1fr);gap:48px;padding-block:64px}.nm-sub-form{transform:none}}
 @media(max-width:600px){.nm-sub-in{padding-block:52px}.nm-sub-copy h2{font-size:30px}.nm-sub-form{padding:28px 20px 26px}.nm-end{padding-block:52px 28px!important}}
+
+/* 본문 표 (운영자 2026-11-15: 마크다운 | 칸 | 이 자동으로 표) — 토스식: 가는 선, 머리 굵게, 폰에서는 옆으로 밀어 봄 */
+.sb-table{margin:0 0 30px;overflow-x:auto;-webkit-overflow-scrolling:touch;border-top:2px solid #191f28}
+.sb-table table{width:100%;min-width:100%;border-collapse:collapse;font-size:15px;line-height:1.6;word-break:keep-all}
+.sb-table th,.sb-table td{padding:12px 14px;border-bottom:1px solid #e5e8eb;text-align:left;vertical-align:top}
+.sb-table th,.sb main .sb-table th{font-weight:700;color:#191f28;background:#f9fafb;white-space:nowrap}
+.sb-table td{color:#333d4b}
+.sb-table td:first-child{font-weight:600;color:#191f28}
+.sb-table .sb-t-center{text-align:center}.sb-table .sb-t-right{text-align:right}
+@media (max-width:600px){.sb-table table{font-size:14px}.sb-table th,.sb-table td{padding:10px 12px}.sb-table td{min-width:96px}}

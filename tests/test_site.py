@@ -2679,6 +2679,18 @@ class SiteTest(unittest.TestCase):
         page_ = admin.get('/admin/life').get_data(as_text=True)
         self.assertIn('지금 가져오기', page_); self.assertIn('· 소비자를위한신문', page_)
 
+    def test_life_body_markdown_table(self):
+        # 운영자 2026-11-15: 본문에 | 칸 | 칸 | 으로 적으면 기사 화면에서 표로
+        body = '## 2. 배송비와 추가 구매금액 비교하기\n\n다음은 가상 사례입니다.\n| 선택지 | 결제금액 | 판단 기준 |\n|---|---:|:---:|\n| 기존 상품만 구매 | 28,000원 | **배송비** 3,000원 |\n| 5,000원 상품 추가 | 30,000원 |\n\n표에서 보듯 지출이 커질 수 있습니다.'
+        with self.site.app.test_request_context('/'):
+            out = str(self.site.app.jinja_env.globals['life_body'](body))
+        self.assertIn('<div class="sb-table"', out); self.assertIn('<th>선택지</th>', out)
+        self.assertIn('<td class="sb-t-right">28,000원</td>', out); self.assertIn('<strong class="sb-hl">배송비</strong>', out)
+        self.assertIn('<td class="sb-t-center"></td>', out)  # 모자란 칸은 빈칸
+        self.assertIn('<p>다음은 가상 사례입니다.</p>', out); self.assertNotIn('|---', out)
+        self.assertIn('class="sb-h"', out)
+        self.assertNotIn('<table', str(self.site.app.jinja_env.globals['life_body']('| 그냥 | 글 |')))  # 구분선 없으면 표 아님
+
     def test_cross_site_login(self):
         self.enterContext(patch.object(self.site, 'RETIRED_HOSTS', set()))  # 예전 두 사이트 운영 때의 동작 확인 (지금 soboru.co.kr은 막혀 있음)
         # 소비자제보센터에서 가입·로그인하면 소보루에도 로그인, 로그아웃도 같이. 표는 한 번만 쓰고 다른 브라우저 상태값으론 안 됨
