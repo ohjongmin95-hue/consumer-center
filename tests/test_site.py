@@ -4897,6 +4897,18 @@ class SiteTest(unittest.TestCase):
         prompt = [b for b in sent if b['messages'][0]['content'].startswith(('너는 소보루', '너는 「소비자를위한신문」'))][-1]['messages'][1]['content']
         self.assertIn('[분량·구성]', prompt); self.assertIn('1200~1300자', prompt); self.assertNotIn('3500~4500자', prompt); self.assertIn('최근 관련 뉴스', prompt)
 
+    def test_writer_analysis_finds_new_points(self):
+        """운영자 2026-11-15: 기존 통계를 다시 계산(변화율·비중·순위·최근과 이전)해 자료에 넣고, 그걸로 새 야마를 잡게 함"""
+        import soboru_writer as sw
+        f = {'달별 건수': {'2025-01': 120, '2025-02': 130, '2025-03': 110, '2025-04': 150, '2025-05': 170, '2025-06': 200},
+             '유형별': {'환불': 500, '배송': 300, '품질': 150, '기타': 50}}
+        lines = sw.analyze(f)
+        self.assertIn('달별 건수: 2025-01 120 → 2025-06 200, 변화율 66.7%', lines)
+        self.assertIn('달별 건수: 최근 3개 평균 173.3, 그 전 3개 평균 120, 변화율 44.4%', lines)
+        self.assertIn('유형별: 합계 1,000 가운데 환불 50%(1위), 배송 30%(2위), 품질 15%(3위)', lines)
+        self.assertEqual(sw.with_analysis({'자료': '숫자 없음'}), {'자료': '숫자 없음'})
+        self.assertIn(sw.ANALYSIS_KEY, sw.with_analysis(f))
+
     def test_writer_newspaper_style(self):
         """운영자 2026-11-15: AI 기사 틀은 모두 신문 기사체(경기일보 오민주 기자 문체), 1200~1300자, 소제목 없음, 끝에 AI 활용 표시"""
         import soboru_writer as sw
