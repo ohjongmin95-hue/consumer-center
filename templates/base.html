@@ -11,7 +11,7 @@
   {% set page_title = (seo_page('title') or self.title()|trim) ~ page_tail %}{% set page_desc = (seo_page('desc') or self.description()|trim) ~ page_tail %}{% set og_pic = self.og_image()|trim %}
   <meta name="title" content="{{ page_title }}">
   <meta name="description" content="{% if seo_page('desc') %}{{ page_desc }}{% else %}{% filter trim %}{% block description %}{{ txt('seo.description') }}{% endblock %}{% endfilter %}{{ page_tail }}{% endif %}">
-  {% set mag_cat = request.args.get('category', '') if letter_alone() and request.path == '/life' else '' %}<link rel="canonical" href="{{ canonical_url() }}{% if mag_cat %}?category={{ mag_cat|urlencode }}{% endif %}{% if request.args.get('page', 1)|int > 1 %}{{ '&' if mag_cat else '?' }}page={{ request.args.get('page', 1)|int }}{% endif %}">
+  {% set mag_cat = request.args.get('category', '') if letter_alone() and request.path == '/life' else '' %}{% if letter_alone() and a is defined and a and a['origin'] == 'newspaper' and (a['source_url'] or '').startswith('https://') %}<link rel="canonical" href="{{ a['source_url'] }}">{# 신문 연동 기사: 대표 주소는 신문 원문 (검색 중복 X) #}{% else %}<link rel="canonical" href="{{ canonical_url() }}{% if mag_cat %}?category={{ mag_cat|urlencode }}{% endif %}{% if request.args.get('page', 1)|int > 1 %}{{ '&' if mag_cat else '?' }}page={{ request.args.get('page', 1)|int }}{% endif %}">{% endif %}
   <meta property="og:type" content="{% block og_type %}website{% endblock %}">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="{{ ui_text('letter.mz_title', '소보루 매거진') if letter_alone() else txt('site.name') }}">
@@ -189,5 +189,6 @@
   })();
 </script>
 {% endif %}
+{% if letter_alone() %}<script>/* 신문 사진 카드: 자를 때 사람·물건이 있는 쪽을 남김 (mag_feed.py focus) */document.querySelectorAll('img[src*="#fp="]').forEach(function(i){var m=i.getAttribute('src').match(/#fp=(\d+),(\d+)/);if(m)i.style.objectPosition=m[1]+'% '+m[2]+'%'});</script>{% endif %}
 </body>
 </html>

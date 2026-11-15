@@ -2651,7 +2651,11 @@ class SiteTest(unittest.TestCase):
 <description><![CDATA[<p>온라인 쇼핑몰 환불 지연 민원이 한 달 새 크게 늘었다. 한국소비자원은 결제 기록을 꼭 남기라고 당부했다.</p>]]></description><pubDate>Sat, 15 Nov 2026 10:00:00 +0900</pubDate></item>
 <item><title>짧은 기사</title><link>https://www.consumertimes.kr/news/articleView.html?idxno=102</link><description>짧음</description><pubDate>Sat, 15 Nov 2026 11:00:00 +0900</pubDate></item>
 </channel></rss>""".encode()
-        page = b'<html><head><meta property="og:image" content="https://www.consumertimes.kr/news/photo/202611/102_1.jpg"><meta property="og:description" content="og \xec\x84\xa4\xeb\xaa\x85\xec\x9d\xb4 \xeb\x93\xa4\xec\x96\xb4\xea\xb0\x84\xeb\x8b\xa4. \xec\x9d\xb4 \xea\xb8\xb0\xec\x82\xac\xeb\x8a\x94 \xec\xa7\xa7\xec\x9d\x80 \xec\x9a\x94\xec\x95\xbd \xeb\x8c\x80\xec\x8b\xa0 \xec\x9d\xb4 \xec\x84\xa4\xeb\xaa\x85\xec\x9d\x84 \xec\x93\xb4\xeb\x8b\xa4."></head></html>'
+        page = b'<html><head><meta property="og:image" content="https://www.consumertimes.kr/news/photo/202611/102_1.jpg"><meta property="og:description" content="og \xec\x84\xa4\xeb\xaa\x85\xec\x9d\xb4 \xeb\x93\xa4\xec\x96\xb4\xea\xb0\x84\xeb\x8b\xa4. \xec\x9d\xb4 \xea\xb8\xb0\xec\x82\xac\xeb\x8a\x94 \xec\xa7\xa7\xec\x9d\x80 \xec\x9a\x94\xec\x95\xbd \xeb\x8c\x80\xec\x8b\xa0 \xec\x9d\xb4 \xec\x84\xa4\xeb\xaa\x85\xec\x9d\x84 \xec\x93\xb4\xeb\x8b\xa4."></head><body>' + ('<article id="article-view-content-div" class="article-veiw-body"><figure><img src="/news/photo/202611/102_1.jpg"></figure>'
+            '<figure class="photo-layout"><img src="https://www.consumertimes.kr/news/photo/202611/102_2.jpg" alt=""><figcaption>매장 모습</figcaption></figure>'
+            '<p>헬스장 회원권을 판매하면서 체육시설업 신고를 하지 않은 업체가 구청에 적발됐다. 이용자들은 환불을 받지 못하고 있다.</p>'
+            '<p><strong>환불은 어떻게</strong></p><p>소비자원은 계약서와 결제 내역을 먼저 챙기라고 당부했다. 할부로 결제했다면 항변권도 쓸 수 있다.</p>'
+            '<p>홍길동 기자 hong@consumertimes.kr</p><p>저작권자 © 소비자를위한신문 무단전재 및 재배포 금지</p><script>x()</script></article></body></html>').encode()
         calls = []
         def http(url, timeout=15):
             calls.append(url)
@@ -2670,14 +2674,66 @@ class SiteTest(unittest.TestCase):
         self.assertTrue(a['published_at'].startswith('2026-11-15T10:00'))
         self.assertIn('og 설명이', b['summary'])
         self.assertEqual(ext['photo'](b['id']), 'https://www.consumertimes.kr/news/photo/202611/102_1.jpg')
-        r = self.client.get(f"/life/{a['id']}", base_url='https://soboru.co.kr')
-        self.assertEqual((r.status_code, r.headers['Location']), (302, a['source_url']))
+        # 운영자 2026-11-15: 카드를 누르면 매거진 안에서 기사 화면 (본문은 신문 기사 화면에서), 대표 주소는 원문
+        r = self.client.get(f"/life/{b['id']}", base_url='https://soboru.co.kr'); view = r.get_data(as_text=True)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('체육시설업 신고를 하지 않은', view); self.assertIn('102_2.jpg', view); self.assertIn('매장 모습', view)
+        self.assertNotIn('102_1.jpg" alt="" loading', view)  # 대표 사진은 본문에 한 번 더 넣지 않음
+        self.assertIn('환불은 어떻게</span></h2>', view); self.assertNotIn('무단전재', view); self.assertNotIn('hong@', view)
+        self.assertIn(f'<link rel="canonical" href="{b["source_url"]}">', view); self.assertIn('소비자를위한신문 ↗', view); self.assertIn('<b>NEWS</b> 소비자를위한신문', view)
+        self.assertEqual(b['category'], '생활')  # 헬스장 회원권 = 생활 (AI 키 없을 때 낱말 점수)
+        r = self.client.get(f"/life/{a['id']}", base_url='https://soboru.co.kr'); self.assertEqual(r.status_code, 200)
+        # 키가 있으면 AI가 제목·본문을 읽고 분야를 고름 (운영자: '알아서 읽고 자동으로'), 엉뚱한 답은 버림
+        seen = []
+        def pj(url, headers, body, timeout): seen.append(body['messages'][1]['content']); return 200, {'choices': [{'message': {'content': '{"category": "생활"}'}}]}
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'k'}):
+            self.assertEqual(F.ai_cat(pj, '짐박스피트니스 회원권 판매 적발', '[사진 https://x/1.jpg] 헬스장 회원권을 팔았다'), '생활')
+            self.assertNotIn('[사진', seen[0])
+            self.assertIsNone(F.ai_cat(lambda *a: (200, {'choices': [{'message': {'content': '{"category": "운동"}'}}]}), 't', 'b'))
+        self.assertEqual(F.pick_cat('짐박스피트니스, 신고도 안 하고 회원권 판매…구청 적발', '헬스장 회원권'), '생활')
         home = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
         self.assertIn('쿠팡 환불 지연', home); self.assertIn('102_1.jpg', home)  # 신문 사진이 카드에
         self.assertNotIn(f"/life/{a['id']}<", self.client.get('/sitemap.xml', base_url='https://soboru.co.kr').get_data(as_text=True))
         admin = self.login_admin()
         page_ = admin.get('/admin/life').get_data(as_text=True)
         self.assertIn('지금 가져오기', page_); self.assertIn('· 소비자를위한신문', page_)
+
+    def test_newspaper_photo_focus(self):
+        # 운영자 2026-11-15: 신문 가로 사진을 세로 카드로 자를 때 사람이 있는 쪽을 남김
+        from PIL import Image, ImageDraw
+        F = self.site.mag_feed
+        def shot(x0):
+            im = Image.new('RGB', (1200, 800), (200, 210, 220)); ImageDraw.Draw(im).ellipse((x0, 200, x0 + 250, 500), fill=(224, 172, 140))
+            b = io.BytesIO(); im.save(b, 'JPEG'); return b.getvalue()
+        self.assertLess(F.focus(shot(100))[0], 20); self.assertGreater(F.focus(shot(850))[0], 80)
+        self.assertTrue(45 <= F.focus(shot(-999))[0] <= 55)  # 아무것도 없으면 가운데
+        self.assertIsNone(F.focus(b'not an image'))
+        page = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('#fp=', page)  # base.html 스크립트
+
+    def test_life_body_pasted_blog_format(self):
+        # 운영자 2026-11-15: 블로그 글을 그대로 붙여 넣어도 소제목은 크게, ①·첫째 목록은 번호 목록으로
+        body = ('구독 서비스가 늘면서 매달 빠져나가는 돈도 커졌다. 무엇부터 봐야 할까.\n\n'
+                '⑨ 제휴 할인 종료일을 확인한다. 할인 기간이 끝나면 청구 금액이 달라질 수 있다.\n\n'
+                '⑩ 해지 완료 내역을 보관한다. 이후 결제 상태를 확인할 때 도움이 된다.\n\n'
+                '구독료를 정리하는 4단계\n\n'
+                '첫 번째는 최근 카드와 계좌 명세서를 확인하는 것이다. 지난 한두 달 동안 반복해서 청구된 항목을 찾아본다.\n\n'
+                '두 번째는 구독 서비스 목록을 만드는 것이다.\n\n'
+                '정기결제 관리에서 주의할 실수 5가지\n\n'
+                '첫째, 앱만 삭제하고 구독이 해지됐다고 생각하는 경우다.\n\n둘째, 무료 체험이 끝나는 날을 놓치는 경우다.\n\n'
+                '계산 자체는 어렵지 않습니다.\n\n마지막 문장이다.')
+        g = self.site.app.jinja_env.globals
+        with self.site.app.test_request_context('/'):
+            out = str(g['life_body'](body)); toc = g['life_toc'](body)
+        self.assertEqual(out.count('class="sb-h"'), 2); self.assertIn('구독료를 정리하는 4단계</span></h2>', out)
+        self.assertEqual([t[2] for t in toc], ['구독료를 정리하는 4단계', '정기결제 관리에서 주의할 실수 5가지'])
+        self.assertEqual(out.count('<ol class="sb-steps">'), 3)
+        self.assertIn('<span class="sb-step-n" aria-hidden="true">9</span><p><b>제휴 할인 종료일을 확인한다.</b> 할인 기간이', out)
+        self.assertIn('<span class="sb-step-n" aria-hidden="true">2</span>', out); self.assertIn('2</span><p>둘째, 무료 체험이', out)
+        self.assertIn('<p>계산 자체는 어렵지 않습니다.</p>', out)  # 문장으로 끝나면 소제목 아님
+        with self.site.app.test_request_context('/'):  # 이미 ## 소제목을 쓴 글은 손대지 않음
+            md = str(g['life_body']('## 하나\n\n본문 문장이 여기에 이어진다고 합니다.\n\n짧은 제목 같은 줄\n\n## 둘\n\n본문이다.'))
+        self.assertEqual(md.count('class="sb-h"'), 2)
 
     def test_life_body_markdown_table(self):
         # 운영자 2026-11-15: 본문에 | 칸 | 칸 | 으로 적으면 기사 화면에서 표로
