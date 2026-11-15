@@ -189,5 +189,6 @@
   })();
 </script>
 {% endif %}
+{% if letter_alone() %}<script>/* 신문 사진 카드: 자를 때 사람·물건이 있는 쪽을 남김 (mag_feed.py focus) */document.querySelectorAll('img[src*="#fp="]').forEach(function(i){var m=i.getAttribute('src').match(/#fp=(\d+),(\d+)/);if(m)i.style.objectPosition=m[1]+'% '+m[2]+'%'});</script>{% endif %}
 </body>
 </html>

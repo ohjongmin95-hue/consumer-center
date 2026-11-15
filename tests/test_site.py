@@ -2679,6 +2679,19 @@ class SiteTest(unittest.TestCase):
         page_ = admin.get('/admin/life').get_data(as_text=True)
         self.assertIn('지금 가져오기', page_); self.assertIn('· 소비자를위한신문', page_)
 
+    def test_newspaper_photo_focus(self):
+        # 운영자 2026-11-15: 신문 가로 사진을 세로 카드로 자를 때 사람이 있는 쪽을 남김
+        from PIL import Image, ImageDraw
+        F = self.site.mag_feed
+        def shot(x0):
+            im = Image.new('RGB', (1200, 800), (200, 210, 220)); ImageDraw.Draw(im).ellipse((x0, 200, x0 + 250, 500), fill=(224, 172, 140))
+            b = io.BytesIO(); im.save(b, 'JPEG'); return b.getvalue()
+        self.assertLess(F.focus(shot(100))[0], 20); self.assertGreater(F.focus(shot(850))[0], 80)
+        self.assertTrue(45 <= F.focus(shot(-999))[0] <= 55)  # 아무것도 없으면 가운데
+        self.assertIsNone(F.focus(b'not an image'))
+        page = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
+        self.assertIn('#fp=', page)  # base.html 스크립트
+
     def test_life_body_markdown_table(self):
         # 운영자 2026-11-15: 본문에 | 칸 | 칸 | 으로 적으면 기사 화면에서 표로
         body = '## 2. 배송비와 추가 구매금액 비교하기\n\n다음은 가상 사례입니다.\n| 선택지 | 결제금액 | 판단 기준 |\n|---|---:|:---:|\n| 기존 상품만 구매 | 28,000원 | **배송비** 3,000원 |\n| 5,000원 상품 추가 | 30,000원 |\n\n표에서 보듯 지출이 커질 수 있습니다.'

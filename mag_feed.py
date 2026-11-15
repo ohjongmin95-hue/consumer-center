@@ -10,6 +10,7 @@
 """
 import datetime, email.utils, html, os, re, threading, time, urllib.request
 import xml.etree.ElementTree as ET
+import io
 
 ORIGIN = 'newspaper'
 NAME = '소비자를위한신문'
@@ -87,11 +88,47 @@ def og(page):
     return meta('og:image'), meta('og:description')
 
 
+def focus(data):
+    """사진에서 세로 카드로 자를 때 가운데 둘 곳(가로 %, 세로 %). 운영자 2026-11-15: '이상하게 자르면 안 예뻐 보이니까'
+    얼굴·사람(피부색)과 글자·물건 경계가 많은 곳을 찾아 그쪽을 남김. 읽지 못하면 None(가운데)."""
+    try:
+        from PIL import Image, ImageFilter
+        im = Image.open(io.BytesIO(data)).convert('RGB')
+    except Exception:
+        return None
+    w, h = im.size
+    if not w or not h: return None
+    small = im.resize((96, max(1, round(96 * h / w))))
+    sw, sh = small.size
+    edge = list(small.convert('L').filter(ImageFilter.FIND_EDGES).getdata())
+    edge = [0 if (i % sw in (0, sw - 1) or i // sw in (0, sh - 1)) else e for i, e in enumerate(edge)]  # 필터가 테두리에 만드는 가짜 경계는 뺌
+    skin = [1 if (77 <= cb <= 127 and 133 <= cr <= 173 and y > 60) else 0 for y, cb, cr in small.convert('YCbCr').getdata()]
+    wt = [e + 90 * k for e, k in zip(edge, skin)]  # 사람 얼굴·피부를 크게 쳐 줌
+    col = [sum(wt[y * sw + x] for y in range(sh)) for x in range(sw)]
+    row = [sum(wt[y * sw:(y + 1) * sw]) for y in range(sh)]
+    def best(line, win):
+        win = max(1, min(len(line), win)); n = len(line) - win
+        if n <= 0: return 50
+        sums, run = [], sum(line[:win])
+        for i in range(n + 1):
+            if i: run += line[i + win - 1] - line[i - 1]
+            sums.append(run)
+        # 고르게 바쁜 사진(진열대 등)은 끝으로 치우치지 않게 가운데 쪽에 가산점
+        at = max(range(n + 1), key=lambda i: (sums[i] * (1 - 0.3 * abs(2 * i / n - 1)), -abs(2 * i / n - 1)))
+        return round(100 * at / n)  # object-position %: 0=왼쪽 끝, 100=오른쪽 끝
+    card = 0.8  # 매거진 카드 가로:세로 4:5
+    x = best(col, round(sh * card)) if sw / sh > card else 50
+    y = best(row, round(sw / card)) if sw / sh < card else 40
+    return max(0, min(100, x)), max(0, min(100, y))
+
+
 def install(S):
     app, conn = S.app, S.conn
     from flask import request, redirect, flash, url_for, abort
     with conn() as db:
         db.execute('CREATE TABLE IF NOT EXISTS article_photo_url(article_id INTEGER PRIMARY KEY, url TEXT NOT NULL)')
+        if 'pos' not in {r[1] for r in db.execute('PRAGMA table_info(article_photo_url)')}:
+            db.execute("ALTER TABLE article_photo_url ADD COLUMN pos TEXT NOT NULL DEFAULT ''")
     state = {'busy': False, 'last': 0.0}
     lock = threading.Lock()
 
@@ -121,7 +158,11 @@ def install(S):
                                      (it['title'], desc, desc, pick_cat(it['title'] + ' ' + desc), NAME, it['link'], 'published', ORIGIN, key, it['at'], it['at'], it['at']))
                 except Exception:
                     continue  # 같은 주소가 동시에 들어온 경우(ext_key 유일)
-                if img.startswith(('http://', 'https://')): db.execute('INSERT OR REPLACE INTO article_photo_url(article_id,url) VALUES(?,?)', (cur.lastrowid, img))
+                if img.startswith(('http://', 'https://')):
+                    c2, data = http(img, 10)
+                    f = focus(data) if c2 == 200 and data else None
+                    pos = '%d,%d' % f if f else ''
+                    db.execute('INSERT OR REPLACE INTO article_photo_url(article_id,url,pos) VALUES(?,?,?)', (cur.lastrowid, img, pos))
             n += 1
         return n
 
@@ -156,8 +197,9 @@ def install(S):
 
     def photo_url(article_id):
         with conn() as db:
-            r = db.execute('SELECT url FROM article_photo_url WHERE article_id=?', (article_id,)).fetchone()
-        return r[0] if r else ''
+            r = db.execute('SELECT url,pos FROM article_photo_url WHERE article_id=?', (article_id,)).fetchone()
+        if not r: return ''
+        return r[0] + ('#fp=' + r[1] if r[1] else '')  # 자를 곳은 주소 뒤 #fp=가로,세로 → base.html이 object-position으로
 
     @app.route('/admin/life/newspaper', methods=['POST'])
     @S.admin_only
