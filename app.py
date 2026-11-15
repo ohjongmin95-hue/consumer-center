@@ -240,6 +240,7 @@ def block_count(item,default,top=30):
     try:return min(top,max(1,int(item.get('count',''))))
     except ValueError:return default
 app.jinja_env.globals.update(menu_href=menu_href,menu_active=menu_active,block_count=block_count)
+app.jinja_env.tests['image_file']=lambda stored:os.path.splitext(stored or '')[1].lower() in ('.png','.jpg','.jpeg','.webp','.gif')  # 관리자 첨부 사진 바로 보기 (2026-11-15)
 EMPHASIS=re.compile(r'\*\*(.+?)\*\*')
 @app.template_filter('emph')
 def emph(text):
@@ -2296,6 +2297,21 @@ def report_detail(case_id):
                 db.execute('UPDATE cases SET company_id=? WHERE id=?',(found['id'],case_id));log_case(db,case_id,f"기업 연결: {found['name']}")
                 flash(f"{found['name']}에 연결했어요.")
                 (lambda m:m and flash(m))(ops_auto_forward(db,case_id))
+            elif form=='company_rename':
+                # 운영자 2026-11-15: 자동 저장된 기업 이름 고치기. 같은 이름 기업이 따로 있으면 그쪽으로 연결(중복 저장 금지)
+                name=re.sub(r'\s+',' ',request.form.get('name','')).strip()[:120]
+                linked=db.execute("SELECT * FROM companies WHERE id=? AND status IN ('active','listed')",(case['company_id'],)).fetchone() if case['company_id'] else None
+                if not linked or len(norm_company(name))<2:abort(400)
+                other=pick_company(db,None,name)
+                if other and other['id']!=linked['id']:
+                    db.execute('UPDATE cases SET company=?,company_id=? WHERE id=?',(name,other['id'],case_id));log_case(db,case_id,f"기업 연결: {other['name']} (이름 고침)")
+                    flash(f"같은 이름의 기업이 있어서 {other['name']}에 연결했어요.")
+                elif name!=linked['name']:
+                    old=linked['name'];names=[a.strip() for a in (linked['aliases'] or '').split(',') if a.strip() and norm_company(a)!=norm_company(name)]
+                    if norm_company(old)!=norm_company(name) and old not in names:names.append(old)
+                    db.execute('UPDATE companies SET name=?,aliases=? WHERE id=?',(name,', '.join(names)[:300],linked['id']))
+                    db.execute('UPDATE cases SET company=? WHERE id=?',(name,case_id));log_case(db,case_id,f"기업 이름 고침: {old} → {name}")
+                    flash(f"기업 이름을 {name}(으)로 고쳤어요.")
             elif form=='forward':
                 # 가입한 기업 담당자 화면에 보내기 (기업 전달 동의가 있는 제보만)
                 linked=db.execute("SELECT * FROM companies WHERE id=? AND status='active'",(case['company_id'],)).fetchone() if case['company_id'] else None
@@ -2562,7 +2578,14 @@ def admin_reports_contact():
 def admin_report(case_id):return report_detail(case_id)
 @app.route('/admin/file/<int:file_id>')
 @admin_area
-def admin_file(file_id):return download_file(file_id)
+def admin_file(file_id):
+    # 운영자 2026-11-15: 관리자 화면에서는 사진을 바로 보이게 (?view=1이면 사진만 화면에 띄움, 나머지는 내려받기)
+    if request.args.get('view'):
+        with conn() as db:f=db.execute('SELECT * FROM attachments WHERE id=?',(file_id,)).fetchone()
+        mime=f and {'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif'}.get(os.path.splitext(f['stored'])[1].lower())
+        if mime:
+            r=send_file(UPLOAD/f['stored'],mimetype=mime,max_age=3600);r.headers['X-Content-Type-Options']='nosniff';r.headers['Content-Security-Policy']="default-src 'none'";return r
+    return download_file(file_id)
 @app.route('/admin/invite/<int:case_id>',methods=['POST'])
 @admin_area
 def admin_invite(case_id):return make_invite(case_id)

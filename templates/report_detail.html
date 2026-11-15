@@ -20,8 +20,15 @@
         <h2>원하는 해결 방법</h2>
         <p class="cs-text">{{ case['request_text'] }}</p>
         <h2>첨부파일</h2>
-        {% for f in files %}<p id="{{ 'files' if loop.first else '' }}"><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a>{% if ep.list == 'admin_reports' and art_photo is defined and art_photo(f['stored']) and case['public_consent'] %}
-          <form method="post" action="{{ url_for('admin_report_cover', case_id=case['id']) }}" class="cs-cover"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="file_id" value="{{ 0 if f['cover'] else f['id'] }}">{% if f['cover'] %}<b class="cs-cover-on">대표 사진 공개 중</b> <button class="cs-btn">내리기</button>{% else %}<button class="cs-btn" title="개인정보(이름·번호·얼굴)가 없는지 확인한 뒤 눌러 주세요">대표 사진 공개</button>{% endif %}</form>{% endif %}</p>{% else %}<p class="cs-muted">없음</p>{% endfor %}
+        {% if ep.list == 'admin_reports' %}{# 운영자 2026-11-15: 관리자 화면에서는 사진을 크게 바로 보이게. 누르면 원본 크기로 #}
+        {% set pics = files|selectattr('stored', 'image_file')|list %}
+        {% if pics %}<div class="cs-pics"{% if files[0] in pics %} id="files"{% endif %}>{% for f in pics %}<figure class="cs-pic"><a href="{{ url_for(ep.file, file_id=f['id'], view=1) }}" target="_blank" rel="noopener"><img src="{{ url_for(ep.file, file_id=f['id'], view=1) }}" alt="{{ f['original'] }}" loading="lazy"></a>
+          <figcaption><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a>{% if art_photo is defined and art_photo(f['stored']) and case['public_consent'] %}
+          <form method="post" action="{{ url_for('admin_report_cover', case_id=case['id']) }}" class="cs-cover"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="file_id" value="{{ 0 if f['cover'] else f['id'] }}">{% if f['cover'] %}<b class="cs-cover-on">대표 사진 공개 중</b> <button class="cs-btn">내리기</button>{% else %}<button class="cs-btn" title="개인정보(이름·번호·얼굴)가 없는지 확인한 뒤 눌러 주세요">대표 사진 공개</button>{% endif %}</form>{% endif %}</figcaption></figure>{% endfor %}</div>{% endif %}
+        {% set files = files|rejectattr('stored', 'image_file')|list %}{% if pics and not files %}{% set files = None %}{% endif %}
+        {% endif %}
+        {% if files is not none %}{% for f in files %}<p id="{{ 'files' if loop.first else '' }}"><a class="cs-file" href="{{ url_for(ep.file, file_id=f['id']) }}">⬇ {{ f['original'] }}</a>{% if ep.list == 'admin_reports' and art_photo is defined and art_photo(f['stored']) and case['public_consent'] %}
+          <form method="post" action="{{ url_for('admin_report_cover', case_id=case['id']) }}" class="cs-cover"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="file_id" value="{{ 0 if f['cover'] else f['id'] }}">{% if f['cover'] %}<b class="cs-cover-on">대표 사진 공개 중</b> <button class="cs-btn">내리기</button>{% else %}<button class="cs-btn" title="개인정보(이름·번호·얼굴)가 없는지 확인한 뒤 눌러 주세요">대표 사진 공개</button>{% endif %}</form>{% endif %}</p>{% else %}<p class="cs-muted">없음</p>{% endfor %}{% endif %}
         {% if ep.list == 'admin_reports' and files %}<p class="cs-muted">대표 사진으로 고른 사진 하나만 제보 카드와 상세 화면에 보여요. 이름·전화번호·카드번호·얼굴이 보이면 고르지 마세요. 고르지 않으면 AI 일러스트가 붙어요.</p>{% endif %}
       </section>
 
@@ -217,10 +224,18 @@
       {# 2. 기업: 기업 페이지 연결, 가입 기업 전달, 답변 링크 #}
       <section class="cs-panel cs-card">
         <h2>기업 {% if linked %}<span class="cs-pill on">연결됨</span>{% else %}<span class="cs-pill">연결 전</span>{% endif %}{% if not case['share_company'] %} <span class="cs-pill off">전달 미동의</span>{% endif %}</h2>
+        {# 운영자 2026-11-13: 제보가 들어오면 업체는 자동으로 저장·연결 (같은 이름이면 그 기업에). 바꿀 때만 고르면 바로 저장, 저장 버튼 없음 #}
+        {% if linked %}<p class="co-linked"><b>{{ linked['name'] }}</b>{{ ' (가입 기업)' if linked['status'] == 'active' }}</p>
+        <p class="cs-hint">제보가 들어올 때 자동으로 저장·연결됐어요. 이 기업 페이지에 모여요.{% if linked['status'] == 'active' %}{% if case['forwarded_at'] %} 담당자 화면에 보내졌어요.{% elif case['share_company'] %} 아직 담당자 화면에는 보내지 않았어요.{% endif %}{% endif %}</p>
+        {# 운영자 2026-11-15: 자동 저장된 이름이 틀리면 바로 고침 (기업 이름 + 이 제보의 업체명, 예전 이름은 다른 이름으로 남겨 다음 제보도 붙게) #}
+        <details class="co-change" id="co-rename"><summary>이름 고치기</summary>
+          <form method="post" class="co-rename"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="company_rename">
+            <label class="cs-label" for="c-rename">기업 이름</label>
+            <input id="c-rename" name="name" maxlength="120" value="{{ linked['name'] }}" required>
+            <button class="cs-btn cs-btn-main" type="submit">이름 저장</button>
+          </form>
+        </details>{% endif %}
         <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="company">
-          {# 운영자 2026-11-13: 제보가 들어오면 업체는 자동으로 저장·연결 (같은 이름이면 그 기업에). 바꿀 때만 고르면 바로 저장, 저장 버튼 없음 #}
-          {% if linked %}<p class="co-linked"><b>{{ linked['name'] }}</b>{{ ' (가입 기업)' if linked['status'] == 'active' }}</p>
-          <p class="cs-hint">제보가 들어올 때 자동으로 저장·연결됐어요. 이 기업 페이지에 모여요.{% if linked['status'] == 'active' %}{% if case['forwarded_at'] %} 담당자 화면에 보내졌어요.{% elif case['share_company'] %} 아직 담당자 화면에는 보내지 않았어요.{% endif %}{% endif %}</p>{% endif %}
           {% if companies %}
           {% if linked %}<details class="co-change"><summary>다른 기업으로 바꾸기</summary>{% endif %}
           <label class="cs-label" for="c-company">{{ '바꿀 기업' if linked else '연결할 기업' }}</label>
