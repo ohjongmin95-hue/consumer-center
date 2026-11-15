@@ -846,7 +846,7 @@ class SiteTest(unittest.TestCase):
     def test_report_sigungu_list(self):
         # 운영자 2026-11-15: 시·군·구는 치는 대신 시/도를 고르면 목록에서 고름 (sigungu.py)
         page = self.client.get('/report').get_data(as_text=True)
-        self.assertIn('id="r-sgg"', page); self.assertIn('수원시', page); self.assertNotIn('시·군·구 (예: 강남구)', page)
+        self.assertIn('id="r-sgg"', page); self.assertIn(json.dumps('수원시')[1:-1], page); self.assertNotIn('시·군·구 (예: 강남구)', page)
         from sigungu import SIGUNGU
         self.assertEqual(len(SIGUNGU['서울']), 25); self.assertEqual(sum(len(v) for v in SIGUNGU.values()), 229)  # 기초자치단체 226 + 세종 + 제주 행정시 2
 
