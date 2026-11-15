@@ -885,7 +885,8 @@ def report():
     notify_later(cur.lastrowid,'received')
     desk_after_submit(cur.lastrowid)  # AI 기업 입장 요청서 초안 (키가 있을 때, 접수 뒤에 따로)
     triage_after_submit(cur.lastrowid)  # AI 분류(취재 검토·자동 응답)와 법률 안내 답변
-    return render_template('success.html',receipt=receipt,case_id=cur.lastrowid,has_pw=not pw_optional)
+    session['sg_cases']=(session.get('sg_cases') or [])[-4:]+[cur.lastrowid]  # 방금 쓴 고발로 1372·피해구제 신청 글을 채우게 (운영자 2026-11-15: 접수를 도와줌)
+    return render_template('success.html',receipt=receipt,case_id=cur.lastrowid,has_pw=not pw_optional,category=data['category'])
 LOOKUP_PW_MIN=4
 def pick_company(db,company_id,typed):
     # 제보자가 목록에서 고른 기업(이름이 맞을 때만), 아니면 이름·다른 이름이 똑같은 등록 기업 하나
