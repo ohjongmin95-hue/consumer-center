@@ -2,7 +2,7 @@
 
 앱(사용자 에이전트 'SoboruApp/버전 (ios|android)')으로 소비자고발제보센터 주소를 열었을 때만 바뀌고, 웹사이트는 그대로다.
 - 홈(/): 헤이마오 首页. 전체·오늘 고발 숫자 + 고발하기, 최근 기업 답변·해결 한 줄, 사기 전에 확인해 보세요(瞄一眼, /check 글),
-  함께 대응하고 있어요(集体投诉, /groups), 고발 목록 탭(인기·최신·답변 완료·해결됨).
+  함께 대응하고 있어요(集体投诉, /groups), 고발 목록 탭(최신·인기·답변 완료·해결됨).
 - 기업 순위(/companies/rank): 헤이마오 红黑榜. 업종별 2열 카드에 잘 답하는 곳·아쉬운 곳·답변 빠른 곳(回复效率).
 - 공동 대응(/groups): 모인 사람 수 순·최신 순 카드.
 이모지는 토스페이스(앱 바닥글에 출처). 버튼은 #CE6719.
@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 
 from flask import abort, redirect, render_template, request, url_for
 
-TABS = {'hot': '인기', 'new': '최신', 'answer': '답변 완료', 'done': '해결됨'}
+TABS = {'new': '최신', 'hot': '인기', 'answer': '답변 완료', 'done': '해결됨'}  # 운영자 2026-11-15: 최신이 맨 앞·기본
 RANK_TABS = {'good': '잘 답하는 곳', 'bad': '아쉬운 곳', 'fast': '답변 빠른 곳'}
 PERIODS = {'week': ('주간', 7), 'month': ('월간', 30), 'all': ('전체', 0)}
 CARD_N = 5      # 업종 카드 한 장에 보이는 기업 수
@@ -250,8 +250,8 @@ def install(S):
         return rows
 
     def app_home():
-        tab = request.args.get('t', 'hot')
-        if tab not in TABS: tab = 'hot'
+        tab = request.args.get('t', 'new')
+        if tab not in TABS: tab = 'new'
         with S.conn() as db:
             data = dict(tick=ticker(db), guides=guides(db, 5), groups=open_groups(db), news=soboru_news()[:5], news_home=NEWS_HOME)
         return render_template('app_home.html', summary=S.report_summary(), tab=tab, tabs=TABS, cases=home_list(tab), **data)
