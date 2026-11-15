@@ -415,3 +415,16 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ap-chip{padding:3px 7px;border-radius:11px;font-size:12px;line-height:18px;font-weight:600;background:#FFF3E0;color:#F57800}
 .ap-hm .ap-st{padding:3px 7px;border-radius:11px;font-size:12px;line-height:18px;font-weight:600}
 .ap-hm .ap-hc{gap:16px;font-size:13px;line-height:19.5px;color:#8B95A1}
+/* 운영자 2026-11-15 (애플 1.2): 고발 글 신고·차단 */
+.ac-more summary{cursor:pointer;font-size:15px;line-height:22.5px;font-weight:600;color:#6B7684;list-style:none}
+.ac-more summary::-webkit-details-marker{display:none}
+.ac-more summary::after{content:' ›';color:#8B95A1}
+.ac-more[open] summary{margin-bottom:12px}
+.ac-more-f{display:flex;flex-direction:column;gap:8px;margin:0 0 16px}
+.ac-more-f label{font-size:13px;line-height:19.5px;color:#6B7684;font-weight:600}
+.ac-more-f select{height:48px;border:0;border-radius:12px;background:#F2F4F6;padding:0 14px;font-size:16px;color:#191F28}
+.ac-more-b{height:48px;border:0;border-radius:12px;background:#FE9800;color:#fff;font-size:16px;font-weight:600}
+.ac-more-b:active{background:#FB8800}
+.ac-more-b.ghost{background:#F2F4F6;color:#333D4B}
+.ac-more-f small{font-size:13px;line-height:19.5px;color:#8B95A1}
+.ac-blocked{color:#8B95A1}

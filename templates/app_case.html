@@ -18,7 +18,9 @@
     <h1 class="ac-t"><em class="ac-st s{{ now_step }}">{{ pub_names()[now_step - 1] }}</em>{{ subject }}</h1>
     <div class="ac-who">{% set src = avatar_url(author['id']) if author and avatar_url is defined else '' %}<img class="ac-av" src="{{ src or soboru_av(author['id'] if author else case['id']) }}" alt="">
       <span><b>{{ author['nickname'] if author else ui('home.card_anon', '익명 소비자') }}</b><small>{{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }} {{ ui('app.started', '소보루고발에서 고발') }}</small></span></div>
-    <p class="ac-body">{{ description }}</p>
+    {% set blocked_author = case['user_id'] and case['user_id'] in blocked_ids() %}
+    {% if blocked_author %}<p class="ac-body ac-blocked">{{ ui('app.blocked_post', '차단한 사용자의 글이에요. 내 정보 > 차단한 사용자에서 풀 수 있어요.') }}</p>{% else %}
+    <p class="ac-body">{{ description }}</p>{% endif %}
     {% if photos %}<div class="ac-ph">{% for i in range(photos if photos < 3 else 3) %}<span>{{ ui('app.photo_hidden', '가려 둔 사진') }}</span>{% endfor %}</div>{% endif %}
     <p class="ac-meta">{{ ui('case.views', '조회') }} {{ '{:,}'.format(case['views'] or 0) }}{% if case['occurred_on'] %} · {{ ui('case.occurred_on', '발생일') }} {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
   </article>
@@ -45,6 +47,21 @@
     {% for a in answers %}<div class="pc-ans"><p class="pc-ans-head">{% if lg %}<img class="pc-co-av sm" src="{{ lg }}" alt="">{% endif %}<b>{{ (a['company_name'] if not case['company_hidden'] else '') or company }}</b><time>{{ a['created'][:10]|replace('-', '.') }}</time></p><p class="pc-body pc-bubble">{{ a['body'] }}</p></div>
     {% else %}<div class="pc-wait"><span class="pc-wait-dot" aria-hidden="true"></span>{{ ui('case.answer_checking_short', '기업 답변을 확인하고 있어요') if has_answer else ui('case.answer_waiting', '기업 답변을 기다리고 있어요') }}</div>{% endfor %}
   </section>
+
+  {# 운영자 2026-11-15 (애플 심사 1.2): 고발 글 신고·글쓴이 차단. 버튼 나란히 금지라 펼쳐서 위아래로 #}
+  <details class="ac-card ac-more" id="more"><summary>{{ ui('app.more_t', '이 글 신고·차단') }}</summary>
+    <form method="post" action="{{ url_for('case_flag', case_id=case['id']) }}" class="ac-more-f"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label for="flag-reason">{{ ui('app.flag_reason', '신고 이유') }}</label>
+      <select id="flag-reason" name="reason">{% for r in ['광고·스팸', '욕설·혐오 표현', '개인정보 노출', '허위 사실', '기타'] %}<option>{{ r }}</option>{% endfor %}</select>
+      <button type="submit" class="ac-more-b">{{ ui('app.flag_go', '신고하기') }}</button>
+      <small>{{ ui('app.flag_note', '운영자가 24시간 안에 확인하고, 규칙에 어긋나면 글을 내려요.') }}</small>
+    </form>
+    {% if case['user_id'] and not (g.user and case['user_id'] == g.user['id']) %}
+    <form method="post" action="{{ url_for('case_block', case_id=case['id']) }}" class="ac-more-f" onsubmit="return confirm({{ ui_text('board.block_confirm', '이 사용자를 차단할까요? 이 사용자의 글과 댓글이 보이지 않아요.')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="ac-more-b ghost">{{ ui('app.block_go', '글쓴이 차단하기') }}</button>
+      <small>{{ ui('app.block_note', '차단하면 이 사용자의 고발 글과 댓글이 나에게 보이지 않아요.') if g.user else ui('app.block_login', '차단은 로그인한 뒤에 할 수 있어요.') }}</small>
+    </form>{% endif %}
+  </details>
 
   {% if talk %}<div class="ac-card ac-talk">{% with case_id = case['id'], talk_events = events %}{% include 'case_talk.html' %}{% endwith %}</div>{% endif %}
 </main>

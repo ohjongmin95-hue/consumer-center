@@ -13,7 +13,11 @@
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "가까운 모아밥 건물을 찾을 때 지금 위치를 써요. 위치는 저장하지 않아요."
+        "NSLocationWhenInUseUsageDescription": "가까운 모아밥 건물을 찾을 때 지금 위치를 써요. 위치는 저장하지 않아요.",
+        "CFBundleDevelopmentRegion": "ko",
+        "CFBundleLocalizations": [
+          "ko"
+        ]
       }
     },
     "android": {

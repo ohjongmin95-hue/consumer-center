@@ -239,7 +239,7 @@ def menu_active(href):
 def block_count(item,default,top=30):
     try:return min(top,max(1,int(item.get('count',''))))
     except ValueError:return default
-app.jinja_env.globals.update(menu_href=menu_href,menu_active=menu_active,block_count=block_count)
+app.jinja_env.globals.update(menu_href=menu_href,menu_active=menu_active,block_count=block_count,blocked_ids=lambda:blocked_ids())
 app.jinja_env.tests['image_file']=lambda stored:os.path.splitext(stored or '')[1].lower() in ('.png','.jpg','.jpeg','.webp','.gif')  # 관리자 첨부 사진 바로 보기 (2026-11-15)
 EMPHASIS=re.compile(r'\*\*(.+?)\*\*')
 @app.template_filter('emph')
@@ -560,7 +560,7 @@ def report_rows(where='1=1',args=(),limit=20,offset=0,order='id DESC'):
     # 모든 제보를 번호·분류·단계·접수일로 보여 줌. 제목·업체명은 공개 제보(운영자가 내리지 않음)와
     # 비밀글(운영자가 숨기지 않음)에 보이고, 비밀글은 눌러도 본문 대신 비밀번호 창이 열림.
     with conn() as db:
-        rows=db.execute('SELECT id,category,industry,company,company_hidden,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE ('+where+') AND '+PUBLIC_VALID+' ORDER BY '+order+' LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
+        rows=db.execute('SELECT id,category,industry,company,company_hidden,subject,public_subject,status,created,public_consent,published,title_hidden,review,reviewed_at,forwarded_at,seen_at,confirmed_at FROM cases WHERE ('+where+') AND '+PUBLIC_VALID+not_blocked()+' ORDER BY '+order+' LIMIT ? OFFSET ?',list(args)+[limit,offset]).fetchall()
     today=datetime.date.today().isoformat()
     def when(created):
         # 오늘 들어온 제보는 시각(15:48), 그 전은 날짜(10.08)로 짧게 표시.
