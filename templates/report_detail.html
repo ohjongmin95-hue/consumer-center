@@ -283,14 +283,14 @@
         <h2>기업 안내 {% if case['seen_at'] %}<span class="cs-pill on">기업이 열어 봄 · {{ case['seen_at'][5:16]|replace('T', ' ')|replace('-', '.') }}</span>{% elif case['forwarded_at'] %}<span class="cs-pill">전달 시도</span>{% endif %}</h2>
         {% if ops.notice_block %}<p class="cs-hint">{{ ops.notice_block }}</p>
         {% else %}<form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice"><span class="cs-hint">{{ ops.company['name'] }} {% if ops.notice_to %}공식 이메일({{ ops.notice_to }}){% endif %}{% if ops.notice_to and ops.notice_phone %}과 {% endif %}{% if ops.notice_phone %}카카오톡({{ ops.notice_phone }}){% endif %}로 이 제보만 볼 수 있는 답변 링크를 보내요.</span><button class="cs-btn" type="submit" onclick="return confirm('{{ ops.company['name'] }}에 안내를 보낼까요?')">{{ '재안내 보내기' if ops.notices|selectattr('status', 'equalto', '보냄')|list else '안내 보내기' }}</button></form>{% endif %}
-        {% if ops.copy %}{# 운영자 2026-11-17: 메일이 안 되는 기업은 글·링크를 복사해 문자·카톡·게시판으로 직접 보냄. 보냈다고 기록하면 답변 기한이 시작됨. 버튼은 위아래로 #}
+        {% if ops.direct %}{# 운영자 2026-11-17: 메일이 안 되는 기업은 글·링크를 복사해 문자·카톡·게시판으로 직접 보냄. 보냈다고 기록하면 답변 기한이 시작됨. 버튼은 위아래로 #}
         <div class="kakao-send" id="kakao_send">
           <span class="cs-label">직접 보내기</span>
           <p class="cs-hint">메일이 안 되는 기업은 이 글을 복사해 문자·카톡 채널·고객센터 게시판에 붙여 넣어 보내요. 보낸 뒤 '보냈어요'를 누르면 그때부터 {{ NOTICE_ANSWER_HOURS }}시간 답변 기한이 시작돼요.</p>
-          <textarea class="cs-compose" id="kakao-text" rows="9" readonly aria-label="보낼 글">{{ ops.copy.text }}</textarea>
+          <textarea class="cs-compose" id="kakao-text" rows="9" readonly aria-label="보낼 글">{{ ops.direct.text }}</textarea>
           {% if ops.kakao %}<a class="cs-btn cs-btn-main kakao-open" href="{{ ops.kakao.chat }}" target="_blank" rel="noopener">카톡 채널 열기</a>{% endif %}
           <button class="cs-btn{{ '' if ops.kakao else ' cs-btn-main' }} kakao-copy" type="button" data-copy="#kakao-text" data-label="보낼 글 복사">보낼 글 복사</button>
-          <input type="hidden" id="answer-link" value="{{ ops.copy.link }}">
+          <input type="hidden" id="answer-link" value="{{ ops.direct.link }}">
           <button class="cs-link" type="button" data-copy="#answer-link" data-label="답변 링크만 복사">답변 링크만 복사</button>
           <form method="post" class="kakao-done"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice_manual"><input type="hidden" name="memo" value="답변 요청 글·링크를 직접 보냄 (문자·카톡·게시판)"><button class="cs-link" type="submit">보냈어요, 기록 남기기</button></form>
         </div>

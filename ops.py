@@ -157,7 +157,7 @@ def install(S):
         notices = db.execute('SELECT * FROM company_notices WHERE case_id=? ORDER BY id DESC', (case['id'],)).fetchall()
         reqs = db.execute('SELECT * FROM case_requests WHERE case_id=? ORDER BY id DESC', (case['id'],)).fetchall()
         kakao = kakao_way(db, case, company)
-        return dict(kakao=kakao, copy=request_copy(db, case, company), risks=risks(case['subject'], case['description'], case['request_text']),
+        return dict(kakao=kakao, direct=request_copy(db, case, company), risks=risks(case['subject'], case['description'], case['request_text']),
                     public_risks=risks(case['public_subject'], case['public_body'], case['public_request']) if case['public_consent'] else [],
                     dups=dups[:8], company=company, notices=notices, requests=reqs, notice_block=notice_block(db, case, company),
                     clock=answer_clocks(db, [case['id']]).get(case['id']), notice_to=notice_target(company), notice_phone=notify.mask(notice_phone(company)) if notice_phone(company) else '', files=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?', (case['id'],)).fetchone()[0])
@@ -253,7 +253,7 @@ def install(S):
         title = case['public_subject'] or S.mask_personal(case['subject'])
         gist, demand = notice_gist(db, case)
         text = (f"[소보루고발] {name} 관련 고발 글 답변 요청\n\n안녕하세요. 소비자를위한신문(소보루){' ' + reporter + ' 기자' if reporter else ''}입니다.\n"
-                f"소비자가 {name}와(과) 관련된 피해를 고발해 답변을 요청드립니다.\n\n■ 고발 글: {title}\n" + (f"■ 무슨 일이 있었나요: {gist}\n" if gist else '') + (f"■ 소비자가 원하는 것: {demand}\n" if demand else '') + f"■ 답변 기한: {deadline}\n\n"
+                f"소비자가 {name} 관련 피해를 고발해 답변을 요청드립니다.\n\n■ 고발 글: {title}\n" + (f"■ 무슨 일이 있었나요: {gist}\n" if gist else '') + (f"■ 소비자가 원하는 것: {demand}\n" if demand else '') + f"■ 답변 기한: {deadline}\n\n"
                 f"아래 링크에서 고발 글을 보고 답변해 주세요. 가입·로그인 없이 열립니다.\n{link}\n\n"
                 "기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다. 답변을 주시면 귀사 입장도 함께 싣겠습니다.")
         return dict(text=text, link=link, deadline=deadline)
