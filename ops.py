@@ -160,8 +160,54 @@ def install(S):
         return dict(kakao=kakao, risks=risks(case['subject'], case['description'], case['request_text']),
                     public_risks=risks(case['public_subject'], case['public_body'], case['public_request']) if case['public_consent'] else [],
                     dups=dups[:8], company=company, notices=notices, requests=reqs, notice_block=notice_block(db, case, company),
-                    notice_to=notice_target(company), notice_phone=notify.mask(notice_phone(company)) if notice_phone(company) else '', files=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?', (case['id'],)).fetchone()[0])
+                    clock=answer_clocks(db, [case['id']]).get(case['id']), notice_to=notice_target(company), notice_phone=notify.mask(notice_phone(company)) if notice_phone(company) else '', files=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?', (case['id'],)).fetchone()[0])
     S.ops_context = context
+
+    # ---- 기업 답변 기한 (운영자 2026-11-17: 언제 보냈는지, 기한이 얼마나 남았는지 관리자 화면에서 바로. 지나면 기사로) ----------
+    def answer_clocks(db, ids):
+        """{제보 id: {'sent': 마지막으로 보낸 때, 'due': 기한(ISO), 'due_ms': 기한(ms), 'answered': 기업 답한 때 또는 ''}}. 보낸 적 없으면 빠짐.
+        보낸 때 = 안내 메일·카톡을 보낸 때, 직접 연락 기록, 입장 요청서 전달 기록, 가입 기업 화면 전달 중 가장 늦은 것 (다시 보내면 기한도 다시)"""
+        ids = [int(i) for i in ids]
+        if not ids: return {}
+        q = ','.join('?' * len(ids))
+        sent = {}
+        for r in db.execute(f"SELECT case_id, MAX(created) t FROM company_notices WHERE case_id IN ({q}) AND (status='보냄' OR kind IN ('manual','request')) GROUP BY case_id", ids):
+            sent[r['case_id']] = r['t']
+        for r in db.execute(f"SELECT id, forwarded_at FROM cases WHERE id IN ({q}) AND COALESCE(forwarded_at,'')!=''", ids):
+            if r['forwarded_at'] > sent.get(r['id'], ''): sent[r['id']] = r['forwarded_at']
+        answered = {r['case_id']: r['t'] for r in db.execute(f"SELECT case_id, MIN(created) t FROM messages WHERE case_id IN ({q}) AND author='기업 답변' GROUP BY case_id", ids)}
+        out = {}
+        for cid, t in sent.items():
+            try: due = datetime.datetime.fromisoformat(t[:19]) + datetime.timedelta(hours=NOTICE_ANSWER_HOURS)
+            except ValueError: continue
+            a = answered.get(cid, '')
+            out[cid] = dict(sent=t[:16].replace('T', ' '), due=due.isoformat(timespec='minutes').replace('T', ' '), due_ms=int(due.timestamp() * 1000),
+                            answered=a[:16].replace('T', ' ') if a and a >= t[:19] else '', over=not (a and a >= t[:19]) and due < datetime.datetime.now())
+        return out
+    S.ops_answer_clocks = answer_clocks
+    S.app.jinja_env.globals['NOTICE_ANSWER_HOURS'] = NOTICE_ANSWER_HOURS
+
+    def article_draft(db, case):
+        """기한 안에 답이 없는 제보로 기사 초안을 만들어 관리자 > 기사 초안에 넣음 (이미 있으면 그 초안). 초안 id"""
+        key = f"case-{case['id']}"
+        old = db.execute('SELECT id FROM article_drafts WHERE key=?', (key,)).fetchone()
+        if old: return old['id']
+        clock = answer_clocks(db, [case['id']]).get(case['id'])
+        company = case['company'] or '해당 업체'
+        title = f"{company}, " + (case['public_subject'] or S.mask_personal(case['subject']))
+        when = clock['sent'][5:10].replace('-', '월 ') + '일' if clock else '[날짜]'
+        desc = S.mask_personal(case['public_body'] or case['description'] or '')
+        req = S.mask_personal(case['public_request'] or case['request_text'] or '')
+        body = (f"[취재 필요] {company}에서 {case['category']} 피해를 입었다는 소비자 고발이 나왔다.\n\n"
+                f"소비자 A씨는 \"{desc[:600]}\"고 주장했다.\n\n"
+                + (f"A씨는 \"{req[:300]}\"고 요구하고 있다.\n\n" if req else '')
+                + "[취재 필요] 관련 법·기관 설명, 비슷한 피해 사례\n\n"
+                f"본지는 {when} {company} 측에 연락을 취했으나 답변하지 않았다.")
+        did = db.execute('INSERT INTO article_drafts(key,section,cut,title,body,source,note,origin,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                         (key, '소비자의 소리', '', title[:300], body, S.canonical_url(url_for('public_case', case_id=case['id'])) if case['published'] else '',
+                          f"제보 {case['receipt']} · 기업 답변 기한 지남", f"제보 {case['receipt']}", now(), now())).lastrowid
+        S.log_case(db, case['id'], '기사 초안 만듦 (기업 답변 기한 지남)')
+        return did
 
     def kakao_way(db, case, company):
         """소보루 카톡 계정으로 기업 채널 1:1 채팅에 직접 보내기 (운영자 2026-11-16). 채널 주소가 있을 때만 {'chat': 채팅 주소, 'text': 보낼 글}"""
@@ -254,8 +300,12 @@ def install(S):
             S.log_case(db, cid, '기업 연락 기록: ' + memo[:60]); flash('연락 기록을 남겼어요.')
         elif form == 'request_done':
             handle_request(db, request.form.get('request_id', type=int), cid)
+        elif form == 'article_draft':
+            did = article_draft(db, case); db.commit()
+            flash('기사 초안을 만들었어요. [취재 필요] 자리를 채워 주세요.')
+            return redirect(url_for('admin_draft', did=did))
     S.ops_handle_form = handle_form
-    S.OPS_FORMS = ('supplement', 'return', 'notice', 'notice_manual', 'request_done')
+    S.OPS_FORMS = ('supplement', 'return', 'notice', 'notice_manual', 'request_done', 'article_draft')
 
     def send_notice(db, case, company, quiet=False, actor=None, nudge=False):
         """기업 공식 이메일로 답변 링크를 보냄 (운영자 버튼, 승인 시 자동 전달, 제보자 독촉). 보냈으면 True.
@@ -273,13 +323,13 @@ def install(S):
         token = link.rstrip('/').rsplit('/', 1)[-1]
         signup = S.canonical_url(url_for('biz_signup', case=cid, t=token)) if token else S.canonical_url(url_for('biz_signup'))
         subject = f"[{brand}] {company['name']} 관련 고발 글 답변 요청 ({deadline}까지)" + (' - 재요청' if kind == 'remind' else '')
-        hello = f"안녕하세요. {brand}{' ' + reporter + ' 기자' if reporter else ''}입니다."
+        hello = f"안녕하세요. 소비자를위한신문(소보루){' ' + reporter + ' 기자' if reporter else ''}입니다."
         why = (FOLLOWUP_LINE if nudge == 'followup' else '제보자가 아직 답변을 기다리고 있습니다.' if nudge else f"소비자가 {company['name']}와(과) 관련된 피해를 고발했습니다.")
         body = (f"{company['name']} 담당자님께,\n\n{hello}\n{why}\n\n"
                 f"■ 고발 글: {title}\n■ 분야: {case['category']}\n■ 답변 기한: {deadline}\n\n"
                 f"아래 링크에서 고발 글을 보고 답변해 주세요. 가입·로그인 없이 열리고, 이 글 하나만 볼 수 있습니다.\n{link}\n\n"
-                "기한 안에 답이 없으면 기사로 다룰 예정입니다. 답변을 주시면 귀사 입장도 함께 싣습니다.\n\n"
-                f"기업 회원은 무료입니다. 가입하면 새 고발 글을 바로 알려 드리고 한 화면에서 답할 수 있습니다.\n{signup}\n\n"
+                "기한 안에 답변이 없으시면 제보 내용에 대해 따로 밝히실 입장이 없는 것으로 보고 기사를 쓸 예정입니다. 답변을 주시면 귀사 입장도 함께 싣겠습니다.\n\n"
+                f"기업 등록은 무료입니다. 등록하면 새 고발 글을 바로 알려 드리고 한 화면에서 답할 수 있습니다.\n{signup}\n\n"
                 "고발 글은 소비자 개인의 경험과 주장입니다. 이 메일에 바로 답장하셔도 담당자가 받아 봅니다.\n\n"
                 f"이런 메일을 그만 받으려면: {optout}")
         html = render_template('company_notice_email.html', subject=subject, company=company['name'], title=title, reporter=reporter, deadline=deadline, signup=signup,
@@ -293,7 +343,7 @@ def install(S):
                 fails.append('메일: ' + str(e)[:150])
         if phone:  # 휴대폰을 넣어 두면 카카오톡 채널로도 (알림톡 템플릿 심사 전이면 문자) (운영자 2026-11-10)
             text = (f"[{brand}] {company['name']} 관련 고발 글 답변 요청\n\n{hello}\n{why}\n\n■ 고발 글: {title}\n■ 답변 기한: {deadline}\n\n"
-                    f"아래 링크에서 고발 글을 보고 답변해 주세요. 기한 안에 답이 없으면 기사로 다룰 예정입니다.\n{link}\n\n안내를 그만 받으려면: {optout}")
+                    f"아래 링크에서 고발 글을 보고 답변해 주세요. 기한 안에 답변이 없으시면 따로 밝히실 입장이 없는 것으로 보고 기사를 쓸 예정입니다.\n{link}\n\n안내를 그만 받으려면: {optout}")
             try:
                 if notify.kakao_ready('company_notice'):
                     notify.bizmsg.alimtalk(phone, notify.bizmsg.template(notify.KAKAO_TEMPLATE_ENV['company_notice']),

@@ -1,49 +1,50 @@
-{#- 기업에 가는 고발 글 답변 요청 메일 (ops.send_notice). 운영자 2026-11-17: 플랫폼답게 '소보루고발' 이름으로 짧게.
-    기자 소개 + 답변 기한(하루) + 기사화 예정 + 고발 글 보고 답변하기 링크 + 기업 회원 무료 가입. 메일 프로그램은 CSS 파일을 못 읽어서 칸마다 직접 씀 -#}
+{#- 기업에 가는 고발 글 답변 요청 메일 (ops.send_notice). 운영자 2026-11-17: 플랫폼답게 '소보루고발' 이름으로 짧게, 토스 메일처럼.
+    흰 바탕 · 큰 제목 · 줄 목록 · 꽉 찬 버튼. 기자 소개 + 답변 기한(하루) + 기사화 예정 + 기업 회원 무료 가입.
+    메일 프로그램은 CSS 파일을 못 읽어서 칸마다 직접 씀 -#}
 {%- set F = "font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;" -%}
-{%- set ACC = '#FE9800' -%}
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>{{ subject }}</title></head>
-<body style="margin:0;padding:0;background:#f2f4f6;word-break:keep-all;">
+<body style="margin:0;padding:0;background:#ffffff;word-break:keep-all;">
 <div style="display:none;max-height:0;overflow:hidden;">{{ company }} 관련 고발 글이 올라왔어요. {{ deadline }}까지 답변해 주세요.</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f2f4f6;"><tr><td align="center" style="padding:28px 12px;">
-<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:#ffffff;border-radius:24px;">
-  <tr><td style="padding:30px 28px 0;{{ F }}"><img src="{{ canonical_url(url_for('static', filename='img/soboru-gobal-logo.png')) }}" width="132" alt="소보루고발" style="display:block;width:132px;height:auto;border:0;"></td></tr>
-  <tr><td style="padding:26px 28px 0;{{ F }}">
-    <span style="display:inline-block;background:#FFF3E0;color:#E57A00;font-size:13px;font-weight:700;padding:3px 7px;border-radius:11px;">{{ '제보자 추가 의견' if nudge == 'followup' else '답변을 기다리고 있어요' if nudge else ('답변 재요청' if remind else '답변 요청') }}</span>
-    <h1 style="margin:14px 0 12px;font-size:22px;line-height:31px;font-weight:700;color:#191f28;">{{ company }}에 대한<br>고발 글이 올라왔어요</h1>
-    <p style="margin:0;font-size:15px;line-height:24px;color:#4e5968;">담당자님, 안녕하세요. 소보루고발{% if reporter %} {{ reporter }} 기자{% endif %}입니다. {% if nudge == 'followup' %}제보자가 귀사 답변을 보고 추가 의견을 남겼어요.{% elif nudge %}제보자가 아직 답변을 기다리고 있어요.{% else %}소비자가 귀사와 관련된 피해를 고발했어요.{% endif %} 내용을 확인하고 <b style="color:#191f28;">{{ deadline }}까지</b> 답변해 주세요.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;"><tr><td align="center" style="padding:24px 0 0;">
+<table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:480px;">
+  <tr><td style="padding:0;{{ F }}"><img src="{{ canonical_url(url_for('static', filename='img/mail-request-banner.png')) }}" width="480" alt="소보루고발 · 고발 글 답변 요청 안내" style="display:block;width:100%;max-width:480px;height:auto;border:0;"></td></tr>
+  <tr><td style="padding:36px 24px 0;{{ F }}">
+    <p style="margin:0 0 8px;font-size:15px;line-height:22px;font-weight:700;color:#E57A00;">{{ '제보자가 추가 의견을 남겼어요' if nudge == 'followup' else '제보자가 답변을 기다리고 있어요' if nudge else ('답변 재요청' if remind else '답변 요청') }}</p>
+    <h1 style="margin:0;font-size:26px;line-height:35px;font-weight:700;color:#191f28;">{{ company }}에 대한<br>고발 글이 올라왔어요</h1>
+    <p style="margin:16px 0 0;font-size:17px;line-height:26px;color:#4e5968;">안녕하세요. 소비자를위한신문(소보루){% if reporter %} {{ reporter }} 기자{% endif %}입니다. 내용을 확인하시고 <b style="color:#191f28;">{{ deadline }}까지</b> 답변 부탁드려요.</p>
   </td></tr>
-  <tr><td style="padding:22px 28px 0;{{ F }}">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f9fafb;border-radius:16px;">
-      <tr><td style="padding:18px 18px 4px;{{ F }}"><p style="margin:0;font-size:16px;line-height:1.5;font-weight:700;color:#191f28;">{{ title }}</p></td></tr>
+  <tr><td style="padding:32px 24px 0;{{ F }}">
+    <p style="margin:0 0 4px;font-size:13px;line-height:19px;color:#8b95a1;">고발 글</p>
+    <p style="margin:0;font-size:17px;line-height:26px;font-weight:700;color:#191f28;">{{ title }}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;border-top:1px solid #f2f4f6;">
       {% for k, v, hot in [('분야', category, False), ('올라온 날', created, False), ('답변 기한', deadline, True)] %}
-      <tr><td style="padding:{{ '10px' if loop.first else '4px' }} 18px {{ '18px' if loop.last else '4px' }};{{ F }}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="font-size:14px;color:#8b95a1;{{ F }}">{{ k }}</td><td align="right" style="font-size:14px;font-weight:700;color:{{ '#E57A00' if hot else '#333d4b' }};{{ F }}">{{ v }}</td></tr></table></td></tr>
+      <tr><td style="padding:14px 0;border-bottom:1px solid #f2f4f6;font-size:15px;line-height:22px;color:#6b7684;{{ F }}">{{ k }}</td><td align="right" style="padding:14px 0;border-bottom:1px solid #f2f4f6;font-size:15px;line-height:22px;font-weight:700;color:{{ '#E57A00' if hot else '#333d4b' }};{{ F }}">{{ v }}</td></tr>
       {% endfor %}
     </table>
   </td></tr>
-  <tr><td style="padding:20px 28px 0;{{ F }}">
-    <a href="{{ link }}" style="display:block;text-align:center;background:{{ ACC }};color:#ffffff;font-size:17px;font-weight:700;text-decoration:none;padding:16px 20px;border-radius:16px;">고발 글 보고 답변하기</a>
-    <p style="margin:10px 0 0;text-align:center;font-size:13px;color:#8b95a1;">가입·로그인 없이 바로 열려요. 이 링크로는 이 글 하나만 볼 수 있어요.</p>
+  <tr><td style="padding:32px 24px 0;{{ F }}">
+    <a href="{{ link }}" style="display:block;text-align:center;background:#FE9800;color:#ffffff;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;padding:16px 20px;border-radius:16px;">고발 글 보고 답변하기</a>
+    <p style="margin:12px 0 0;text-align:center;font-size:13px;line-height:19px;color:#8b95a1;">가입·로그인 없이 바로 열려요</p>
   </td></tr>
-  <tr><td style="padding:22px 28px 0;{{ F }}">
-    <p style="margin:0;font-size:15px;line-height:24px;color:#4e5968;"><b style="color:#191f28;">기한 안에 답이 없으면 기사로 다룰 예정이에요.</b> 답변을 주시면 귀사 입장도 함께 실어요.</p>
+  <tr><td style="padding:32px 24px 0;{{ F }}">
+    <p style="margin:0;font-size:15px;line-height:24px;color:#6b7684;">기한 안에 답변이 없으시면 제보 내용에 대해 따로 밝히실 입장이 없는 것으로 보고 기사를 쓸 예정이에요. 답변을 주시면 귀사 입장도 함께 싣겠습니다.</p>
   </td></tr>
-  <tr><td style="padding:28px 28px 28px;{{ F }}">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFF3E0;border-radius:20px;"><tr><td style="padding:22px 20px 20px;{{ F }}">
-      <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#E57A00;">기업 회원 · 무료</p>
-      <p style="margin:0 0 16px;font-size:20px;line-height:29px;font-weight:700;color:#191f28;">고발 글, 놓치지 말고<br>먼저 답하세요</p>
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-        <tr><td width="30" valign="top" style="padding:0 0 10px;{{ F }}"><span style="display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:10px;background:#FE9800;color:#ffffff;font-size:12px;font-weight:800;">&#10003;</span></td><td valign="top" style="padding:0 0 10px;font-size:15px;line-height:20px;color:#333d4b;{{ F }}">새 고발 글이 올라오면 바로 알려 드려요</td></tr>
-        <tr><td width="30" valign="top" style="padding:0 0 10px;{{ F }}"><span style="display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:10px;background:#FE9800;color:#ffffff;font-size:12px;font-weight:800;">&#10003;</span></td><td valign="top" style="padding:0 0 10px;font-size:15px;line-height:20px;color:#333d4b;{{ F }}">모든 고발 글을 한 화면에서 보고 답해요</td></tr>
-        <tr><td width="30" valign="top" style="padding:0 0 10px;{{ F }}"><span style="display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:10px;background:#FE9800;color:#ffffff;font-size:12px;font-weight:800;">&#10003;</span></td><td valign="top" style="padding:0 0 10px;font-size:15px;line-height:20px;color:#333d4b;{{ F }}">빠르게 답할수록 기업 순위가 올라가요</td></tr>
-      </table>
-      <a href="{{ signup }}" style="display:block;margin-top:8px;text-align:center;background:#ffffff;color:#E57A00;font-size:16px;font-weight:700;text-decoration:none;padding:14px 16px;border-radius:14px;">기업 회원 무료 가입하기</a>
-    </td></tr></table>
+  <tr><td style="padding:40px 0 0;"><div style="height:12px;background:#f2f4f6;line-height:12px;font-size:0;">&nbsp;</div></td></tr>
+  <tr><td style="padding:32px 24px 0;{{ F }}">
+    <p style="margin:0 0 4px;font-size:15px;line-height:22px;font-weight:700;color:#E57A00;">기업 등록 · 무료</p>
+    <p style="margin:0 0 20px;font-size:22px;line-height:31px;font-weight:700;color:#191f28;">고발 글, 놓치지 말고<br>먼저 답하세요</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+      {% for t in ['새 고발 글이 올라오면 바로 알려 드려요', '모든 고발 글을 한 화면에서 보고 답해요', '빠르게 답할수록 기업 순위가 올라가요'] %}
+      <tr><td width="32" valign="top" style="padding:0 0 14px;{{ F }}"><span style="display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:10px;background:#FFF3E0;color:#FE9800;font-size:12px;font-weight:800;">&#10003;</span></td><td valign="top" style="padding:0 0 14px;font-size:15px;line-height:20px;color:#333d4b;{{ F }}">{{ t }}</td></tr>
+      {% endfor %}
+    </table>
+    <a href="{{ signup }}" style="display:block;margin-top:6px;text-align:center;background:#FFF3E0;color:#E57A00;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;padding:16px 20px;border-radius:16px;">무료로 기업 등록하기</a>
+  </td></tr>
+  <tr><td style="padding:48px 24px 40px;{{ F }}">
+    <p style="margin:0;font-size:13px;line-height:19px;font-weight:700;color:#8b95a1;">소비자를위한신문(소보루)</p>
+    <p style="margin:6px 0 0;font-size:12px;line-height:18px;"><a href="{{ optout }}" style="color:#b0b8c1;">수신 거부</a></p>
   </td></tr>
 </table>
-<p style="margin:18px 0 0;{{ F }}font-size:13px;font-weight:700;color:#8b95a1;">소비자를위한신문</p>
-<p style="margin:6px 0 0;{{ F }}font-size:11px;"><a href="{{ optout }}" style="color:#b0b8c1;">수신 거부</a></p>
 </td></tr></table>
 </body></html>

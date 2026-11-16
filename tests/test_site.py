@@ -4459,7 +4459,7 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, path, {'form': 'notice'})
         sent = [m for m in mails if m[0] == 'cs@notice-shop.example']
         self.assertEqual(len(sent), 1)
-        self.assertIn('기사로 다룰 예정', sent[0][2]); self.assertIn('/biz/signup?case=', sent[0][2])  # 운영자 2026-11-17: 소보루고발 이름, 하루 기한, 기업 회원 무료 가입
+        self.assertIn('기사를 쓸 예정', sent[0][2]); self.assertIn('/biz/signup?case=', sent[0][2])  # 운영자 2026-11-17: 소보루고발 이름, 하루 기한, 기업 회원 무료 가입
         self.assertIn('고발 글 보고 답변하기', sent[0][3]); self.assertIn('/company/optout/', sent[0][3])  # 꾸민 HTML 메일도 함께
         link = re.search(r'http://localhost(/company/\d+/\S+)', sent[0][2])[1]
         optout = re.search(r'http://localhost(/company/optout/\S+)', sent[0][2])[1]
