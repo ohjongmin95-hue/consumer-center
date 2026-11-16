@@ -254,6 +254,19 @@ def install(S):
         # 소보루 등급 기준 공개 페이지 (BBB처럼 무엇으로 매기는지 그대로 보여 줌)
         return render_template('company_grade.html',cuts=GRADE_CUTS,pts=GRADE_PTS,speed=GRADE_SPEED,words=GRADE_WORDS,days=ANSWER_DAYS,years=GRADE_YEARS,min_n=MIN_N)
 
+    def popular_companies():
+        # 운영자 2026-11-16: 제보 화면에 자주 찾는 기업을 바로 고르게 (헤이마오식). 이름 목록은 관리자 화면 문구 'report.co_popular'에서 고침
+        out=[]
+        try:
+            with conn() as db:
+                for name in [n.strip() for n in S.ui_text('report.co_popular','쿠팡,배달의민족,네이버,11번가,G마켓,무신사,당근,토스,SK텔레콤,KT,LG유플러스,야놀자').split(',') if n.strip()][:16]:
+                    hit=[c for c in search(db,name,3) if norm(c['name'])==norm(name)]
+                    c=hit[0] if hit else None
+                    out.append({'id':c['id'] if c else '','name':c['name'] if c else name,'member':bool(c and c['status']=='active'),'contact':bool(c and (c['official_email'] or ('notice_phone' in c.keys() and c['notice_phone'])))})
+        except Exception as e:print('자주 찾는 기업을 못 불러왔어요:',e)
+        return out
+    app.jinja_env.globals['popular_companies']=popular_companies
+
     @app.route('/companies/suggest')
     def companies_suggest():
         q=request.args.get('q','').strip()[:60]
