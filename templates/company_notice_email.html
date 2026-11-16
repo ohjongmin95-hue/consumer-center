@@ -11,10 +11,10 @@
   <tr><td style="padding:0;background:#191F28;"><img src="{{ canonical_url(url_for('static', filename='img/mail-request-head.png')) }}" width="480" alt="소보루고발 · 취재 요청" style="display:block;width:100%;max-width:480px;height:auto;border:0;"></td></tr>
   <tr><td style="padding:40px 24px 0;{{ F }}">
     <p style="margin:0 0 8px;font-size:15px;line-height:22px;font-weight:700;color:#E57A00;">{{ '제보자 추가 의견' if nudge == 'followup' else '답변 재요청' if (nudge or remind) else '답변 요청' }}</p>
-    <h1 style="margin:0;font-size:26px;line-height:35px;font-weight:700;color:#191f28;">{{ company }}에 대한<br>고발 글이 올라왔습니다</h1>
-    <p style="margin:16px 0 0;font-size:16px;line-height:26px;color:#333d4b;">안녕하세요.<br>소비자를위한신문(소보루){% if reporter %} {{ reporter }} 기자{% endif %}입니다.<br>아래 고발 내용을 확인하시고<br><b style="color:#191f28;">{{ deadline }}까지</b> 답변 부탁드립니다.</p>
+    <h1 style="margin:0;font-size:26px;line-height:35px;font-weight:700;color:#191f28;"><span style="color:#E57A00;">{{ company }}</span>에 대한<br>고발 글이 올라왔습니다</h1>
+    <p style="margin:16px 0 0;font-size:16px;line-height:26px;color:#333d4b;">안녕하세요.<br>소비자를위한신문(소보루){% if reporter %} {{ reporter }} 기자{% endif %}입니다.<br>아래 고발 내용을 확인하시고<br><b style="color:#E57A00;">{{ deadline }}까지</b> 답변 부탁드립니다.</p>
     {# 운영자 2026-11-17: 기사 작성 안내는 위에서 먼저 알림 #}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;background:#f2f4f6;border-radius:16px;"><tr><td style="padding:16px 18px;{{ F }}">
-      <p style="margin:0;font-size:15px;line-height:24px;color:#191f28;"><b>기한 안에 답변이 없으시면</b><br>제보된 고발 내용을 인정하시고<br>따로 밝히실 입장이 없는 것으로 보고<br>기사를 작성할 예정입니다.<br>답변을 주시면 귀사 입장도 함께 싣겠습니다.</p>
+      <p style="margin:0;font-size:15px;line-height:24px;color:#191f28;"><b style="color:#E57A00;">기한 안에 답변이 없으시면</b><br>제보된 고발 내용을 인정하시고<br>따로 밝히실 입장이 없는 것으로 보고<br>기사를 작성할 예정입니다.<br>답변을 주시면 귀사 입장도 함께 싣겠습니다.</p>
     </td></tr></table>
   </td></tr>
   <tr><td style="padding:32px 24px 0;{{ F }}">
@@ -25,11 +25,11 @@
       {% if demand %}<p style="margin:0 0 4px;font-size:14px;line-height:21px;font-weight:700;color:#4e5968;">소비자 요구</p><p style="margin:0 0 14px;font-size:16px;line-height:25px;color:#191f28;">{{ demand }}</p>{% endif %}
     </td></tr></table>{% endif %}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px;">
-      <tr><td style="padding:14px 0;border-bottom:1px solid #e5e8eb;font-size:15px;line-height:22px;color:#4e5968;{{ F }}">답변 기한</td><td align="right" style="padding:14px 0;border-bottom:1px solid #e5e8eb;font-size:15px;line-height:22px;font-weight:700;color:#191f28;{{ F }}">{{ deadline }}</td></tr>
+      <tr><td style="padding:14px 0;border-bottom:1px solid #e5e8eb;font-size:15px;line-height:22px;color:#4e5968;{{ F }}">답변 기한</td><td align="right" style="padding:14px 0;border-bottom:1px solid #e5e8eb;font-size:15px;line-height:22px;font-weight:700;color:#E57A00;{{ F }}">{{ deadline }}</td></tr>
     </table>
   </td></tr>
   <tr><td style="padding:32px 24px 0;{{ F }}">
-    <a href="{{ link }}" style="display:block;text-align:center;background:#191F28;color:#ffffff;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;padding:16px 20px;border-radius:16px;">고발 글 보고 답변하기</a>
+    <a href="{{ link }}" style="display:block;text-align:center;background:#FE9800;color:#ffffff;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;padding:16px 20px;border-radius:16px;">고발 글 보고 답변하기</a>
     <p style="margin:12px 0 0;text-align:center;font-size:14px;line-height:21px;color:#6b7684;">가입·로그인 없이 바로 열립니다</p>
   </td></tr>
   <tr><td style="padding:32px 24px 0;{{ F }}">
