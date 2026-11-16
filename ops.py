@@ -364,7 +364,7 @@ def install(S):
                 f"■ 고발 글: {title}\n" + (f"■ 무슨 일이 있었나요: {gist}\n" if gist else '') + (f"■ 소비자가 원하는 것: {demand}\n" if demand else '') + f"■ 답변 기한: {deadline}\n\n"
                 f"아래 링크에서 고발 글을 보고 답변해 주세요. 가입·로그인 없이 열리고, 이 글 하나만 볼 수 있습니다.\n{link}\n\n"
                 "기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다. 답변을 주시면 귀사 입장도 함께 싣겠습니다.\n\n"
-                f"기업 등록은 무료입니다. 등록하시면 새 고발 글을 바로 알려 드리고 한 화면에서 모아 답하실 수 있습니다.\n{signup}\n\n"
+                f"소보루고발 기업 등록은 무료예요. 새 고발 글을 바로 알려 드리고, 한 화면에서 모아 답할 수 있어요.\n{signup}\n\n"
                 "이 메일에 회신하시면 담당 기자가 받습니다.")
         html = render_template('company_notice_email.html', subject=subject, company=company['name'], title=title, reporter=reporter, deadline=deadline, signup=signup, gist=gist, demand=demand,
                                category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind')
