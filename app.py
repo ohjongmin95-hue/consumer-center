@@ -85,7 +85,9 @@ with conn() as db:
     db.execute("UPDATE site_content SET value=REPLACE(value,'4층(역삼동, 정송빌딩)','4층 401호') WHERE key='operator.address'")
     db.execute("UPDATE cases SET status='기업 답변 도착' WHERE status='조정 진행'")
     db.execute("DELETE FROM site_content WHERE key='status.n5' AND value='조정 진행'")
-    db.execute("DELETE FROM site_content WHERE key='seo.home_title' AND value='소보루(SOBORU)'")  # 2026-10-28 SEO: 검색 결과 제목에 무엇을 하는 곳인지 함께
+    db.execute("DELETE FROM site_content WHERE key='seo.home_title' AND value='소보루(SOBORU)'")
+    # 2026-11-16 네이버: '소비자고발제보센터' 검색에 첫 화면이 대표로 나오도록 예전 기본 제목·설명·이용안내 설명을 새 기본값으로
+    db.execute("DELETE FROM site_content WHERE (key='jebo.home_title' AND value IN ('소비자고발제보센터 - 소비자 피해 제보·고발','소비자고발제보센터')) OR (key='jebo.description' AND value='환불 거부, 배송 지연, 불량품 같은 소비자 피해를 제보하고 업체 답변과 처리 과정을 확인하세요. 다른 소비자의 피해 사례도 볼 수 있어요.') OR (key IN ('ui:guide.desc','jebo:ui:guide.desc') AND value LIKE '소비자고발제보센터 이용 방법%')")  # 2026-10-28 SEO: 검색 결과 제목에 무엇을 하는 곳인지 함께
     db.execute("DELETE FROM site_content WHERE (key='seo.home_title' AND value='소비자제보센터') OR (key='seo.description' AND value='소비자 피해 제보와 처리 과정 확인, 업체 답변까지 한곳에서. 환불·배송·불량 피해를 제보하세요.')")
     db.execute("CREATE TABLE IF NOT EXISTS takedown_requests(id INTEGER PRIMARY KEY,requester TEXT NOT NULL,contact TEXT NOT NULL,target TEXT NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT '접수',admin_note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL)")
 TAKEDOWN_STATUSES=['접수','검토 중','임시 비공개','비공개 처리','기각','처리 완료']
