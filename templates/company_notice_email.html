@@ -21,14 +21,12 @@
       </td></tr></table>
   </td></tr>
   <tr><td style="padding:32px 24px 0;{{ F }}">
-    <p style="margin:0 0 4px;font-size:14px;line-height:21px;font-weight:700;color:#4e5968;">고발 글</p>
-    <p style="margin:0;font-size:17px;line-height:26px;font-weight:700;color:#191f28;">{{ title }}</p>
-    {% if gist or demand %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;background:#f2f4f6;border-radius:16px;"><tr><td style="padding:20px 20px 6px;{{ F }}">
-      {% if gist %}<p style="margin:0 0 4px;font-size:14px;line-height:21px;font-weight:700;color:#4e5968;">고발 내용</p><p style="margin:0 0 14px;font-size:16px;line-height:25px;color:#191f28;">{{ gist }}</p>{% endif %}
-      {% if demand %}<p style="margin:0 0 4px;font-size:14px;line-height:21px;font-weight:700;color:#4e5968;">소비자 요구</p><p style="margin:0 0 14px;font-size:16px;line-height:25px;color:#191f28;">{{ demand }}</p>{% endif %}
-    </td></tr></table>{% endif %}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px;">
-      <tr><td style="padding:14px 0;border-bottom:1px solid #e5e8eb;font-size:15px;line-height:22px;color:#4e5968;{{ F }}">답변 기한</td><td align="right" style="padding:14px 0;border-bottom:1px solid #e5e8eb;font-size:15px;line-height:22px;font-weight:700;color:#E57A00;{{ F }}">{{ deadline }}</td></tr>
+    {# 운영자 2026-11-17: 회색 상자는 힘없다 해서 토스 영수증식 줄 목록으로 #}<p style="margin:0;font-size:18px;line-height:27px;font-weight:700;color:#191f28;">고발 내용</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:4px;border-top:2px solid #191f28;">
+      <tr><td style="padding:16px 0;border-bottom:1px solid #e5e8eb;{{ F }}"><p style="margin:0 0 4px;font-size:14px;line-height:21px;color:#6b7684;">고발 글</p><p style="margin:0;font-size:16px;line-height:25px;color:#191f28;font-weight:700;">{{ title }}</p></td></tr>
+      {% if gist %}      <tr><td style="padding:16px 0;border-bottom:1px solid #e5e8eb;{{ F }}"><p style="margin:0 0 4px;font-size:14px;line-height:21px;color:#6b7684;">무슨 일이 있었나요</p><p style="margin:0;font-size:16px;line-height:25px;color:#191f28;">{{ gist }}</p></td></tr>{% endif %}
+      {% if demand %}      <tr><td style="padding:16px 0;border-bottom:1px solid #e5e8eb;{{ F }}"><p style="margin:0 0 4px;font-size:14px;line-height:21px;color:#6b7684;">소비자가 원하는 것</p><p style="margin:0;font-size:16px;line-height:25px;color:#191f28;">{{ demand }}</p></td></tr>{% endif %}
+      <tr><td style="padding:16px 0;border-bottom:1px solid #e5e8eb;{{ F }}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:14px;line-height:21px;color:#6b7684;{{ F }}">답변 기한</td><td align="right" style="font-size:16px;line-height:22px;font-weight:700;color:#E57A00;{{ F }}">{{ deadline }}</td></tr></table></td></tr>
     </table>
   </td></tr>
   <tr><td style="padding:32px 24px 0;{{ F }}">
