@@ -919,7 +919,7 @@ def link_all_cases():
         with conn() as db:
             for r in db.execute("SELECT id,company FROM cases WHERE company_id IS NULL AND company!='' ORDER BY id").fetchall():link_company(db,r['id'],r['company'])
     except Exception as e:print('제보 기업 연결을 못 했어요:',e)
-STATUS_ALERT=('기업 답변 도착','종결')
+STATUS_ALERT=('기업 답변 도착',)  # 운영자 2026-11-16: '완료·평가'(종결)는 내부 단계라 제보자에게 알리지 않음
 def notify_later(case_id,event):
     # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 새 제보면 운영자에게도. 설정이 없으면 아무것도 안 함.
     link=url_for('lookup',_external=True)
