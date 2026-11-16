@@ -2351,17 +2351,14 @@ html.flow-lock { overflow: hidden; }
 .field select::-ms-expand { display: none; }
 /* 고발 대상 기업 고르기 (헤이마오식): 검색 칸 + 자주 찾는 기업 + 직접 등록 */
 .co-pick .co-search { position: relative; display: block !important; margin: 0 !important; }
-.co-pick .co-search svg { position: absolute; left: 16px; top: 50%; width: 20px; height: 20px; margin-top: -10px; color: #8B95A1; pointer-events: none; }
-.co-pick .co-search input { padding-left: 46px !important; }
+.co-pick .co-search input { padding-right: 54px !important; }
+.co-pick .co-open { position: absolute; right: 6px; top: 50%; width: 44px; height: 44px; margin-top: -22px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: none; color: #8B95A1; cursor: pointer; }
+.co-pick .co-open svg { width: 20px; height: 20px; transition: transform .15s; }
+.co-pick .co-open[aria-expanded="true"] svg { transform: rotate(180deg); }
+.co-pick .co-open:active { background: #F2F4F6; }
+.co-suggest li.co-head { padding: 8px 12px 4px; font-size: 13px; font-weight: 600; color: #8B95A1; cursor: default; }
+.co-suggest li.co-head:hover { background: none; }
 .co-pick .co-suggest { top: calc(100% + 6px); }
-.co-pop { margin: 12px 0 0; }
-.co-pop > span { display: block; font-size: 13px; font-weight: 600; color: #6B7684; margin-bottom: 8px; }
-.co-pop ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.co-pop button { display: inline-flex; align-items: center; gap: 4px; padding: 8px 14px; border: 0; border-radius: 999px; background: #F2F4F6; color: #333D4B; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-.co-pop button:active { background: #E5E8EB; }
-.co-pop button.is-on { background: #FFF3E0; color: #E57A00; box-shadow: inset 0 0 0 1.5px #FE9800; }
-.co-pop button i { width: 6px; height: 6px; border-radius: 50%; background: #FE9800; }
 .co-picked { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; padding: 12px 14px; border-radius: 12px; background: #FFF8EE; font-size: 14px; color: #4E5968; line-height: 1.5; }
 .co-picked b { color: #191F28; }
 .co-picked svg { flex: none; width: 22px; height: 22px; }
-.co-direct { display: inline-block; margin-top: 12px; padding: 0; border: 0; background: none; color: #E57A00; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }

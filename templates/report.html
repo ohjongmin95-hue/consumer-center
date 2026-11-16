@@ -27,12 +27,11 @@
       <div class="field"><label for="r-industry">{{ ui('report.f_industry', '업종') }} <small>*</small></label><select id="r-industry" name="industry" required><option value="">{{ ui('report.f_industry_pick', '업종을 골라 주세요') }}</option>{% for x in industries %}<option value="{{ x.name }}"{% if request.form.get('industry') == x.name %} selected{% endif %}>{{ x.name }}{% if x.examples %} — {{ x.examples }}{% endif %}</option>{% endfor %}</select>{{ ed_list('report_industries') }}</div>
       <div class="field"><label for="r-category">{{ ui('report.f_category', '제보 유형') }} <small>*</small></label><select id="r-category" name="category" required><option value="">{{ ui('report.f_category_pick', '선택해 주세요') }}</option>{% for x in categories %}<option {% if request.form.get('category', request.args.get('category')) == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
       <div class="field co-pick">{# 운영자 2026-11-16: 헤이마오식 고발 대상. 검색해서 고르거나, 자주 찾는 기업을 누르거나, 없으면 직접 등록 #}<label for="r-company">{{ ui('report.f_company2', '고발할 기업') }} <small>*</small></label>
-        <div class="co-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L20 20" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg><input id="r-company" name="company" maxlength="120" required autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="r-company-list" placeholder="{{ ui('report.f_company_ph2', '기업 이름으로 찾기 (예: 쿠팡, 배민)') }}" value="{{ request.form.get('company','') }}"><ul class="co-suggest" id="r-company-list" role="listbox" hidden></ul></div>
+        <div class="co-search"><input id="r-company" name="company" maxlength="120" required autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="r-company-list" placeholder="{{ ui('report.f_company_ph3', '기업 이름을 적어 주세요 (예: 쿠팡)') }}" value="{{ request.form.get('company','') }}"><button type="button" class="co-open" id="r-company-open" aria-label="{{ ui('report.co_open', '기업 목록 펼치기') }}" aria-controls="r-company-list" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><ul class="co-suggest" id="r-company-list" role="listbox" hidden></ul></div>
+        <script type="application/json" id="r-company-pops">{{ popular_companies()|tojson }}</script>
         <input type="hidden" name="company_id" value="{{ request.form.get('company_id','') }}">
         <p class="co-picked" id="r-company-chip" hidden></p>
-        {% set pops = popular_companies() %}{% if pops %}<div class="co-pop" id="r-company-pop"><span>{{ ui('report.co_pop', '자주 찾는 기업') }}</span><ul>{% for c in pops %}<li><button type="button" data-co-id="{{ c.id }}" data-co-name="{{ c.name }}" data-co-member="{{ 1 if c.member else '' }}" data-co-contact="{{ 1 if c.contact else '' }}">{% if c.member %}<i aria-hidden="true"></i>{% endif %}{{ c.name }}</button></li>{% endfor %}</ul></div>{% endif %}
-        <button type="button" class="co-direct" id="r-company-direct">{{ ui('report.co_direct', '찾는 기업이 없어요. 직접 등록하기') }} ›</button>
-        <p class="hint">{{ ui('report.f_company_hint4', '홈페이지 주소 말고 상호를 적어 주세요.') }}</p></div>
+        <p class="hint">{{ ui('report.f_company_hint5', '직접 적거나, 화살표를 눌러 찾아서 골라요.') }}</p></div>
       <div class="field"><label for="r-occurred">{{ ui('report.f_occurred', '피해가 일어난 날') }}</label><input id="r-occurred" name="occurred_on" type="date" max="{{ today }}" value="{{ request.form.get('occurred_on','') }}"><p class="hint">{{ ui('report.f_occurred_hint', '정확하지 않으면 비워 두셔도 돼요.') }}</p></div>
       <div class="field"><label for="r-subject">{{ ui('report.f_subject', '제보 제목') }} <small>*</small></label><input id="r-subject" name="subject" maxlength="160" required placeholder="{{ ui('report.f_subject_ph', '피해 내용을 한 줄로 요약해 주세요') }}" value="{{ request.form.get('subject','') }}"></div>
       <div class="field"><label for="r-description">{{ ui('report.f_description', '피해 내용') }} <small>*</small></label><textarea id="r-description" name="description" maxlength="6000" required placeholder="{{ ui('report.f_description_ph', '구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요') }}">{{ request.form.get('description','') }}</textarea></div>
@@ -126,36 +125,28 @@
       var sp = chip.querySelector('span'), b = document.createElement('b'); b.textContent = c.name; sp.appendChild(b); sp.appendChild(document.createTextNode(' \u00b7 ' + line));
       chip.hidden = false;
     }
-    var pops = document.querySelectorAll('#r-company-pop button');
-    function popOn(name) { Array.prototype.forEach.call(pops, function (p) { p.classList.toggle('is-on', p.dataset.coName === name); }); }
-    Array.prototype.forEach.call(pops, function (p) {
-      p.addEventListener('click', function () {
-        var c = { id: p.dataset.coId, name: p.dataset.coName, member: !!p.dataset.coMember, contact: !!p.dataset.coContact };
-        input.value = c.name; hidden.value = c.id; close(); popOn(c.name); showChip(c.id ? c : { name: c.name, direct: true });
-      });
-    });
-    var direct = document.getElementById('r-company-direct');
-    if (direct) direct.addEventListener('click', function () {
-      hidden.value = ''; popOn(''); close();
-      if (input.value.trim()) showChip({ name: input.value.trim(), direct: true });
-      else { input.placeholder = '{{ ui('report.co_direct_ph', '기업 이름을 그대로 적어 주세요') }}'; showChip(null); }
-      input.focus();
-    });
-    function close() { list.hidden = true; input.setAttribute('aria-expanded', 'false'); cur = -1; }
+    var pops = []; try { pops = JSON.parse(document.getElementById('r-company-pops').textContent) || []; } catch (e) {}
+    var opener = document.getElementById('r-company-open');
+    function close() { list.hidden = true; input.setAttribute('aria-expanded', 'false'); if (opener) opener.setAttribute('aria-expanded', 'false'); cur = -1; }
     function pick(i) {
       var c = items[i]; if (!c) return;
-      if (c.add) { hidden.value = ''; popOn(''); showChip({ name: c.name, direct: true }); close(); return; }
-      input.value = c.name; hidden.value = c.id; popOn(c.name); showChip(c); close();
+      if (c.add) { hidden.value = ''; showChip({ name: c.name, direct: true }); close(); return; }
+      input.value = c.name; hidden.value = c.id || ''; showChip(c.id ? c : null); close();
     }
-    function mark() { Array.prototype.forEach.call(list.children, function (li, i) { li.setAttribute('aria-selected', i === cur ? 'true' : 'false'); }); }
+    function mark() { Array.prototype.forEach.call(list.querySelectorAll('[role=option]'), function (li, i) { li.setAttribute('aria-selected', i === cur ? 'true' : 'false'); }); }
     input.addEventListener('input', function () {
-      hidden.value = ''; showChip(null); popOn(''); clearTimeout(timer);
+      hidden.value = ''; showChip(null); clearTimeout(timer);
       var q = input.value.trim();
       if (!q) { close(); return; }
       timer = setTimeout(function () {
         fetch('{{ url_for('companies_suggest') }}?q=' + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (rows) {
-          var exact = rows.some(function (c) { return c.name.replace(/\s/g, '') === q.replace(/\s/g, ''); });
-          items = exact ? rows : rows.concat([{ add: true, name: q }]); list.innerHTML = '';
+          render(rows);
+        }).catch(close);
+      }, 180);
+    });
+    function render(rows, head) {
+          items = rows; list.innerHTML = '';
+          if (head) { var h = document.createElement('li'); h.className = 'co-head'; h.setAttribute('role', 'presentation'); h.textContent = head; list.appendChild(h); }
           items.forEach(function (c, i) {
             var li = document.createElement('li'); li.setAttribute('role', 'option'); li.id = 'r-co-' + i;
             if (c.add) {
@@ -172,10 +163,18 @@
             li.addEventListener('mousedown', function (e) { e.preventDefault(); pick(i); });
             list.appendChild(li);
           });
-          list.hidden = !items.length; input.setAttribute('aria-expanded', items.length ? 'true' : 'false'); cur = -1;
-        }).catch(close);
-      }, 180);
-    });
+          list.hidden = !items.length; input.setAttribute('aria-expanded', items.length ? 'true' : 'false'); if (opener) opener.setAttribute('aria-expanded', items.length ? 'true' : 'false'); cur = -1;
+    }
+    // 오른쪽 화살표: 자주 찾는 기업 목록을 펼침 (글자가 있으면 그 이름으로 찾음)
+    if (opener) {
+      opener.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      opener.addEventListener('click', function () {
+        if (!list.hidden) { close(); return; }
+        var q = input.value.trim();
+        if (q && !hidden.value) { input.dispatchEvent(new Event('input')); return; }
+        render(pops, '{{ ui('report.co_pop', '자주 찾는 기업') }}'); input.focus();
+      });
+    }
     input.addEventListener('keydown', function (e) {
       if (list.hidden) return;
       if (e.key === 'ArrowDown') { cur = Math.min(cur + 1, items.length - 1); mark(); e.preventDefault(); }

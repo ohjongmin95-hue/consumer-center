@@ -259,7 +259,7 @@ def install(S):
         out=[]
         try:
             with conn() as db:
-                for name in [n.strip() for n in S.ui_text('report.co_popular','쿠팡,배달의민족,네이버,11번가,G마켓,무신사,당근,토스,SK텔레콤,KT,LG유플러스,야놀자').split(',') if n.strip()][:16]:
+                for name in [n.strip() for n in S.ui_text('report.co_popular','쿠팡,배달의민족,쿠팡이츠,요기요,네이버,11번가,G마켓,옥션,SSG닷컴,무신사,컬리,올리브영,알리익스프레스,테무,당근,번개장터,야놀자,여기어때,토스,카카오,SK텔레콤,KT,LG유플러스,삼성전자,LG전자,대한항공').split(',') if n.strip()][:40]:
                     hit=[c for c in search(db,name,3) if norm(c['name'])==norm(name)]
                     c=hit[0] if hit else None
                     out.append({'id':c['id'] if c else '','name':c['name'] if c else name,'member':bool(c and c['status']=='active'),'contact':bool(c and (c['official_email'] or ('notice_phone' in c.keys() and c['notice_phone'])))})
