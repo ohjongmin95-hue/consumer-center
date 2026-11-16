@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% from 'status_macros.html' import steps %}
-{% block title %}{{ subject }}{% if company and not case['company_hidden'] and company not in subject %} - {{ company }} 소비자 제보{% endif %} | {{ txt('site.name') }}{% endblock %}
+{#- 운영자 2026-11-16 (헤이마오식 검색 노출): 제목을 기업 이름으로 시작 'KT 위약금 부당 청구 고발'. 업체명 숨기기면 제목만 -#}
+{% block title %}{% if company and not case['company_hidden'] %}{{ company }} {{ subject[company|length:]|trim if subject.startswith(company) else subject }}{% else %}{{ subject }}{% endif %}{% if '고발' not in subject %} 고발{% endif %} | {{ txt('site.name') }}{% endblock %}
 {% block description %}{% if company and not case['company_hidden'] %}{{ company }} {{ category }} 소비자 제보. {% endif %}{{ description|truncate(130, True, '…') }}{% endblock %}
 {% block og_type %}article{% endblock %}
 {% block og_image %}{{ og_photo(case['id']) }}{% endblock %}

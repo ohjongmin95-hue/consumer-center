@@ -28,7 +28,7 @@ PUBLIC_STEPS=['제보 접수','운영자 검토','기업 전달 시도','기업 
 MY_STEPS=[('접수','제보가 들어왔어요'),('검토','소보루가 내용을 살펴보고 있어요'),('기업 전달','기업에 제보를 전했어요'),('기업 답변·처리','기업이 답하고 해결하고 있어요'),('완료·평가','결과를 확인하고 평가해 주세요')]
 PUB_STAGES=['접수','처리 중','종결']
 MY_COLOR=[1,2,3,5,6];PUB_COLOR=[1,5,6]
-STATUS_MY={'접수':1,'검토 중':2,'추가 확인':2,'기업 답변 대기':3,'기업 답변 도착':4,'종결':5}
+STATUS_MY={'접수':1,'검토 중':2,'추가 확인':2,'연락 시도 중':3,'기업 답변 대기':3,'기업 답변 도착':4,'종결':5}
 # 소보루 등급 (BBB처럼 A+~F): 최근 3년, 기업에 전달된 확인된 제보로 매김. 기준은 /companies/grade에 공개
 ANSWER_DAYS=14  # 기업에 전달하고 이 날수가 지나도록 답이 없으면 '답변 없음'
 GRADE_YEARS=3
@@ -253,6 +253,19 @@ def install(S):
     def company_grade_guide():
         # 소보루 등급 기준 공개 페이지 (BBB처럼 무엇으로 매기는지 그대로 보여 줌)
         return render_template('company_grade.html',cuts=GRADE_CUTS,pts=GRADE_PTS,speed=GRADE_SPEED,words=GRADE_WORDS,days=ANSWER_DAYS,years=GRADE_YEARS,min_n=MIN_N)
+
+    def popular_companies():
+        # 운영자 2026-11-16: 제보 화면에 자주 찾는 기업을 바로 고르게 (헤이마오식). 이름 목록은 관리자 화면 문구 'report.co_popular'에서 고침
+        out=[]
+        try:
+            with conn() as db:
+                for name in [n.strip() for n in S.ui_text('report.co_popular','쿠팡,배달의민족,쿠팡이츠,요기요,네이버,11번가,G마켓,옥션,SSG닷컴,무신사,컬리,올리브영,알리익스프레스,테무,당근,번개장터,야놀자,여기어때,토스,카카오,SK텔레콤,KT,LG유플러스,삼성전자,LG전자,대한항공').split(',') if n.strip()][:40]:
+                    hit=[c for c in search(db,name,3) if norm(c['name'])==norm(name)]
+                    c=hit[0] if hit else None
+                    out.append({'id':c['id'] if c else '','name':c['name'] if c else name,'member':bool(c and c['status']=='active'),'contact':bool(c and (c['official_email'] or ('notice_phone' in c.keys() and c['notice_phone'])))})
+        except Exception as e:print('자주 찾는 기업을 못 불러왔어요:',e)
+        return out
+    app.jinja_env.globals['popular_companies']=popular_companies
 
     @app.route('/companies/suggest')
     def companies_suggest():

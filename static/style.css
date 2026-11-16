@@ -846,9 +846,9 @@ body.console { background: #f6f5f2; }
 .cs-empty { padding: 50px 14px !important; text-align: center; color: #9a9ea5; }
 .cs-status { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #f1f0ec; color: #4f5660; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .cs-status.s1 { background: #fff0df; color: #c35b00; }
-.cs-status.s2, .cs-status.s3 { background: #fff7d6; color: #8a6400; }
-.cs-status.s4, .cs-status.s5 { background: #e8f1ff; color: #2456a6; }
-.cs-status.s6 { background: #e5f5ec; color: #1d7a43; }
+.cs-status.s2, .cs-status.s3, .cs-status.s4 { background: #fff7d6; color: #8a6400; }
+.cs-status.s5, .cs-status.s6 { background: #e8f1ff; color: #2456a6; }
+.cs-status.s7 { background: #e5f5ec; color: #1d7a43; }
 /* case detail */
 .cs-crumbs { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 14px; font-size: 14px; font-weight: 700; color: #6b6f76; }
 .cs-pn { display: flex; gap: 14px; }
@@ -2315,8 +2315,10 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 .case-next { margin-top: 14px; }
 .case-next a { color: #C26A00; font-weight: 600; }
 /* 기업 안내: 카톡 채널로 직접 보내기 (2026-11-16). 버튼은 위아래로 하나씩 */
-.kakao-send { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; padding: 14px; border-radius: 14px; background: #FFFBEA; }
-.kakao-send textarea { width: 100%; font-size: 13px; background: #fff; }
+.kakao-send { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; padding: 18px; border-radius: 16px; background: #F9FAFB; }
+.kakao-send textarea { width: 100%; min-height: 260px; padding: 14px 16px; font-size: 14px; line-height: 1.7; color: #333D4B; background: #fff; border: 1px solid #E5E8EB; border-radius: 12px; resize: vertical; box-sizing: border-box; }
+.kakao-send .cs-link { align-self: center; }
+.kakao-send form { display: flex; justify-content: center; }
 .kakao-send .cs-btn { width: 100%; justify-content: center; text-align: center; }
 .kakao-done { margin: 0; text-align: center; }
 .kakao-done .cs-link, .cs-link { background: none; border: 0; box-shadow: none; color: #6b7684; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 4px; }
@@ -2345,3 +2347,20 @@ html.flow-lock { overflow: hidden; }
 .flow-dots i { width: 6px; height: 6px; border-radius: 3px; background: #E5E8EB; transition: width .2s; }
 .flow-dots i.is-on { width: 18px; background: #FE9800; }
 .flow-next { width: 100%; min-height: 56px; border-radius: 16px; font-size: 17px; }
+
+/* 운영자 2026-11-16: 고르기 칸 화살표가 오른쪽 끝에 붙어 보여서 직접 그린 화살표 + 오른쪽 여백 */
+.field select, .field select:focus { -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%238B95A1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 16px center !important; background-size: 18px 18px !important; padding-right: 46px !important; cursor: pointer; }
+.field select::-ms-expand { display: none; }
+/* 고발 대상 기업 고르기 (헤이마오식): 검색 칸 + 자주 찾는 기업 + 직접 등록 */
+.co-pick .co-search { position: relative; display: block !important; margin: 0 !important; }
+.co-pick .co-search input { padding-right: 54px !important; }
+.co-pick .co-open { position: absolute; right: 6px; top: 50%; width: 44px; height: 44px; margin-top: -22px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: none; color: #8B95A1; cursor: pointer; }
+.co-pick .co-open svg { width: 20px; height: 20px; transition: transform .15s; }
+.co-pick .co-open[aria-expanded="true"] svg { transform: rotate(180deg); }
+.co-pick .co-open:active { background: #F2F4F6; }
+.co-suggest li.co-head { padding: 8px 12px 4px; font-size: 13px; font-weight: 600; color: #8B95A1; cursor: default; }
+.co-suggest li.co-head:hover { background: none; }
+.co-pick .co-suggest { top: calc(100% + 6px); }
+.co-picked { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; padding: 12px 14px; border-radius: 12px; background: #FFF8EE; font-size: 14px; color: #4E5968; line-height: 1.5; }
+.co-picked b { color: #191F28; }
+.co-picked svg { flex: none; width: 22px; height: 22px; }

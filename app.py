@@ -35,6 +35,7 @@ if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not 
 app.config['MAX_CONTENT_LENGTH']=205*1024*1024  # 첨부 합계 200MB + 글 내용 (운영자 2026-11-09: 폰 영상도 올라가게)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 STATUSES=site_content.STATUSES
+CONTACT_STATUS='연락 시도 중'  # 운영자 2026-11-16: 기업 연락처를 못 찾아 자동 전달을 못 한 제보. 연락처를 넣으면 자동으로 보내고 '기업 답변 대기'로
 HOME_LATEST=20  # 최신 제보 수 기본값 (소비자고발제보센터 메인은 관리자 문구 home.latest_count로 3~20)
 REPORTS_PAGE_SIZE=20
 def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
@@ -434,8 +435,8 @@ def ui_rich(key,default,**values):
 app.jinja_env.globals['ui_rich']=ui_rich
 def status_name(status):
     # 진행 단계 이름 (저장값은 그대로 두고 화면에 보이는 이름만 바꿈)
-    names={STATUSES[0]:lambda:ui('status.n1','접수'),STATUSES[1]:lambda:ui('status.n2','검토 중'),STATUSES[2]:lambda:ui('status.n3','추가 확인'),
-           STATUSES[3]:lambda:ui('status.n4','기업 답변 대기'),STATUSES[4]:lambda:ui('status.n5','기업 답변 도착'),STATUSES[5]:lambda:ui('status.n6','종결')}
+    names={'접수':lambda:ui('status.n1','접수'),'검토 중':lambda:ui('status.n2','검토 중'),'추가 확인':lambda:ui('status.n3','추가 확인'),CONTACT_STATUS:lambda:ui('status.n7','연락 시도 중'),
+           '기업 답변 대기':lambda:ui('status.n4','기업 답변 대기'),'기업 답변 도착':lambda:ui('status.n5','기업 답변 도착'),'종결':lambda:ui('status.n6','종결')}
     return names[status]() if status in names else status
 app.jinja_env.globals['status_name']=status_name
 # 공개 화면 3단계, 제보자 본인 화면 5단계 이름 (jebo.PUB_STAGES·MY_STEPS와 같은 순서, 화면에서 고칠 수 있음)
@@ -445,7 +446,7 @@ def my_descs():return [ui('status.m1_desc2','제보가 들어왔어요'),ui('sta
 app.jinja_env.globals.update(pub_names=pub_names,my_names=my_names,my_descs=my_descs)
 # 관리자·기자실은 6단계로 보고 고름 (제보자 화면 5단계 + '추가자료 요청'). 제보자 화면에서는 '추가 확인'을 검토 단계로 보여 줌
 STAGE_STATUS=list(STATUSES)
-def stage_names():n=my_names();return [n[0],n[1],ui('status.a3','추가자료 요청'),n[2],n[3],n[4]]
+def stage_names():n=my_names();return [n[0],n[1],ui('status.a3','추가자료 요청'),ui('status.a4','연락 시도 중'),n[2],n[3],n[4]]
 def stage_of(status):return STATUSES.index(status)+1 if status in STATUSES else 1
 def stage_count(counts,status):return counts.get(status,0)
 app.jinja_env.globals.update(STAGE_STATUS=STAGE_STATUS,stage_of=stage_of,stage_count=stage_count,stage_names=stage_names)
@@ -919,7 +920,7 @@ def link_all_cases():
         with conn() as db:
             for r in db.execute("SELECT id,company FROM cases WHERE company_id IS NULL AND company!='' ORDER BY id").fetchall():link_company(db,r['id'],r['company'])
     except Exception as e:print('제보 기업 연결을 못 했어요:',e)
-STATUS_ALERT=('기업 답변 도착',)  # 운영자 2026-11-16: '완료·평가'(종결)는 내부 단계라 제보자에게 알리지 않음
+STATUS_ALERT=()  # 운영자 2026-11-16: 관리자가 단계를 바꿔도 제보자에게 알리지 않음 ('기업 답변 도착'도). 기업 답변 알림은 기업이 실제로 답할 때 'company' 알림으로만
 def notify_later(case_id,event):
     # 저장(커밋)이 끝난 뒤 제보자에게 카카오톡·이메일 알림. 새 제보면 운영자에게도. 설정이 없으면 아무것도 안 함.
     link=url_for('lookup',_external=True)
@@ -2204,7 +2205,11 @@ def set_status(db,case,status):
             if cur['status']!=WAIT_STATUS:set_status(db,cur,WAIT_STATUS)
             return msg
         fail=msg or '기업에 자동으로 보내지 못했어요.'
-        if '이메일이나 휴대폰' in fail:fail+=" '연락처 필요' 목록에 올려 뒀어요. 연락처를 넣으면 그때 자동으로 보내져요."
+        if '이메일이나 휴대폰' in fail:
+            fail+=" '연락처 필요' 목록에 올려 뒀어요. 연락처를 넣으면 그때 자동으로 보내져요."
+            cur=db.execute('SELECT * FROM cases WHERE id=?',(case['id'],)).fetchone()
+            if cur['status']!=CONTACT_STATUS:set_status(db,cur,CONTACT_STATUS)
+            return fail+" 단계는 '연락 시도 중'으로 바꿨어요."
     db.execute('UPDATE cases SET status=? WHERE id=?',(status,case['id']))
     log_case(db,case['id'],f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
     if jebo.STATUS_MY.get(status)!=jebo.STATUS_MY.get(case['status']):notify_later(case['id'],'status')
@@ -2298,7 +2303,7 @@ def report_detail(case_id):
                 if (fields['public_subject'],fields['public_body'],fields['public_request'])!=(case['public_subject'],case['public_body'],case['public_request']):log_case(db,case_id,'공개용 글 수정')
                 if decision=='approve':
                     if case['review'] in jebo.NOT_VALID:flash('중복·제외로 처리한 제보는 게시할 수 없어요. 검토 결과를 먼저 바꿔 주세요.');return redirect(url_for(ep['case'],case_id=case_id)+'#publish_review')
-                    db.execute('UPDATE cases SET published=1 WHERE id=?',(case_id,));art_later(case_id);indexnow.ping([canonical_url(url_for('public_case',case_id=case_id))])
+                    db.execute('UPDATE cases SET published=1 WHERE id=?',(case_id,));art_later(case_id)
                     if not case['published']:log_case(db,case_id,'다시 게시')
                     flash('저장했어요. 목록과 기업 페이지에 보여요.' if case['published'] else '다시 게시했어요. 목록과 기업 페이지에 보여요.')
                 elif decision=='hold':
@@ -2509,6 +2514,9 @@ def admin_reports():return reports_list()
 # 자동 게시로 바꾸기 전에 들어와 승인을 기다리던 공개 제보 (운영자가 게시를 내린 기록이 있거나 중복·제외면 뺌)
 def art_later(case_id):
     # 제보가 게시되면 응답을 보낸 뒤 AI 일러스트를 자동으로 그림 (soboru_art.py, 그림이 없을 때만)
+    # 운영자 2026-11-16: 게시될 때마다(접수 즉시 공개·다시 게시·글 수정) 네이버·빙에 IndexNow로 바로 알림
+    try:indexnow.ping([canonical_url(url_for('public_case',case_id=case_id))])
+    except Exception:pass
     ext=app.extensions.get('soboru_art')
     if ext:
         @after_this_request

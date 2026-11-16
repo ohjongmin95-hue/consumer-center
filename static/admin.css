@@ -654,8 +654,8 @@ body.console .ops-dups li,body.console .cs-msg,body.console .cs-note,body.consol
 body.console .ops-dups{gap:0}body.console .ops-dups li{box-shadow:none;border-radius:0;border-bottom:1px solid #f2f4f6;padding:12px 4px}
 body.console .cs-table th{background:#fff}
 body.console .cs-tag,body.console .cs-status,body.console .cs-pill,body.console .cs-chips span{background:#fff;box-shadow:inset 0 0 0 1px #e5e8eb}
-body.console .cs-status.s1{background:#fff0df;box-shadow:none}body.console .cs-status.s2,body.console .cs-status.s3{background:#fff7d6;box-shadow:none}
-body.console .cs-status.s4,body.console .cs-status.s5{background:#e8f1ff;box-shadow:none}body.console .cs-status.s6{background:#e5f5ec;box-shadow:none}
+body.console .cs-status.s1{background:#fff0df;box-shadow:none}body.console .cs-status.s2,body.console .cs-status.s3,body.console .cs-status.s4{background:#fff7d6;box-shadow:none}
+body.console .cs-status.s5,body.console .cs-status.s6{background:#e8f1ff;box-shadow:none}body.console .cs-status.s7{background:#e5f5ec;box-shadow:none}
 body.console .cs-pill.on{background:#e8f6ee;box-shadow:none}body.console .cs-pill.off{background:#fdf0ef;box-shadow:none}body.console .cs-chips span.on{background:#fff4e8;box-shadow:none}
 body.console .cs-msg.from-center{background:#fff4e8;box-shadow:none}body.console .cs-msg.from-company{background:#eef4ff;box-shadow:none}
 /* 운영자 2026-11-03: 관리자 홈 = 토스 콘솔식. 확인할 일은 카드 하나 안의 목록 줄, 숫자 검정, 있으면 빨간 점 */
@@ -956,3 +956,12 @@ body.console .jl-table select.jl-in.saved{box-shadow:0 0 0 2px #3fd599}
 .co-rename{display:flex;flex-direction:column;gap:8px}.co-rename .cs-label{margin:0}.co-rename input{width:100%;box-sizing:border-box;height:48px;padding:0 16px;border:1.5px solid transparent;border-radius:12px;background:#f2f4f6;font-size:16px;color:var(--ad-ink);outline:0}.co-rename input:focus{background:#fff;border-color:var(--ad-orange)}.co-rename .cs-btn{align-self:stretch}
 .jl-toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:41;max-width:min(560px,calc(100% - 32px));margin:0;padding:12px 18px;border-radius:14px;background:#191f28;color:#fff;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .jl-toast[hidden]{display:none}
+/* 기업 답변 기한 (운영자 2026-11-17) */
+.ans-clock{margin-top:14px;padding:16px 18px;border-radius:16px;background:#F2F4F6;display:grid;gap:6px}
+.ans-clock-main{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ans-clock-k{font-size:13px;font-weight:700;color:#6B7684}
+.ans-clock-left{font-size:20px;line-height:29px;font-weight:700;color:#191F28}
+.ans-clock-sub{margin:0;font-size:13px;color:#8B95A1}
+.ans-clock.is-over{background:#FFF3E0}.ans-clock.is-over .ans-clock-left{color:#E57A00}
+.ans-clock.is-done .ans-clock-left{color:#1A9E4B}
+.ans-clock-go{margin:6px 0 0}.ans-clock-go .cs-btn{width:100%}

@@ -26,7 +26,12 @@
       </div>{% endif %}
       <div class="field"><label for="r-industry">{{ ui('report.f_industry', '업종') }} <small>*</small></label><select id="r-industry" name="industry" required><option value="">{{ ui('report.f_industry_pick', '업종을 골라 주세요') }}</option>{% for x in industries %}<option value="{{ x.name }}"{% if request.form.get('industry') == x.name %} selected{% endif %}>{{ x.name }}{% if x.examples %} — {{ x.examples }}{% endif %}</option>{% endfor %}</select>{{ ed_list('report_industries') }}</div>
       <div class="field"><label for="r-category">{{ ui('report.f_category', '제보 유형') }} <small>*</small></label><select id="r-category" name="category" required><option value="">{{ ui('report.f_category_pick', '선택해 주세요') }}</option>{% for x in categories %}<option {% if request.form.get('category', request.args.get('category')) == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
-      <div class="field co-pick"><label for="r-company">{{ ui('report.f_company', '업체·서비스명') }} <small>*</small></label><input id="r-company" name="company" maxlength="120" required autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="r-company-list" placeholder="{{ ui('report.f_company_ph', '예: 소보루쇼핑몰') }}" value="{{ request.form.get('company','') }}"><input type="hidden" name="company_id" value="{{ request.form.get('company_id','') }}"><ul class="co-suggest" id="r-company-list" role="listbox" hidden></ul><p class="co-chip" id="r-company-chip" hidden></p><p class="hint">{{ ui('report.f_company_hint', '홈페이지 주소 말고 정확한 업체명(상호)을 적어 주세요. 정확할수록 빨리 확인할 수 있어요.') }} {{ ui('report.f_company_hint3', '이름을 치면 등록된 기업이 떠요. 고르면 그 기업에 바로 연결되고, 없으면 직접 추가하면 돼요.') }}</p></div>
+      <div class="field co-pick">{# 운영자 2026-11-16: 헤이마오식 고발 대상. 검색해서 고르거나, 자주 찾는 기업을 누르거나, 없으면 직접 등록 #}<label for="r-company">{{ ui('report.f_company2', '고발할 기업') }} <small>*</small></label>
+        <div class="co-search"><input id="r-company" name="company" maxlength="120" required autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="r-company-list" placeholder="{{ ui('report.f_company_ph3', '기업 이름을 적어 주세요 (예: 쿠팡)') }}" value="{{ request.form.get('company','') }}"><button type="button" class="co-open" id="r-company-open" aria-label="{{ ui('report.co_open', '기업 목록 펼치기') }}" aria-controls="r-company-list" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><ul class="co-suggest" id="r-company-list" role="listbox" hidden></ul></div>
+        <script type="application/json" id="r-company-pops">{{ popular_companies()|tojson }}</script>
+        <input type="hidden" name="company_id" value="{{ request.form.get('company_id','') }}">
+        <p class="co-picked" id="r-company-chip" hidden></p>
+        <p class="hint">{{ ui('report.f_company_hint5', '직접 적거나, 화살표를 눌러 찾아서 골라요.') }}</p></div>
       <div class="field"><label for="r-occurred">{{ ui('report.f_occurred', '피해가 일어난 날') }}</label><input id="r-occurred" name="occurred_on" type="date" max="{{ today }}" value="{{ request.form.get('occurred_on','') }}"><p class="hint">{{ ui('report.f_occurred_hint', '정확하지 않으면 비워 두셔도 돼요.') }}</p></div>
       <div class="field"><label for="r-subject">{{ ui('report.f_subject', '제보 제목') }} <small>*</small></label><input id="r-subject" name="subject" maxlength="160" required placeholder="{{ ui('report.f_subject_ph', '피해 내용을 한 줄로 요약해 주세요') }}" value="{{ request.form.get('subject','') }}"></div>
       <div class="field"><label for="r-description">{{ ui('report.f_description', '피해 내용') }} <small>*</small></label><textarea id="r-description" name="description" maxlength="6000" required placeholder="{{ ui('report.f_description_ph', '구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요') }}">{{ request.form.get('description','') }}</textarea></div>
@@ -115,29 +120,38 @@
     function showChip(c) {
       if (!chip) return;
       if (!c) { chip.hidden = true; chip.textContent = ''; return; }
-      chip.textContent = c.member ? '{{ ui('report.co_member', '가입 기업이에요. 담당자에게 바로 전달돼요.') }}' : c.contact ? '{{ ui('report.co_contact', '연락처를 아는 기업이에요. 검토 뒤 바로 전달돼요.') }}' : '{{ ui('report.co_listed', '등록된 기업이에요. 같은 기업 제보와 함께 모아 볼 수 있어요.') }}';
+      chip.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#FE9800"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span>';
+      var line = c.direct ? '{{ ui('report.co_direct_ok', '목록에 없는 기업으로 접수해요. 연락처는 저희가 찾아요.') }}' : c.member ? '{{ ui('report.co_member', '가입 기업이에요. 담당자에게 바로 전달돼요.') }}' : c.contact ? '{{ ui('report.co_contact', '연락처를 아는 기업이에요. 검토 뒤 바로 전달돼요.') }}' : '{{ ui('report.co_listed', '등록된 기업이에요. 같은 기업 제보와 함께 모아 볼 수 있어요.') }}';
+      var sp = chip.querySelector('span'), b = document.createElement('b'); b.textContent = c.name; sp.appendChild(b); sp.appendChild(document.createTextNode(' \u00b7 ' + line));
       chip.hidden = false;
     }
-    function close() { list.hidden = true; input.setAttribute('aria-expanded', 'false'); cur = -1; }
+    var pops = []; try { pops = JSON.parse(document.getElementById('r-company-pops').textContent) || []; } catch (e) {}
+    var opener = document.getElementById('r-company-open');
+    function close() { list.hidden = true; input.setAttribute('aria-expanded', 'false'); if (opener) opener.setAttribute('aria-expanded', 'false'); cur = -1; }
     function pick(i) {
       var c = items[i]; if (!c) return;
-      if (c.add) { hidden.value = ''; showChip(null); close(); return; }
-      input.value = c.name; hidden.value = c.id; showChip(c); close();
+      if (c.add) { hidden.value = ''; showChip({ name: c.name, direct: true }); close(); return; }
+      input.value = c.name; hidden.value = c.id || ''; showChip(c.id ? c : null); close();
     }
-    function mark() { Array.prototype.forEach.call(list.children, function (li, i) { li.setAttribute('aria-selected', i === cur ? 'true' : 'false'); }); }
+    function mark() { Array.prototype.forEach.call(list.querySelectorAll('[role=option]'), function (li, i) { li.setAttribute('aria-selected', i === cur ? 'true' : 'false'); }); }
     input.addEventListener('input', function () {
       hidden.value = ''; showChip(null); clearTimeout(timer);
       var q = input.value.trim();
       if (!q) { close(); return; }
       timer = setTimeout(function () {
         fetch('{{ url_for('companies_suggest') }}?q=' + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (rows) {
-          var exact = rows.some(function (c) { return c.name.replace(/\s/g, '') === q.replace(/\s/g, ''); });
-          items = exact ? rows : rows.concat([{ add: true, name: q }]); list.innerHTML = '';
+          render(rows);
+        }).catch(close);
+      }, 180);
+    });
+    function render(rows, head) {
+          items = rows; list.innerHTML = '';
+          if (head) { var h = document.createElement('li'); h.className = 'co-head'; h.setAttribute('role', 'presentation'); h.textContent = head; list.appendChild(h); }
           items.forEach(function (c, i) {
             var li = document.createElement('li'); li.setAttribute('role', 'option'); li.id = 'r-co-' + i;
             if (c.add) {
               li.className = 'co-add';
-              var a = document.createElement('b'); a.textContent = '\u2018' + c.name + '\u2019 {{ ui('report.co_add', '직접 추가') }}'; li.appendChild(a);
+              var a = document.createElement('b'); a.textContent = '\u2018' + c.name + '\u2019 {{ ui('report.co_add2', '직접 등록하기') }}'; li.appendChild(a);
               var t = document.createElement('span'); t.textContent = '{{ ui('report.co_add_hint', '목록에 없으면 이 이름 그대로 접수해요. 연락처는 저희가 찾아요.') }}'; li.appendChild(t);
             } else {
               var row = document.createElement('div'); row.className = 'co-row';
@@ -149,10 +163,18 @@
             li.addEventListener('mousedown', function (e) { e.preventDefault(); pick(i); });
             list.appendChild(li);
           });
-          list.hidden = !items.length; input.setAttribute('aria-expanded', items.length ? 'true' : 'false'); cur = -1;
-        }).catch(close);
-      }, 180);
-    });
+          list.hidden = !items.length; input.setAttribute('aria-expanded', items.length ? 'true' : 'false'); if (opener) opener.setAttribute('aria-expanded', items.length ? 'true' : 'false'); cur = -1;
+    }
+    // 오른쪽 화살표: 자주 찾는 기업 목록을 펼침 (글자가 있으면 그 이름으로 찾음)
+    if (opener) {
+      opener.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      opener.addEventListener('click', function () {
+        if (!list.hidden) { close(); return; }
+        var q = input.value.trim();
+        if (q && !hidden.value) { input.dispatchEvent(new Event('input')); return; }
+        render(pops, '{{ ui('report.co_pop', '자주 찾는 기업') }}'); input.focus();
+      });
+    }
     input.addEventListener('keydown', function (e) {
       if (list.hidden) return;
       if (e.key === 'ArrowDown') { cur = Math.min(cur + 1, items.length - 1); mark(); e.preventDefault(); }

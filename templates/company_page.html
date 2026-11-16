@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}{{ co['name'] }} {{ ui('company.title_tail', '소비자 제보') }} | {{ txt('site.name') }}{% endblock %}
-{% block description %}{{ co['name'] }} {{ ui('company.meta', '관련 공개 제보와 기업 공식 답변, 답변 현황을 모아 볼 수 있어요.') }}{% endblock %}
+{% block title %}{{ co['name'] }} {{ ui('company.title_tail2', '고발·소비자 불만') }}{% if st is defined and st and st.valid %} {{ st.valid }}건{% endif %} | {{ txt('site.name') }}{% endblock %}
+{% block description %}{{ co['name'] }} {{ ui('company.meta', '관련 공개 제보와 기업 공식 답변, 답변 현황을 모아 볼 수 있어요.') }}{% if st is defined and st and st.valid %} 제보 {{ st.valid }}건 · 공식 답변 비율 {{ st.answer_rate }}.{% endif %}{% endblock %}
 {% block head %}{% if not indexable %}<meta name="robots" content="noindex,follow">{% else %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": txt('site.name'), "item": url_for('home', _external=True)}, {"@type": "ListItem", "position": 2, "name": ui('companies.title', '기업별 제보'), "item": url_for('companies', _external=True)}, {"@type": "ListItem", "position": 3, "name": co['name']}]}|tojson }}</script>{% endif %}{% endblock %}
 {% block content %}
 <main class="page"><div class="wrap co-wrap">
