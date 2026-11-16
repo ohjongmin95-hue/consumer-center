@@ -846,9 +846,9 @@ body.console { background: #f6f5f2; }
 .cs-empty { padding: 50px 14px !important; text-align: center; color: #9a9ea5; }
 .cs-status { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #f1f0ec; color: #4f5660; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .cs-status.s1 { background: #fff0df; color: #c35b00; }
-.cs-status.s2, .cs-status.s3 { background: #fff7d6; color: #8a6400; }
-.cs-status.s4, .cs-status.s5 { background: #e8f1ff; color: #2456a6; }
-.cs-status.s6 { background: #e5f5ec; color: #1d7a43; }
+.cs-status.s2, .cs-status.s3, .cs-status.s4 { background: #fff7d6; color: #8a6400; }
+.cs-status.s5, .cs-status.s6 { background: #e8f1ff; color: #2456a6; }
+.cs-status.s7 { background: #e5f5ec; color: #1d7a43; }
 /* case detail */
 .cs-crumbs { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 14px; font-size: 14px; font-weight: 700; color: #6b6f76; }
 .cs-pn { display: flex; gap: 14px; }

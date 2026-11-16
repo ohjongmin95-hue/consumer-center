@@ -1856,9 +1856,9 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 case_id = db.execute("SELECT id FROM cases WHERE subject='알림 두번째'").fetchone()['id']
             admin = self.login_admin()
+            n_kakao, n_mail = len(kakao), len(mails)
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '기업 답변 도착', 'assignee': ''})
-            self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T2')
-            self.assertIn('현재 단계: ', mails[-1][2])
+            self.assertEqual((len(kakao), len(mails)), (n_kakao, n_mail))  # 운영자 2026-11-16: 관리자가 단계를 바꿔도 제보자에게 안 보냄
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'message', 'message': '확인 중입니다'})
             self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T3')
             self.assertNotIn('확인 중입니다', mails[-1][2])
@@ -1872,7 +1872,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('down', page)
         with self.site.conn() as db:
             rows = db.execute('SELECT channel,event,status FROM notifications WHERE case_id=? ORDER BY id', (case_id,)).fetchall()
-        self.assertEqual([tuple(r) for r in rows], [('kakao', 'received', 'sent'), ('email', 'received', 'sent'), ('kakao', 'status', 'sent'), ('email', 'status', 'sent'),
+        self.assertEqual([tuple(r) for r in rows], [('kakao', 'received', 'sent'), ('email', 'received', 'sent'),
                                                    ('kakao', 'message', 'sent'), ('email', 'message', 'sent'), ('kakao', 'message', 'failed'), ('email', 'message', 'sent')])
         notify.ASYNC = True
 
@@ -2105,12 +2105,9 @@ class SiteTest(unittest.TestCase):
             mails.clear(); sms.clear()
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
             self.assertEqual(mails, [])  # 운영자 2026-11-13: 중간 단계(검토 중·기업 답변 대기)는 알리지 않음
-            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '기업 답변 도착', 'assignee': ''})
-            self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
-            self.assertIn('단계 변경', mails[0][1])
-            self.assertEqual(len(sms), 1)
-            self.assertEqual(sorted(t[1]['message']['to'] for t in texts), ['01022223333', '01099998888'])
             mails.clear(); sms.clear(); n = len(texts)
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '기업 답변 도착', 'assignee': ''})
+            self.assertEqual((mails, sms, len(texts)), ([], [], n))  # 운영자 2026-11-16: 단계를 '기업 답변 도착'으로 바꿔도 자동으로 안 보냄
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '종결', 'assignee': ''})
             self.assertEqual((mails, sms, len(texts)), ([], [], n))  # 운영자 2026-11-16: 완료·평가(종결)는 내부 단계라 알리지 않음
         # 로그인 안 했으면 확인 주소는 막힘
@@ -4133,7 +4130,7 @@ class SiteTest(unittest.TestCase):
         # 공개 화면은 접수·처리 중·종결 3단계, 제보자 본인 화면은 5단계. 5단계 → 3단계 연결
         jebo = self.site.jebo
         mine = [jebo.my_step({'status': s}) for s in self.site.STATUSES]
-        self.assertEqual(mine, [1, 2, 2, 3, 4, 5])
+        self.assertEqual(mine, [1, 2, 2, 3, 3, 4, 5])
         self.assertEqual([jebo.pub_step(n) for n in range(1, 6)], [1, 2, 2, 2, 3])
         self.assertEqual(jebo.my_step({'status': '접수', 'reviewed_at': 'x', 'forwarded_at': 'x'}), 3)
         self.assertEqual(jebo.my_step({'status': '검토 중'}, has_answer=True), 4)
@@ -4156,7 +4153,8 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:cid = db.execute("SELECT id FROM cases WHERE subject='단계 확인 제보'").fetchone()['id']
         page = admin.get('/admin/reports/%d' % cid).get_data(as_text=True)
         self.assertIn('>3. 추가자료 요청</option>', page)
-        self.assertIn('>4. 기업 전달</option>', page)
+        self.assertIn('>4. 연락 시도 중</option>', page)
+        self.assertIn('>5. 기업 전달</option>', page)
         self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'settings', 'status': '추가 확인', 'assignee': ''})
         with self.site.conn() as db:
             self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?', (cid,)).fetchone()['status'], '추가 확인')
@@ -4276,7 +4274,7 @@ class SiteTest(unittest.TestCase):
         r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'ok', 'id': [str(a), str(b)]}, follow_redirects=True)
         self.assertIn('위 연락처 필요 칸', r.get_data(as_text=True))
         with self.site.conn() as db:
-            self.assertEqual({r['status'] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)', (a, b))}, {'검토 중'})  # 승인하면 접수 → 검토
+            self.assertEqual({r['status'] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)', (a, b))}, {'연락 시도 중'})  # 승인했는데 연락처가 없으면 '연락 시도 중' (운영자 2026-11-16)
             co = db.execute("SELECT id FROM companies WHERE name='연락없는상점'").fetchone()['id']
         page = admin.get('/admin/reports').get_data(as_text=True)
         self.assertIn('못 보낸 제보 <b>2건</b> · 1곳', page)
@@ -4286,6 +4284,8 @@ class SiteTest(unittest.TestCase):
         self.assertIn('이메일 주소를 다시', r.get_data(as_text=True))
         r = admin.post('/admin/reports/contact', data={'_csrf': token, 'company_id': co, 'official_email': 'cs@nc-shop.example'}, follow_redirects=True)
         self.assertIn('제보 2건을 보냈어요', r.get_data(as_text=True))
+        with self.site.conn() as db:
+            self.assertEqual({r['status'] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)', (a, b))}, {'기업 답변 대기'})  # 연락처를 넣으면 보내고 다음 단계로
         self.assertEqual(len([m for m in mails if m[0] == 'cs@nc-shop.example']), 2)
         self.assertIn('연락처가 없어 못 보낸 제보가 없어요', admin.get('/admin/reports?view=contact').get_data(as_text=True))
         # '기업 연락처'에 넣어 둔 메일도 안내 주소로 씀

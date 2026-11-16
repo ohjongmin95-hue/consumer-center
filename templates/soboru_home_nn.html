@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from 'community_macros.html' import top_line as cm_top, sub_line as cm_sub, foot_line as cm_foot, campaign_card %}
-{% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
+{% set badge = {'접수': 'b-new', '검토 중': 'b-review', '추가 확인': 'b-more', '연락 시도 중': 'b-wait', '기업 답변 대기': 'b-wait', '기업 답변 도착': 'b-ans', '종결': 'b-done'} %}
 {# 뉴닉식 홈: 그림은 맨 위 캐릭터 하나만, 나머지는 글과 토스페이스 이모지.
    글자는 모두 ui('home.…')라 관리자 편집 모드에서 눌러 고치고, 묶음 순서·보이기는 관리자 > 화면 편집 (soboru.py PAGE_BLOCKS['home']) #}
 {# 홈 자주 묻는 질문: 화면에 보이는 그대로 FAQPage 구조화 데이터로도 넣음 (AI 검색·답변 인용용, 2026-10-26) #}

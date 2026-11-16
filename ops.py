@@ -313,9 +313,16 @@ def install(S):
     def to_wait(db, cid):
         """기업에 전달되면 진행 단계를 '기업 답변 대기'로 올리고 제보자에게 알림 (이미 그 뒤 단계면 그대로)"""
         case = db.execute('SELECT status FROM cases WHERE id=?', (cid,)).fetchone()
-        if jebo.STATUS_MY.get(case['status'], 0) >= jebo.STATUS_MY['기업 답변 대기']: return
+        if case['status'] != '연락 시도 중' and jebo.STATUS_MY.get(case['status'], 0) >= jebo.STATUS_MY['기업 답변 대기']: return
         db.execute("UPDATE cases SET status='기업 답변 대기' WHERE id=?", (cid,)); jebo.mark(db, cid, 'reviewed_at')
         S.log_case(db, cid, f"진행 단계 변경: {case['status']} → 기업 답변 대기"); S.notify_later(cid, 'status')
+
+    def to_contact(db, cid):
+        """기업 연락처가 없어 못 보냈으면 '연락 시도 중'으로 (운영자 2026-11-16). 제보자에게 따로 알리지 않음. 이미 기업 전달 뒤 단계면 그대로"""
+        case = db.execute('SELECT status FROM cases WHERE id=?', (cid,)).fetchone()
+        if case['status'] not in ('접수', '검토 중', '기업 답변 대기'): return
+        db.execute("UPDATE cases SET status='연락 시도 중' WHERE id=?", (cid,)); jebo.mark(db, cid, 'reviewed_at')
+        S.log_case(db, cid, f"진행 단계 변경: {case['status']} → 연락 시도 중 (기업 연락처 없음)")
 
     def auto_forward(db, cid):
         """검토 '정상'으로 승인된 제보를 기업에 자동 전달 (운영자 결정 2026-10-21). 관리자에게 보일 문구('' 이면 할 일 없음).
@@ -340,7 +347,9 @@ def install(S):
             return f"{company['name']} 담당자 화면에 자동으로 보냈어요."
         block = notice_block(db, case, company)
         if block:
-            S.log_case(db, cid, '기업 자동 전달 못 함: ' + block); return '기업 자동 전달은 못 했어요. ' + block
+            S.log_case(db, cid, '기업 자동 전달 못 함: ' + block)
+            if not notice_target(company) and not notice_phone(company): to_contact(db, cid)
+            return '기업 자동 전달은 못 했어요. ' + block
         if send_notice(db, case, company, quiet=True, actor='자동 전달'): return f"{company['name']}에 안내를 자동으로 보냈어요."
         return '기업 안내 메일을 보내지 못했어요. 처리 기록을 확인해 주세요.'
     S.ops_auto_forward = auto_forward
@@ -358,6 +367,17 @@ def install(S):
             if not notice_target(co) and not notice_phone(co): out.append((co, cases))
         return sorted(out, key=lambda x: (-len(x[1]), x[0]['name']))
     S.ops_contact_needed = contact_needed
+
+    def contact_status_once():
+        # 한 번만: 예전에 연락처가 없어 못 보냈는데 단계만 '기업 답변 대기'로 바뀐 제보 → '연락 시도 중'
+        with S.conn() as db:
+            db.execute('CREATE TABLE IF NOT EXISTS soboru_flags(key TEXT PRIMARY KEY,created TEXT NOT NULL)')
+            if not db.execute("INSERT OR IGNORE INTO soboru_flags(key,created) VALUES('contact_status_v1',?)", (now(),)).rowcount: return
+            for co, cases in contact_needed(db):
+                for c in cases:
+                    if db.execute('SELECT status FROM cases WHERE id=?', (c['id'],)).fetchone()['status'] == '기업 답변 대기': to_contact(db, c['id'])
+    try: contact_status_once()
+    except Exception as e: print('연락 시도 중 단계 정리를 못 했어요:', e)
 
     def send_pending(db, company_id):
         """기업 연락처가 새로 들어오면, 그 기업의 정상 승인됐지만 못 보낸 제보를 바로 보냄 (운영자 2026-11-13: 어디서 넣든 서로 이어지게).
@@ -437,9 +457,9 @@ def install(S):
             if not body or len(body) > 3000: flash('기업 답변에서 무엇이 부족한지 3,000자 이내로 적어 주세요.'); return redirect(url_for('case_detail') + '#followup')
             db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)', (case['id'], '제보자', '[추가 불만] ' + body, now()))
             db.execute('UPDATE cases SET followup_at=? WHERE id=?', (now(), case['id']))
-            if case['status'] in (STATUSES[4], STATUSES[5]):  # 기업 답변 도착·종결 → 다시 기업 답변 대기
-                db.execute('UPDATE cases SET status=? WHERE id=?', (STATUSES[3], case['id']))
-                db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)', (case['id'], '제보자', f"진행 단계 변경: {case['status']} → {STATUSES[3]} (추가 불만)", now()))
+            if case['status'] in ('기업 답변 도착', '종결'):  # 기업 답변 도착·종결 → 다시 기업 답변 대기
+                db.execute("UPDATE cases SET status='기업 답변 대기' WHERE id=?", (case['id'],))
+                db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)', (case['id'], '제보자', f"진행 단계 변경: {case['status']} → 기업 답변 대기 (추가 불만)", now()))
             company = db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone() if case['company_id'] else None
             how = '센터에 알림'
             if company and company['status'] == 'active' and company['contact_email']:
