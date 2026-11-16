@@ -8,42 +8,48 @@
   </header>
 
   {% set new_reports = counts.get(STATUSES[0], 0) %}
-  {# 운영자 2026-11-03 (밤): 홈은 제보만 보는 곳이 아님 → 토스플레이스처럼 오늘 숫자와 7일 막대, 영역별 숫자, 확인할 일, 최근 소식 #}
   {% set h = home %}
-  <section class="ad-panel hm-hero" aria-label="오늘 현황">
-    <div class="hm-today">
-      <p class="hm-date">{{ h.today.month }}월 {{ h.today.day }}일 {{ '월화수목금토일'[h.today.weekday()] }}요일</p>
-      <div class="hm-big">
-        <a href="{{ url_for('admin_visits') }}"><span>오늘 방문</span><b>{{ '{:,}'.format(h.visits_today) }}<small>명</small></b></a>
-        <a href="{{ url_for('admin_reports') }}"><span>오늘 제보</span><b>{{ h.cases_today }}<small>건</small></b></a>
-      </div>
-    </div>
-    <div class="hm-chart" role="img" aria-label="최근 7일 방문자">
-      {% for x in h.days %}<div class="hm-bar{% if loop.last %} is-today{% endif %}"><em>{{ x.visits }}</em><i style="height:{{ (100 * x.visits / h.peak)|round|int if x.visits else 2 }}%"></i><span>{{ x.label }}</span></div>{% endfor %}
-    </div>
+  {# 운영자 2026-11-17: 토스처럼. 들어오면 '오늘 할 일'부터 (0건은 숨김), 숫자는 한 카드에 4개, 막대·소식은 아래로 #}
+  <p class="v3-date">{{ h.today.month }}월 {{ h.today.day }}일 {{ '월화수목금토일'[h.today.weekday()] }}요일</p>
+  {% set todos = [
+    (new_reports, url_for('admin_reports', status=STATUSES[0]), '새로 접수된 제보', '검토하고 공개·전달해요', 'or', new_reports),
+    (ops.n_overdue, url_for('admin_reports', due='over'), '답변 기한이 지난 제보', '기사 초안을 만들 수 있어요', 'red', '!'),
+    (ops.n_contact, url_for('admin_reports', view='contact'), '연락처가 없어 못 보낸 제보', '기업 연락처를 넣으면 바로 보내요', 'bl', '@'),
+    (ops.n_late, '#late', ops.delay_days ~ '일 넘게 멈춘 제보', '처리 기록이 없어요', 'gr', ops.delay_days),
+    (ops.n_requests, url_for('admin_requests'), '정정·삭제·이의 신청', '', 'gr', '정'),
+    (stats.takedowns, url_for('admin_takedowns'), '처리할 게시중단 요청', '', 'gr', '중'),
+    (h.experts_wait, url_for('admin_experts'), '승인할 자문단 신청', '', 'gr', '자'),
+    (stats.flagged, url_for('admin_board'), '신고된 게시글·댓글', '', 'gr', '신'),
+  ] %}
+  {% set live = todos|selectattr(0)|list %}
+  <section class="ad-panel v3-todo" aria-labelledby="v3-todo-h">
+    <h2 id="v3-todo-h">오늘 할 일</h2>
+    {% if live %}<ul>{% for n, href, label, sub, tone, mark in live %}
+      <li><a href="{{ href }}"><span class="v3-ic is-{{ tone }}" aria-hidden="true">{{ mark }}</span><span class="v3-t"><b>{{ label }}</b>{% if sub %}<small>{{ sub }}</small>{% endif %}</span><span class="v3-n is-{{ tone }}">{{ n }}건</span><svg class="v3-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a></li>{% endfor %}
+    </ul>{% else %}<p class="v3-empty">지금 할 일이 없어요.</p>{% endif %}
   </section>
 
-  <div class="hm-kpis">
-    <a href="{{ url_for('admin_reports') }}"><span>전체 제보</span><b>{{ '{:,}'.format(h.cases_total) }}</b><small>최근 7일 +{{ stats.new_cases }}</small></a>
-    <a href="{{ url_for('admin_stats') }}"><span>기업 답변 받은 제보</span><b>{{ '{:,}'.format(h.answered) }}</b><small>답변 도착·종결</small></a>
-    <a href="{{ url_for('admin_members') }}"><span>회원</span><b>{{ '{:,}'.format(stats.members) }}</b><small>최근 7일 +{{ stats.new_members }}</small></a>
-    <a href="{{ url_for('admin_experts') }}"><span>소보루 자문단</span><b>{{ h.experts }}</b><small>{% if h.experts_wait %}<i class="ad-dot" aria-hidden="true"></i>승인 대기 {{ h.experts_wait }}명{% else %}승인 대기 없음{% endif %}</small></a>
-    <a href="{{ url_for('admin_letter') }}"><span>소보루 레터 구독</span><b>{{ '{:,}'.format(h.letter) }}</b><small>확인 마친 구독자</small></a>
-    <a href="{{ url_for('admin_ai_usage') }}"><span>이번 달 AI 비용</span><b>{{ '{:,}'.format(h.ai_krw) }}<small>원</small></b><small>사용량 보기</small></a>
-  </div>
+  <section class="ad-panel" aria-label="숫자로 보기">
+    <dl class="v3-stats">
+      <a href="{{ url_for('admin_visits') }}"><dt>오늘 방문</dt><dd>{{ '{:,}'.format(h.visits_today) }}<small>명</small></dd><i>오늘 제보 {{ h.cases_today }}건</i></a>
+      <a href="{{ url_for('admin_reports') }}"><dt>전체 제보</dt><dd>{{ '{:,}'.format(h.cases_total) }}<small>건</small></dd><i>최근 7일 +{{ stats.new_cases }}</i></a>
+      <a href="{{ url_for('admin_stats') }}"><dt>기업 답변 받음</dt><dd>{{ '{:,}'.format(h.answered) }}<small>건</small></dd><i>답변 도착·종결</i></a>
+      <a href="{{ url_for('admin_members') }}"><dt>회원</dt><dd>{{ '{:,}'.format(stats.members) }}<small>명</small></dd><i>최근 7일 +{{ stats.new_members }}</i></a>
+    </dl>
+    <p class="v3-mini"><a href="{{ url_for('admin_experts') }}">소보루 자문단 {{ h.experts }}명</a><a href="{{ url_for('admin_letter') }}">소보루 레터 구독 {{ '{:,}'.format(h.letter) }}명</a><a href="{{ url_for('admin_ai_usage') }}">이번 달 AI 비용 {{ '{:,}'.format(h.ai_krw) }}원</a></p>
+  </section>
 
-  {% set todos = [(new_reports, url_for('admin_reports', status=STATUSES[0]), '새로 접수된 제보'), (h.experts_wait, url_for('admin_experts'), '승인할 자문단 신청'), (stats.flagged, url_for('admin_board'), '신고된 게시글·댓글'), (stats.takedowns, url_for('admin_takedowns'), '처리할 게시중단 요청'), (ops.n_requests, url_for('admin_requests'), '정정·삭제·이의 신청'), (ops.n_late, '#late', ops.delay_days ~ '일 넘게 멈춘 제보')] %}
-  <div class="ad-grid-2 hm-two">
-    <section class="ad-panel ad-todo-card" aria-labelledby="ad-todo-h">
-      <h2 id="ad-todo-h">확인이 필요한 일</h2>
-      <ul class="ad-todo-list">{% for n, href, label in todos|sort(attribute='0', reverse=True) %}
-        <li><a class="{{ 'is-on' if n else 'is-zero' }}" href="{{ href }}"><span class="ad-todo-l">{% if n %}<i class="ad-dot" aria-hidden="true"></i>{% endif %}{{ label }}</span><b>{{ n }}건</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></li>{% endfor %}
-      </ul>
-    </section>
+  <div class="v3-two">
     <section class="ad-panel hm-feed" aria-labelledby="hm-feed-h">
       <h2 id="hm-feed-h">최근 소식</h2>
       {% if h.feed %}<ul>{% for x in h.feed %}<li><a href="{{ x.href }}"><span class="hm-k k-{{ loop.index0 % 3 }} is-{{ {'제보': 'c', '회원': 'm', '자문단': 'e'}[x.kind] }}">{{ x.kind }}</span><span class="hm-t"><b>{{ x.text }}</b>{% if x.sub %}<small>{{ x.sub }}</small>{% endif %}</span><time>{{ (x.at or '')[5:16]|replace('-', '.')|replace('T', ' ') }}</time></a></li>{% endfor %}</ul>
       {% else %}<p class="cs-hint">아직 소식이 없어요.</p>{% endif %}
+    </section>
+    <section class="ad-panel" aria-labelledby="v3-vis-h">
+      <div class="ad-panel-head"><h2 id="v3-vis-h">최근 7일 방문</h2><a class="ad-link" href="{{ url_for('admin_visits') }}">방문 통계 ›</a></div>
+    <div class="hm-chart" role="img" aria-label="최근 7일 방문자">
+      {% for x in h.days %}<div class="hm-bar{% if loop.last %} is-today{% endif %}"><em>{{ x.visits }}</em><i style="height:{{ (100 * x.visits / h.peak)|round|int if x.visits else 2 }}%"></i><span>{{ x.label }}</span></div>{% endfor %}
+    </div>
     </section>
   </div>
 
@@ -55,9 +61,5 @@
   </section>
   {% endif %}
 
-  <section class="ad-panel">
-    <div class="ad-panel-head"><h2>제보 단계</h2><a class="ad-link" href="{{ url_for('admin_reports') }}">제보 처리 ›</a></div>
-    <div class="ad-pipeline">{% for st in STAGE_STATUS %}<a href="{{ url_for('admin_reports', status=st) }}"><b>{{ stage_count(counts, st) }}</b><span>{{ stage_names()[loop.index0] }}</span></a>{% endfor %}</div>
-  </section>
 </main>
 {% endblock %}

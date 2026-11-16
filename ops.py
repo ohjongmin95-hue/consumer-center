@@ -185,6 +185,12 @@ def install(S):
                             answered=a[:16].replace('T', ' ') if a and a >= t[:19] else '', over=not (a and a >= t[:19]) and due < datetime.datetime.now())
         return out
     S.ops_answer_clocks = answer_clocks
+
+    def overdue_ids(db):
+        """기업 답변 기한(보낸 뒤 NOTICE_ANSWER_HOURS)이 지났는데 답이 없는 제보 id (운영자 2026-11-17: 홈 '오늘 할 일'·목록 '기한 지남')"""
+        ids = [r['id'] for r in db.execute("SELECT id FROM cases WHERE status IN ('기업 답변 대기','연락 시도 중') AND review NOT IN ('rejected','duplicate')")]
+        return [cid for cid, c in answer_clocks(db, ids).items() if c['over']]
+    S.ops_overdue_ids = overdue_ids
     S.app.jinja_env.globals['NOTICE_ANSWER_HOURS'] = NOTICE_ANSWER_HOURS
 
     def article_draft(db, case):
@@ -698,7 +704,8 @@ def install(S):
         n_late, late = delayed(db)
         return dict(late=late, n_late=n_late, delay_days=DELAY_DAYS,
                     n_requests=db.execute("SELECT COUNT(*) FROM case_requests WHERE status='접수'").fetchone()[0],
-                    n_unreviewed=db.execute("SELECT COUNT(*) FROM cases WHERE review=''").fetchone()[0])
+                    n_unreviewed=db.execute("SELECT COUNT(*) FROM cases WHERE review=''").fetchone()[0],
+                    n_overdue=len(overdue_ids(db)), n_contact=sum(len(c) for _, c in contact_needed(db)))
     S.ops_home_extras = home_extras
 
     # ---- 운영 통계 ----------------------------------------------------------------
