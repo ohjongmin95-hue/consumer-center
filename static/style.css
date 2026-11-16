@@ -2298,3 +2298,50 @@ html:has(> body:not(.sb):not(.console):not(.newsroom)),body:not(.sb):not(.consol
 
 /* 앱에서 고발 전 로그인 안내 (운영자 2026-11-13) */
 .auth-note{margin:-4px 0 16px;text-align:center;color:#4e5968;font-size:15px;word-break:keep-all}
+/* 고발 대상 고르기 (운영자 2026-11-16) */
+.co-suggest .co-row { display: flex; align-items: center; gap: 6px; }
+.co-suggest .co-tag { font-style: normal; font-size: 11px; font-weight: 700; color: #4E5968; background: #F2F4F6; border-radius: 6px; padding: 2px 6px; }
+.co-suggest .co-tag.is-member { color: #C26A00; background: #FFF3E0; }
+.co-suggest li.co-add { border-top: 1px solid #F2F4F6; margin-top: 4px; }
+.co-suggest li.co-add b { color: #E57A00; }
+.co-chip { margin: 8px 0 0; font-size: 13px; font-weight: 600; color: #C26A00; background: #FFF3E0; border-radius: 10px; padding: 8px 12px; }
+/* 기업 간편 등록 (운영자 2026-11-16) */
+.cs-add .cs-add-row { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.cs-add > .cs-btn-main { margin-top: 10px; }
+.cs-add .cs-more .cs-add-row { margin-top: 10px; }
+.cs-add textarea { width: 100%; box-sizing: border-box; border: 1px solid #e3e5e8; border-radius: 10px; padding: 12px; font: inherit; font-size: 14px; line-height: 1.6; resize: vertical; }
+/* 제보자 화면 상태별 안내·추가 불만 (2026-11-16) */
+.case-guide { margin: 10px 0 0; color: #6b7684; font-size: 14px; line-height: 1.7; }
+.case-next { margin-top: 14px; }
+.case-next a { color: #C26A00; font-weight: 600; }
+/* 기업 안내: 카톡 채널로 직접 보내기 (2026-11-16). 버튼은 위아래로 하나씩 */
+.kakao-send { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; padding: 14px; border-radius: 14px; background: #FFFBEA; }
+.kakao-send textarea { width: 100%; font-size: 13px; background: #fff; }
+.kakao-send .cs-btn { width: 100%; justify-content: center; text-align: center; }
+.kakao-done { margin: 0; text-align: center; }
+.kakao-done .cs-link, .cs-link { background: none; border: 0; box-shadow: none; color: #6b7684; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 4px; }
+/* 제보 흐름 안내: 글쓰기 위 진행 막대 + 처음 한 번 안내 3장 (2026-11-16, 토스식) */
+.flow-bar { display: block; width: 100%; margin: 0 0 14px; padding: 14px 16px 12px; border: 0; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px #F2F4F6 inset; font: inherit; text-align: left; cursor: pointer; }
+.flow-bar ol { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0; padding: 0; list-style: none; position: relative; }
+.flow-bar ol::before { content: ""; position: absolute; left: 10%; right: 10%; top: 5px; height: 2px; background: #F2F4F6; }
+.flow-bar li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: #8B95A1; white-space: nowrap; }
+.flow-bar li i { width: 12px; height: 12px; border-radius: 50%; background: #E5E8EB; }
+.flow-bar li.is-now { color: #191F28; font-weight: 700; }
+.flow-bar li.is-now i { background: #FE9800; box-shadow: 0 0 0 4px #FFF3E0; }
+.flow-bar small { display: block; margin-top: 10px; text-align: center; color: #C26A00; font-size: 13px; font-weight: 600; }
+html.flow-lock { overflow: hidden; }
+.flow-sheet { position: fixed; inset: 0; z-index: 1000; background: #fff; display: flex; justify-content: center; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
+.flow-in { width: 100%; max-width: 480px; display: flex; flex-direction: column; padding: 16px 24px 24px; }
+.flow-skip { align-self: flex-end; background: none; border: 0; color: #8B95A1; font: inherit; font-size: 15px; padding: 8px; cursor: pointer; }
+.flow-track { flex: 1; display: flex; align-items: center; }
+.flow-card { display: none; width: 100%; text-align: center; }
+.flow-card.is-on { display: block; animation: flow-in .25s ease; }
+@keyframes flow-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.flow-art { width: 200px; max-width: 70%; height: auto; margin: 0 auto 24px; display: block; }
+.flow-card .flow-no { margin: 0 0 8px; color: #FE9800; font-weight: 700; font-size: 14px; }
+.flow-card h2 { margin: 0 0 12px; font-size: 24px; line-height: 1.35; color: #191F28; text-wrap: balance; }
+.flow-card p:last-child { margin: 0 auto; max-width: 320px; color: #4E5968; font-size: 16px; line-height: 1.65; }
+.flow-dots { display: flex; justify-content: center; gap: 6px; margin: 20px 0; }
+.flow-dots i { width: 6px; height: 6px; border-radius: 3px; background: #E5E8EB; transition: width .2s; }
+.flow-dots i.is-on { width: 18px; background: #FE9800; }
+.flow-next { width: 100%; min-height: 56px; border-radius: 16px; font-size: 17px; }

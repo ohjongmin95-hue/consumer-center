@@ -994,6 +994,12 @@ def case_edit():
         db.execute('UPDATE cases SET subject=?,description=?,request_text=? WHERE id=?',(f['subject'],f['description'],f['request_text'],case_id))
         db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,'제보자','제보 내용 수정 (고치기 전 글은 보관)',now()))
         if case['published']:art_later(case_id)
+        if request.form.get('resubmit') and case['review']=='rejected' and case['returned_at']:
+            # 반려된 제보를 고쳐서 다시 제출 (운영자 2026-11-16): '승인 전'·'접수'로 돌아가 다시 검토
+            db.execute("UPDATE cases SET review='',returned_at='',status=? WHERE id=?",(STATUSES[0],case_id))
+            db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)',(case_id,'제보자','반려된 제보를 고쳐 다시 제출',now()))
+            ops_admin_alert(case,'admin_request','반려 뒤 다시 제출',[f"■ 업체: {case['company']}",f"■ 제목: {f['subject'][:80]}"])
+            flash('고친 제보를 다시 냈어요. 센터가 다시 검토해요.');return redirect(url_for('case_detail'))
     flash('제보 내용을 고쳤어요.'+(' 기업에도 고친 내용으로 보여요.' if case['forwarded_at'] else ''))
     return redirect(url_for('case_detail'))
 @app.route('/case',methods=['GET','POST'])
@@ -1855,6 +1861,22 @@ IP_ATTEMPT_LIMIT=20       # 같은 접속지에서 10분 동안 실패 허용 �
 app.config['PERMANENT_SESSION_LIFETIME']=datetime.timedelta(days=14)
 LOGIN_ID_RE=re.compile(r'^[a-z0-9_]{4,20}$')
 MEMBER_EMAIL_RE=re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+def _bulk_split(line):
+    # 기업 여러 곳 등록 한 줄 → [이름, 다른 이름, 이메일, 휴대폰, 카톡 채널]. 엑셀 붙여 넣기면 탭, 아니면 '/'. 카톡 주소 안의 '/'는 나누지 않음
+    if '\t' in line:return line.split('\t')
+    m=re.search(r'(https?://)?(pf|open)\.kakao\.com/\S+',line)
+    kakao=m.group(0) if m else ''
+    if m:line=line[:m.start()]+line[m.end():]
+    parts=[x.strip() for x in line.split('/')]
+    while parts and not parts[-1]:parts.pop()
+    return (parts+['','','',''])[:4]+[kakao]
+def kakao_url_of(raw):
+    # 기업 카카오톡 채널 주소: 빈칸이면 '', pf.kakao.com 주소면 https로 맞춤, 아니면 None (운영자 2026-11-16)
+    u=(raw or '').strip()
+    if not u:return ''
+    if not u.startswith('http'):u='https://'+u.lstrip('/')
+    u=u.replace('http://','https://',1)
+    return u[:300] if re.match(r'^https://(pf\.kakao\.com|open\.kakao\.com)/[\w\-/]+$',u) else None
 def notice_phone_in():
     # 관리자 기업 화면의 '안내 받을 휴대폰' 칸: 빈칸이면 '', 휴대폰 번호면 숫자만, 아니면 None (운영자 2026-11-10)
     p=re.sub(r'\D','',request.form.get('notice_phone',''))
@@ -3010,6 +3032,31 @@ def admin_companies():
                             db.execute('INSERT INTO admin_settings(key,value,updated) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated=excluded.updated',(key,value,now()))
                         flash(f'마스터 계정을 저장했어요. 기업 로그인 화면에서 {mid} 로 들어가요.')
                 return redirect(url_for('admin_companies'))
+            if action=='bulk':
+                # 운영자 2026-11-16: 기업 간편 등록. 한 줄에 한 기업 '이름 / 다른 이름(쉼표) / 이메일 / 휴대폰' (엑셀에서 붙여 넣으면 탭으로 나뉨)
+                added=updated=0;bad=[]
+                for line in request.form.get('rows','').splitlines()[:300]:
+                    if not line.strip():continue
+                    parts=[x.strip() for x in _bulk_split(line)]+['','','','','']
+                    name,aliases,email,phone,kakao=parts[0][:120],parts[1],parts[2][:150],re.sub(r'\D','',parts[3]),kakao_url_of(parts[4])
+                    if kakao is None:bad.append(name);kakao=''
+                    if not norm_company(name):continue
+                    if email and not MEMBER_EMAIL_RE.match(email):bad.append(name);email=''
+                    if phone and not re.fullmatch(r'01[016789]\d{7,8}',phone):bad.append(name);phone=''
+                    aliases=', '.join(x.strip() for x in aliases.split(',') if x.strip())[:300]
+                    co=pick_company(db,None,name)
+                    if co:
+                        # 이미 있으면 빈 칸만 채움 (적어 둔 값은 그대로)
+                        new_alias=', '.join(dict.fromkeys([x for x in (co['aliases'] or '').split(', ') if x]+[x for x in aliases.split(', ') if x]))[:300]
+                        db.execute("UPDATE companies SET aliases=?,official_email=CASE WHEN official_email='' THEN ? ELSE official_email END,notice_phone=CASE WHEN COALESCE(notice_phone,'')='' THEN ? ELSE notice_phone END,kakao_url=CASE WHEN COALESCE(kakao_url,'')='' THEN ? ELSE kakao_url END WHERE id=?",(new_alias,email,phone,kakao,co['id']))
+                        updated+=1;cid2=co['id']
+                    else:
+                        cid2=db.execute("INSERT INTO companies(name,biz_no,aliases,status,contact_name,contact_phone,contact_email,created,brand,biz_name,official_email,notice_phone,kakao_url) VALUES(?,'',?,'listed','','','',?,'','',?,?,?)",(name,aliases,now(),email,phone,kakao)).lastrowid
+                        added+=1
+                    if email or phone:ops_send_pending(db,cid2)
+                msg=f'새로 {added}곳 등록, {updated}곳 정보를 채웠어요.'
+                if bad:msg+=' 이메일·휴대폰·카톡 채널 형식이 맞지 않아 뺀 곳: '+', '.join(dict.fromkeys(bad))[:200]
+                flash(msg);return redirect(url_for('admin_companies'))
             if action=='create':
                 name=request.form.get('name','').strip()[:120]
                 if not norm_company(name):flash('기업 이름을 적어 주세요.');return redirect(url_for('admin_companies'))
@@ -3020,8 +3067,11 @@ def admin_companies():
                 if email and not MEMBER_EMAIL_RE.match(email):flash('이메일 주소를 확인해 주세요.');return redirect(url_for('admin_companies'))
                 phone=notice_phone_in()
                 if phone is None:flash('휴대폰 번호를 확인해 주세요. 010으로 시작하는 번호만 카카오톡으로 받을 수 있어요.');return redirect(url_for('admin_companies'))
-                db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created,brand,biz_name,official_email,notice_phone) VALUES(?,?,'listed','','','',?,?,?,?,?)",
-                           (name,digits,now(),request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email,phone))
+                kakao=kakao_url_of(request.form.get('kakao_url',''))
+                if kakao is None:flash('카카오톡 채널 주소는 pf.kakao.com/... 처럼 넣어 주세요.');return redirect(url_for('admin_companies'))
+                aliases=', '.join(x.strip() for x in request.form.get('aliases','').split(',') if x.strip())[:300]
+                db.execute("INSERT INTO companies(name,biz_no,aliases,status,contact_name,contact_phone,contact_email,created,brand,biz_name,official_email,notice_phone,kakao_url) VALUES(?,?,?,'listed','','','',?,?,?,?,?,?)",
+                           (name,digits,aliases,now(),request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email,phone,kakao))
                 flash(f'{name}을(를) 등록했어요. 공개 제보가 생기면 기업 페이지가 열려요.');return redirect(url_for('admin_companies'))
             company=db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone() if cid else None
             if not company:abort(404)
@@ -3033,6 +3083,10 @@ def admin_companies():
                 if phone is None:flash('휴대폰 번호를 확인해 주세요. 010으로 시작하는 번호만 카카오톡으로 받을 수 있어요.');return redirect(url_for('admin_companies'))
                 db.execute('UPDATE companies SET name=?,brand=?,biz_name=?,official_email=? WHERE id=?',(name,request.form.get('brand','').strip()[:120],request.form.get('biz_name','').strip()[:120],email,cid))
                 if 'notice_phone' in request.form:db.execute('UPDATE companies SET notice_phone=? WHERE id=?',(phone,cid))
+                if 'kakao_url' in request.form:
+                    kakao=kakao_url_of(request.form.get('kakao_url',''))
+                    if kakao is None:flash('카카오톡 채널 주소는 pf.kakao.com/... 처럼 넣어 주세요.')
+                    else:db.execute('UPDATE companies SET kakao_url=? WHERE id=?',(kakao,cid))
                 if email!=company['official_email']:db.execute("UPDATE companies SET email_source='' WHERE id=?",(cid,))
                 if 'domain' in request.form:company_set_domain(db,cid,request.form.get('domain',''))  # 홈페이지 주소 → 로고 자동  # 직접 고친 메일은 '자동 찾음' 표시를 뗌
                 n=ops_send_pending(db,cid) if (email or phone) else 0  # 연락처가 생기면 기다리던 정상 제보를 바로 보냄 (운영자 2026-11-13)
@@ -3254,7 +3308,7 @@ _jebo=types.SimpleNamespace(**globals());jebo.install(_jebo)
 send_company_verify=_jebo.send_company_verify
 # 3차 운영 자동화: 심사 보조·기업 통지·알림·정정·삭제·이의·운영 통계 (ops.py)
 _ops=types.SimpleNamespace(**globals());ops.install(_ops)
-for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras','ops_auto_forward','ops_contact_needed','ops_send_pending','ops_contact_saved'):globals()[_k]=getattr(_ops,_k)
+for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_admin_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras','ops_auto_forward','ops_contact_needed','ops_send_pending','ops_contact_saved'):globals()[_k]=getattr(_ops,_k)
 # 기업 대응 관리: AI 기업 입장 요청서, 기업 연락처, 전달 기록, 기업 답변 등록 (companydesk.py)
 _desk=types.SimpleNamespace(**globals());companydesk.install(_desk)
 for _k in ('desk_context','desk_handle_form','DESK_FORMS','desk_after_submit','desk_generate'):globals()[_k]=getattr(_desk,_k)

@@ -1,0 +1,50 @@
+{#- 운영자 2026-11-16: 제보하기 전에 처리 흐름을 알게. 동영상 대신 토스식 안내 3장(처음 한 번만) + 글쓰기 위 진행 막대(누르면 안내 다시 보기).
+    웹·앱 같이 씀 (report.html). 본 적 있으면 localStorage 'jebo_flow_seen'. 주소에 ?flow=1이면 다시 보여 줌 -#}
+{% set flow_steps = [ui('flow.s1', '접수'), ui('flow.s2', '검토'), ui('flow.s3', '기업 전달'), ui('flow.s4', '답변'), ui('flow.s5', '해결')] %}
+<button type="button" class="flow-bar" data-flow-open aria-label="{{ ui('flow.bar_label', '제보가 어떻게 진행되는지 보기') }}">
+  <ol>{% for s in flow_steps %}<li{% if loop.first %} class="is-now"{% endif %}><i aria-hidden="true"></i><span>{{ s }}</span></li>{% endfor %}</ol>
+  <small>{{ ui('flow.bar_more', '어떻게 진행되나요?') }}</small>
+</button>
+
+<div class="flow-sheet" id="flow-sheet" role="dialog" aria-modal="true" aria-labelledby="flow-title" hidden>
+  <div class="flow-in">
+    <button type="button" class="flow-skip" data-flow-close>{{ ui('flow.skip', '건너뛰기') }}</button>
+    <div class="flow-track">
+      <section class="flow-card is-on">
+        <svg class="flow-art" viewBox="0 0 200 160" aria-hidden="true"><rect x="52" y="22" width="84" height="108" rx="14" fill="#FFF3E0"/><rect x="66" y="44" width="56" height="8" rx="4" fill="#FFD08A"/><rect x="66" y="62" width="44" height="8" rx="4" fill="#FFD08A"/><rect x="66" y="80" width="50" height="8" rx="4" fill="#FFD08A"/><circle cx="132" cy="104" r="26" fill="#FE9800"/><path d="M120 104l8 8 16-17" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p class="flow-no">1 / 3</p>
+        <h2 id="flow-title">{{ ui('flow.t1', '쓰면 센터가 먼저 확인해요') }}</h2>
+        <p>{{ ui('flow.d1', '거래 날짜·금액·주문 내역이 있으면 빨리 확인돼요. 빠진 게 있으면 보완을 요청하거나 사유와 함께 돌려보내요.') }}</p>
+      </section>
+      <section class="flow-card">
+        <svg class="flow-art" viewBox="0 0 200 160" aria-hidden="true"><rect x="28" y="50" width="62" height="80" rx="10" fill="#FFF3E0"/><rect x="40" y="64" width="12" height="12" rx="3" fill="#FFD08A"/><rect x="66" y="64" width="12" height="12" rx="3" fill="#FFD08A"/><rect x="40" y="88" width="12" height="12" rx="3" fill="#FFD08A"/><rect x="66" y="88" width="12" height="12" rx="3" fill="#FFD08A"/><rect x="110" y="40" width="68" height="50" rx="14" fill="#FE9800"/><path d="M128 100l-6 14 18-10" fill="#FE9800"/><rect x="124" y="56" width="40" height="7" rx="3.5" fill="#fff"/><rect x="124" y="70" width="26" height="7" rx="3.5" fill="#fff"/></svg>
+        <p class="flow-no">2 / 3</p>
+        <h2>{{ ui('flow.t2', '기업에 전하고 답을 받아요') }}</h2>
+        <p>{{ ui('flow.d2', '기업 담당자에게 제보를 알리고 공식 답변을 요청해요. 답이 오면 바로 알려 드려요. 늦어지면 독촉할 수 있어요.') }}</p>
+      </section>
+      <section class="flow-card">
+        <svg class="flow-art" viewBox="0 0 200 160" aria-hidden="true"><rect x="34" y="30" width="96" height="104" rx="12" fill="#FFF3E0"/><rect x="48" y="46" width="68" height="10" rx="5" fill="#FE9800"/><rect x="48" y="66" width="68" height="6" rx="3" fill="#FFD08A"/><rect x="48" y="80" width="56" height="6" rx="3" fill="#FFD08A"/><rect x="48" y="94" width="62" height="6" rx="3" fill="#FFD08A"/><circle cx="146" cy="104" r="28" fill="#FE9800"/><path d="M134 104h24M146 92v24" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg>
+        <p class="flow-no">3 / 3</p>
+        <h2>{{ ui('flow.t3', '답이 아쉬우면 이어서 다퉈요') }}</h2>
+        <p>{{ ui('flow.d3', '추가 불만을 남기면 기업에 다시 요청해요. 그래도 안 되면 기사로 알리고, 1372 상담·피해구제 신청까지 도와요.') }}</p>
+      </section>
+    </div>
+    <div class="flow-dots" aria-hidden="true"><i class="is-on"></i><i></i><i></i></div>
+    <button type="button" class="primary flow-next" data-flow-next data-last="{{ ui('flow.go', '고발 쓰러 가기') }}" data-next="{{ ui('flow.next', '다음') }}">{{ ui('flow.next', '다음') }}</button>
+  </div>
+</div>
+<script>(function(){
+  var sheet=document.getElementById('flow-sheet');if(!sheet)return;
+  var cards=sheet.querySelectorAll('.flow-card'),dots=sheet.querySelectorAll('.flow-dots i'),next=sheet.querySelector('[data-flow-next]'),i=0,KEY='jebo_flow_seen';
+  function show(n){i=n;cards.forEach(function(c,k){c.classList.toggle('is-on',k===n)});dots.forEach(function(d,k){d.classList.toggle('is-on',k===n)});next.textContent=n===cards.length-1?next.dataset.last:next.dataset.next}
+  function open(){show(0);sheet.hidden=false;document.documentElement.classList.add('flow-lock')}
+  function close(){sheet.hidden=true;document.documentElement.classList.remove('flow-lock');try{localStorage.setItem(KEY,'1')}catch(e){}}
+  next.addEventListener('click',function(){i<cards.length-1?show(i+1):close()});
+  sheet.querySelectorAll('[data-flow-close]').forEach(function(b){b.addEventListener('click',close)});
+  document.querySelectorAll('[data-flow-open]').forEach(function(b){b.addEventListener('click',open)});
+  var x0=null;sheet.addEventListener('touchstart',function(e){x0=e.touches[0].clientX},{passive:true});
+  sheet.addEventListener('touchend',function(e){if(x0===null)return;var dx=e.changedTouches[0].clientX-x0;x0=null;if(dx<-40&&i<cards.length-1)show(i+1);else if(dx>40&&i>0)show(i-1)});
+  document.addEventListener('keydown',function(e){if(!sheet.hidden&&e.key==='Escape')close()});
+  var seen=false;try{seen=localStorage.getItem(KEY)==='1'}catch(e){}
+  if(/[?&]flow=1/.test(location.search)||!seen)open();
+})();</script>

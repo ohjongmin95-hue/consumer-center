@@ -14,6 +14,7 @@ from flask import request, redirect, url_for, flash, abort, render_template, ses
 
 REQUEST_KINDS = {'correct': '정정 요청', 'delete': '삭제 요청', 'objection': '기업 이의 신청'}
 REQUEST_STATUSES = ('접수', '처리 완료', '반려')
+FOLLOWUP_LINE = '제보자가 귀사 답변을 보고 추가 의견을 남겼습니다. 아래 링크에서 확인하고 다시 답변해 주시기 바랍니다.'
 NOTICE_KINDS = {'first': '첫 안내', 'remind': '재안내', 'manual': '직접 연락 기록'}
 NOTICE_GAP_HOURS = 72          # 같은 제보로 기업에 다시 메일을 보내려면 이만큼 지나야 함
 NOTICE_MAX_PER_CASE = 3        # 제보 하나로 기업에 보내는 안내 메일 최대 횟수
@@ -45,10 +46,11 @@ def migrate(db):
     db.execute('CREATE INDEX IF NOT EXISTS company_notices_case ON company_notices(case_id)')
     db.execute('CREATE INDEX IF NOT EXISTS case_requests_case ON case_requests(case_id)')
     cols = {r['name'] for r in db.execute('PRAGMA table_info(companies)')}
-    for c in ('notice_optout', 'optout_token', 'email_source', 'notice_phone'):  # notice_phone: 안내를 카카오톡(알림톡·문자)으로 받을 휴대폰 (운영자 2026-11-10)
+    for c in ('notice_optout', 'optout_token', 'email_source', 'notice_phone', 'kakao_url'):  # kakao_url: 기업 카카오톡 채널 (운영자 2026-11-16: 소보루 카톡 계정으로 직접 보냄)  # notice_phone: 안내를 카카오톡(알림톡·문자)으로 받을 휴대폰 (운영자 2026-11-10)
         if c not in cols: db.execute(f"ALTER TABLE companies ADD COLUMN {c} TEXT NOT NULL DEFAULT ''")
     cols = {r['name'] for r in db.execute('PRAGMA table_info(cases)')}
-    if 'supplement_at' not in cols: db.execute("ALTER TABLE cases ADD COLUMN supplement_at TEXT NOT NULL DEFAULT ''")
+    for c in ('supplement_at', 'returned_at', 'followup_at'):  # returned_at: 반려 사유를 보내 돌려보낸 때, followup_at: 제보자가 추가 불만을 낸 때 (운영자 2026-11-16)
+        if c not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {c} TEXT NOT NULL DEFAULT ''")
     # 센터 메시지를 보낸 담당자 이름 (제보자 화면에 보여 줌). 대표 계정이 보내면 빈칸 → '센터'로만 표시
     if 'sender' not in {r['name'] for r in db.execute('PRAGMA table_info(messages)')}: db.execute("ALTER TABLE messages ADD COLUMN sender TEXT NOT NULL DEFAULT ''")
 
@@ -122,6 +124,7 @@ def install(S):
         to = co['contact_email']
         later(lambda: notify.company_email(conn, case, event, to, f"[{notify.site_name()}] {what}", body))
     S.ops_member_alert = member_alert
+    S.ops_admin_alert = admin_alert
 
     def answer_alert(case):
         admin_alert(case, 'admin_answer', '기업 답변 등록', [f"■ 업체: {case['company']}", f"■ 제목: {notify.short(case['subject'], 60)}",
@@ -151,11 +154,27 @@ def install(S):
         company = from_contacts(db, db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone() if case['company_id'] else None, case['company'])
         notices = db.execute('SELECT * FROM company_notices WHERE case_id=? ORDER BY id DESC', (case['id'],)).fetchall()
         reqs = db.execute('SELECT * FROM case_requests WHERE case_id=? ORDER BY id DESC', (case['id'],)).fetchall()
-        return dict(risks=risks(case['subject'], case['description'], case['request_text']),
+        kakao = kakao_way(db, case, company)
+        return dict(kakao=kakao, risks=risks(case['subject'], case['description'], case['request_text']),
                     public_risks=risks(case['public_subject'], case['public_body'], case['public_request']) if case['public_consent'] else [],
                     dups=dups[:8], company=company, notices=notices, requests=reqs, notice_block=notice_block(db, case, company),
                     notice_to=notice_target(company), notice_phone=notify.mask(notice_phone(company)) if notice_phone(company) else '', files=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?', (case['id'],)).fetchone()[0])
     S.ops_context = context
+
+    def kakao_way(db, case, company):
+        """소보루 카톡 계정으로 기업 채널 1:1 채팅에 직접 보내기 (운영자 2026-11-16). 채널 주소가 있을 때만 {'chat': 채팅 주소, 'text': 보낼 글}"""
+        if not company or not case['share_company'] or case['review'] in jebo.NOT_VALID: return None
+        url = (company['kakao_url'] if 'kakao_url' in company.keys() else '') or ''
+        if not url:
+            row = db.execute("SELECT kakao_url FROM company_contacts WHERE company_id=? AND kakao_url!='' ORDER BY updated DESC LIMIT 1", (company['id'],)).fetchone()
+            url = row[0] if row else ''
+        if not url: return None
+        chat = url.rstrip('/') + ('' if url.rstrip('/').endswith('/chat') or 'pf.kakao.com' not in url else '/chat')
+        link = S.answer_link(db, case)
+        text = (f"안녕하세요. {notify.INTRO}입니다.\n{company['name']} 관련 소비자 제보가 접수돼 안내드립니다.\n\n"
+                f"■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n\n"
+                + (f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남겨 주세요. 답변 등록은 무료이고, 링크는 이 제보 하나만 볼 수 있어요.\n{link}" if link else "답변 링크는 담당자가 따로 보내 드릴게요."))
+        return dict(chat=chat, text=text, has_link=bool(link))
 
     def notice_target(company):
         if not company: return ''
@@ -212,6 +231,15 @@ def install(S):
                 db.execute('UPDATE cases SET status=? WHERE id=?', (STATUSES[2], cid)); S.log_case(db, cid, f"진행 단계 변경: {case['status']} → {STATUSES[2]}")
             S.log_case(db, cid, '제보자에게 보완 요청'); S.notify_later(cid, 'supplement')
             flash('보완 요청을 보냈어요. 제보자 조회 화면에 보이고, 연락처가 있으면 알림이 가요.')
+        elif form == 'return':
+            # 반려하고 돌려보내기 (운영자 2026-11-16, 검은고양이 '승인되지 않음'): 사유가 제보자 화면에 보이고, 고쳐서 다시 내면 '승인 전'으로 돌아옴
+            body = request.form.get('body', '').strip()
+            if not body or len(body) > 1000: flash('반려 사유를 적어 주세요.'); return
+            S.set_review(db, case, 'rejected', body)
+            db.execute('INSERT INTO messages(case_id,author,body,created,sender) VALUES(?,?,?,?,?)', (cid, '센터', '[반려] ' + body, now(), S.staff_sender()))
+            db.execute('UPDATE cases SET returned_at=? WHERE id=?', (now(), cid))
+            S.log_case(db, cid, '반려 사유를 보내 돌려보냄'); S.notify_later(cid, 'message')
+            flash('반려 사유를 보냈어요. 제보자가 고쳐서 다시 내면 \'승인 전\'으로 돌아와요.')
         elif form == 'notice':
             company = from_contacts(db, db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone() if case['company_id'] else None, case['company'])
             block = notice_block(db, case, company)
@@ -225,7 +253,7 @@ def install(S):
         elif form == 'request_done':
             handle_request(db, request.form.get('request_id', type=int), cid)
     S.ops_handle_form = handle_form
-    S.OPS_FORMS = ('supplement', 'notice', 'notice_manual', 'request_done')
+    S.OPS_FORMS = ('supplement', 'return', 'notice', 'notice_manual', 'request_done')
 
     def send_notice(db, case, company, quiet=False, actor=None, nudge=False):
         """기업 공식 이메일로 답변 링크를 보냄 (운영자 버튼, 승인 시 자동 전달, 제보자 독촉). 보냈으면 True.
@@ -237,7 +265,7 @@ def install(S):
         subject = f"[{notify.CENTER}] {company['name']} 관련 소비자 제보 안내 ({case['receipt']})" + (' - 재안내' if kind == 'remind' else '')
         body = (f"{company['name']} 고객 담당자님께,\n\n안녕하세요. {notify.INTRO}입니다.\n{company['name']}와(과) 관련된 소비자 제보가 접수돼 안내드립니다.\n\n"
                 f"■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n■ 접수일: {case['created'][:10]}\n\n"
-                + ("제보자가 아직 답변을 받지 못해 답변을 기다리고 있다고 알려 왔습니다.\n\n" if nudge else '') +
+                + (FOLLOWUP_LINE + "\n\n" if nudge == 'followup' else "제보자가 아직 답변을 받지 못해 답변을 기다리고 있다고 알려 왔습니다.\n\n" if nudge else '') +
                 f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남길 수 있습니다. 답변 등록은 무료이며, 링크는 이 제보 하나만 볼 수 있습니다.\n{link}\n\n"
                 "제보와 답변 기록은 기사로 다뤄질 수 있습니다. "
                 "답변을 남기시면 귀사의 입장도 함께 전달되며, 해결되지 않은 제보는 한국소비자원(1372)·공정거래위원회 등 관계 기관의 피해구제 절차로 안내합니다.\n\n"
@@ -257,7 +285,7 @@ def install(S):
         if phone:  # 휴대폰을 넣어 두면 카카오톡 채널로도 (알림톡 템플릿 심사 전이면 문자) (운영자 2026-11-10)
             text = (f"[{notify.CENTER}] {company['name']} 관련 소비자 제보 안내\n\n안녕하세요. {notify.INTRO}입니다.\n"
                     f"{company['name']}와(과) 관련된 소비자 제보가 접수돼 안내드립니다.\n\n■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n\n"
-                    + ("제보자가 아직 답변을 받지 못해 답변을 기다리고 있습니다.\n\n" if nudge else '') +
+                    + (FOLLOWUP_LINE + "\n\n" if nudge == 'followup' else "제보자가 아직 답변을 받지 못해 답변을 기다리고 있습니다.\n\n" if nudge else '') +
                     f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남길 수 있습니다.\n{link}\n\n안내를 그만 받으려면: {optout}")
             try:
                 if notify.kakao_ready('company_notice'):
@@ -391,6 +419,38 @@ def install(S):
         flash('기업에 답변을 독촉했어요. 답변이 오면 바로 알려 드릴게요.')
         return redirect(url_for('case_detail') + '#nudge')
 
+    def followup_state(db, case):
+        """제보자 화면의 '추가 불만' 칸 (운영자 2026-11-16, 검은고양이 '추가 불만'). 기업 답변이 온 뒤에만. None이면 안 보임"""
+        if not db.execute("SELECT 1 FROM messages WHERE case_id=? AND author='기업 답변'", (case['id'],)).fetchone(): return None
+        if case['outcome'] == 'resolved': return None
+        return dict(at=case['followup_at'], wait=bool(case['followup_at']) and case['followup_at'] > ago(hours=24))
+
+    @app.route('/case/followup', methods=['POST'])
+    def case_followup():
+        body = request.form.get('body', '').strip()
+        with conn() as db:
+            case = reporter_case(db)
+            if not case: return redirect(url_for('lookup'))
+            st = followup_state(db, case)
+            if not st: flash('기업 답변이 온 뒤에 추가 불만을 남길 수 있어요.'); return redirect(url_for('case_detail'))
+            if st['wait']: flash('추가 불만은 하루에 한 번 남길 수 있어요. 기업이 다시 답하면 알려 드릴게요.'); return redirect(url_for('case_detail') + '#followup')
+            if not body or len(body) > 3000: flash('기업 답변에서 무엇이 부족한지 3,000자 이내로 적어 주세요.'); return redirect(url_for('case_detail') + '#followup')
+            db.execute('INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)', (case['id'], '제보자', '[추가 불만] ' + body, now()))
+            db.execute('UPDATE cases SET followup_at=? WHERE id=?', (now(), case['id']))
+            if case['status'] in (STATUSES[4], STATUSES[5]):  # 기업 답변 도착·종결 → 다시 기업 답변 대기
+                db.execute('UPDATE cases SET status=? WHERE id=?', (STATUSES[3], case['id']))
+                db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)', (case['id'], '제보자', f"진행 단계 변경: {case['status']} → {STATUSES[3]} (추가 불만)", now()))
+            company = db.execute('SELECT * FROM companies WHERE id=?', (case['company_id'],)).fetchone() if case['company_id'] else None
+            how = '센터에 알림'
+            if company and company['status'] == 'active' and company['contact_email']:
+                member_alert(db, case, 'company_opinion'); how = '기업 담당자에게 알림'
+            elif case['share_company'] and company and not notice_block(db, case, company) and send_notice(db, case, company, quiet=True, actor='제보자', nudge='followup'):
+                how = '기업 공식 연락처로 재안내'
+            db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)', (case['id'], '제보자', f'추가 불만 ({how})', now()))
+            admin_alert(case, 'admin_request', '제보자 추가 불만', [f"■ 업체: {case['company']}", f"■ 내용: {notify.short(body, 200)}"] + ([] if how != '센터에 알림' else ['기업에 자동으로 보낼 수 없어 운영자 연락이 필요해요.']))
+        flash('추가 불만을 남겼어요. 기업에 다시 답변을 요청했어요. 답변이 오면 알려 드릴게요.')
+        return redirect(url_for('case_detail') + '#followup')
+
     # ---- 기업 수신 거부 ----------------------------------------------------------
     @app.route('/company/optout/<token>', methods=['GET', 'POST'])
     def company_optout(token):
@@ -458,7 +518,8 @@ def install(S):
         return dict(requests=db.execute("SELECT * FROM case_requests WHERE case_id=? AND who='reporter' ORDER BY id DESC", (case['id'],)).fetchall(),
                     alerts=db.execute("SELECT event,channel,status,created FROM notifications WHERE case_id=? AND channel IN ('kakao','email') ORDER BY id DESC LIMIT 20", (case['id'],)).fetchall(),
                     files=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?', (case['id'],)).fetchone()[0], max_files=MAX_CASE_FILES,
-                    supplement=case['supplement_at'] and case['status'] == STATUSES[2], nudge=nudge_state(db, case))
+                    supplement=case['supplement_at'] and case['status'] == STATUSES[2], nudge=nudge_state(db, case), followup=followup_state(db, case),
+                    returned=(case['review_note'] or ' ') if case['review'] == 'rejected' and case['returned_at'] else '')
     S.ops_reporter_extras = reporter_extras
 
     # ---- 기업: 이의 신청 (가입 기업 화면, 답변 링크 화면) -----------------------------
