@@ -7,7 +7,7 @@
 - 운영 통계: 실제 DB로 계산하고 집계 기간과 산식을 함께 보여 줌
 app.py 끝에서 install(S)로 붙임 (jebo.py와 같은 방식).
 """
-import datetime, hashlib, os, re, secrets
+import datetime, hashlib, json, os, re, secrets
 import company_mail
 from pathlib import Path
 from flask import request, redirect, url_for, flash, abort, render_template, session, g, has_request_context, after_this_request
@@ -157,7 +157,7 @@ def install(S):
         notices = db.execute('SELECT * FROM company_notices WHERE case_id=? ORDER BY id DESC', (case['id'],)).fetchall()
         reqs = db.execute('SELECT * FROM case_requests WHERE case_id=? ORDER BY id DESC', (case['id'],)).fetchall()
         kakao = kakao_way(db, case, company)
-        return dict(kakao=kakao, risks=risks(case['subject'], case['description'], case['request_text']),
+        return dict(kakao=kakao, copy=request_copy(db, case, company), risks=risks(case['subject'], case['description'], case['request_text']),
                     public_risks=risks(case['public_subject'], case['public_body'], case['public_request']) if case['public_consent'] else [],
                     dups=dups[:8], company=company, notices=notices, requests=reqs, notice_block=notice_block(db, case, company),
                     clock=answer_clocks(db, [case['id']]).get(case['id']), notice_to=notice_target(company), notice_phone=notify.mask(notice_phone(company)) if notice_phone(company) else '', files=db.execute('SELECT COUNT(*) FROM attachments WHERE case_id=?', (case['id'],)).fetchone()[0])
@@ -218,11 +218,45 @@ def install(S):
             url = row[0] if row else ''
         if not url: return None
         chat = url.rstrip('/') + ('' if url.rstrip('/').endswith('/chat') or 'pf.kakao.com' not in url else '/chat')
+        cp = request_copy(db, case, company)
+        return dict(chat=chat, text=cp['text'] if cp else '', has_link=bool(cp))
+
+    def cut(t, n):
+        t = re.sub(r'\s+', ' ', t or '').strip()
+        if len(t) <= n: return t
+        t = t[:n]; k = max(t.rfind('. '), t.rfind('요 '), t.rfind('다 '))
+        return (t[:k + 1] if k > n * 0.5 else t.rstrip()) + '…'
+
+    def notice_gist(db, case):
+        """기업 메일에 보일 핵심 내용 (운영자 2026-11-17: 뭐로 고발했는지 보여 줘야). AI 정리가 있으면 그 첫 문단, 없으면 공개용 글·원문 앞부분. 개인정보 가림"""
+        facts = None
+        try:
+            row = db.execute("SELECT facts FROM company_requests WHERE case_id=? AND facts!='' ORDER BY version DESC LIMIT 1", (case['id'],)).fetchone()
+            facts = json.loads(row['facts']) if row else None
+        except Exception: facts = None
+        paras = facts.get('paragraphs') if isinstance(facts, dict) else None
+        first = paras[0] if paras and isinstance(paras[0], str) else ''
+        demand = facts.get('demands') if isinstance(facts, dict) and facts.get('demands') not in (None, '', '확인 필요') else ''
+        gist = cut(S.mask_personal(first or case['public_body'] or case['description'] or ''), 160)
+        demand = cut(S.mask_personal(demand if isinstance(demand, str) and demand else (case['public_request'] or case['request_text'] or '')), 80)
+        return gist, demand
+
+    def request_copy(db, case, company):
+        """메일이 안 되는 기업에 직접 보낼 답변 요청 글 (운영자 2026-11-17: 링크를 복사해 문자·카톡·게시판으로). {'text', 'link', 'deadline'}"""
+        if not case['share_company'] or case['review'] in jebo.NOT_VALID: return None
         link = S.answer_link(db, case)
-        text = (f"안녕하세요. {notify.INTRO}입니다.\n{company['name']} 관련 소비자 제보가 접수돼 안내드립니다.\n\n"
-                f"■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n\n"
-                + (f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남겨 주세요. 답변 등록은 무료이고, 링크는 이 제보 하나만 볼 수 있어요.\n{link}" if link else "답변 링크는 담당자가 따로 보내 드릴게요."))
-        return dict(chat=chat, text=text, has_link=bool(link))
+        if not link: return None
+        due = datetime.datetime.now() + datetime.timedelta(hours=NOTICE_ANSWER_HOURS)
+        deadline = f"{due.month}월 {due.day}일({'월화수목금토일'[due.weekday()]}) {'오전' if due.hour < 12 else '오후'} {due.hour % 12 or 12}시"
+        reporter = (case['assignee'] or '').strip()
+        name = (company['name'] if company else '') or case['company']
+        title = case['public_subject'] or S.mask_personal(case['subject'])
+        gist, demand = notice_gist(db, case)
+        text = (f"[소보루고발] {name} 관련 고발 글 답변 요청\n\n안녕하세요. 소비자를위한신문(소보루){' ' + reporter + ' 기자' if reporter else ''}입니다.\n"
+                f"소비자가 {name}와(과) 관련된 피해를 고발해 답변을 요청드립니다.\n\n■ 고발 글: {title}\n" + (f"■ 무슨 일이 있었나요: {gist}\n" if gist else '') + (f"■ 소비자가 원하는 것: {demand}\n" if demand else '') + f"■ 답변 기한: {deadline}\n\n"
+                f"아래 링크에서 고발 글을 보고 답변해 주세요. 가입·로그인 없이 열립니다.\n{link}\n\n"
+                "기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다. 답변을 주시면 귀사 입장도 함께 싣겠습니다.")
+        return dict(text=text, link=link, deadline=deadline)
 
     def notice_target(company):
         if not company: return ''
@@ -320,19 +354,19 @@ def install(S):
         deadline = f"{due.month}월 {due.day}일({'월화수목금토일'[due.weekday()]}) {'오전' if due.hour < 12 else '오후'} {due.hour % 12 or 12}시"
         title = case['public_subject'] or S.mask_personal(case['subject'])
         reporter = (case['assignee'] or '').strip()
+        gist, demand = notice_gist(db, case)
         token = link.rstrip('/').rsplit('/', 1)[-1]
         signup = S.canonical_url(url_for('biz_signup', case=cid, t=token)) if token else S.canonical_url(url_for('biz_signup'))
-        subject = f"[{brand}] {company['name']} 관련 고발 글 답변 요청 ({deadline}까지)" + (' - 재요청' if kind == 'remind' else '')
+        subject = f"[{brand}] {company['name']} 관련 고발 글 입장 요청 ({deadline}까지)" + (' - 재요청' if kind == 'remind' else '')
         hello = f"안녕하세요. 소비자를위한신문(소보루){' ' + reporter + ' 기자' if reporter else ''}입니다."
         why = (FOLLOWUP_LINE if nudge == 'followup' else '제보자가 아직 답변을 기다리고 있습니다.' if nudge else f"소비자가 {company['name']}와(과) 관련된 피해를 고발했습니다.")
         body = (f"{company['name']} 담당자님께,\n\n{hello}\n{why}\n\n"
-                f"■ 고발 글: {title}\n■ 분야: {case['category']}\n■ 답변 기한: {deadline}\n\n"
+                f"■ 고발 글: {title}\n" + (f"■ 무슨 일이 있었나요: {gist}\n" if gist else '') + (f"■ 소비자가 원하는 것: {demand}\n" if demand else '') + f"■ 답변 기한: {deadline}\n\n"
                 f"아래 링크에서 고발 글을 보고 답변해 주세요. 가입·로그인 없이 열리고, 이 글 하나만 볼 수 있습니다.\n{link}\n\n"
-                "기한 안에 답변이 없으시면 제보 내용에 대해 따로 밝히실 입장이 없는 것으로 보고 기사를 쓸 예정입니다. 답변을 주시면 귀사 입장도 함께 싣겠습니다.\n\n"
-                f"기업 등록은 무료입니다. 등록하면 새 고발 글을 바로 알려 드리고 한 화면에서 답할 수 있습니다.\n{signup}\n\n"
-                "고발 글은 소비자 개인의 경험과 주장입니다. 이 메일에 바로 답장하셔도 담당자가 받아 봅니다.\n\n"
-                f"이런 메일을 그만 받으려면: {optout}")
-        html = render_template('company_notice_email.html', subject=subject, company=company['name'], title=title, reporter=reporter, deadline=deadline, signup=signup,
+                "기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다. 답변을 주시면 귀사 입장도 함께 싣겠습니다.\n\n"
+                f"기업 등록은 무료입니다. 등록하시면 새 고발 글을 바로 알려 드리고 한 화면에서 모아 답하실 수 있습니다.\n{signup}\n\n"
+                "이 메일에 회신하시면 담당 기자가 받습니다.")
+        html = render_template('company_notice_email.html', subject=subject, company=company['name'], title=title, reporter=reporter, deadline=deadline, signup=signup, gist=gist, demand=demand,
                                category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind')
         sent, fails = [], []
         if to:
@@ -343,7 +377,7 @@ def install(S):
                 fails.append('메일: ' + str(e)[:150])
         if phone:  # 휴대폰을 넣어 두면 카카오톡 채널로도 (알림톡 템플릿 심사 전이면 문자) (운영자 2026-11-10)
             text = (f"[{brand}] {company['name']} 관련 고발 글 답변 요청\n\n{hello}\n{why}\n\n■ 고발 글: {title}\n■ 답변 기한: {deadline}\n\n"
-                    f"아래 링크에서 고발 글을 보고 답변해 주세요. 기한 안에 답변이 없으시면 따로 밝히실 입장이 없는 것으로 보고 기사를 쓸 예정입니다.\n{link}\n\n안내를 그만 받으려면: {optout}")
+                    f"아래 링크에서 고발 글을 보고 답변해 주세요. 기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다.\n{link}")
             try:
                 if notify.kakao_ready('company_notice'):
                     notify.bizmsg.alimtalk(phone, notify.bizmsg.template(notify.KAKAO_TEMPLATE_ENV['company_notice']),

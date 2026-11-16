@@ -10,6 +10,14 @@
     <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ cat_label(case['category']) }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}{% if case['occurred_on'] %} · 발생 {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
     <h1 class="cs-title">{{ case['subject'] }}</h1>
     <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ stage_of(case['status']) }}">{{ stage_names()[stage_of(case['status']) - 1] }}</span></p>
+    {% set ck = ops.clock if ops else None %}{% if ck %}{# 운영자 2026-11-17: 기업에 보낸 때부터 답변 기한을 실시간으로. 지나면 기사 초안으로 #}
+    <div class="ans-clock{{ ' is-done' if ck.answered else ' is-over' if ck.over else '' }}" data-due="{{ ck.due_ms }}"{% if ck.answered %} data-answered="1"{% endif %}>
+      <div class="ans-clock-main"><span class="ans-clock-k">기업 답변 기한</span><b class="ans-clock-left">{% if ck.answered %}기업이 답했어요{% elif ck.over %}기한 지남{% else %}남은 시간 계산 중{% endif %}</b></div>
+      <p class="ans-clock-sub">보낸 때 {{ ck.sent[5:]|replace('-', '.') }} · 기한 {{ ck.due[5:]|replace('-', '.') }}{% if ck.answered %} · 답한 때 {{ ck.answered[5:]|replace('-', '.') }}{% endif %}</p>
+      {% if not ck.answered %}<form method="post" class="ans-clock-go"{% if not ck.over %} hidden{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="article_draft"><button class="cs-btn cs-btn-main" type="submit">기사 초안 만들기</button></form>{% endif %}
+    </div>
+    <script>(function(){var c=document.querySelector('.ans-clock');if(!c||c.dataset.answered)return;var due=+c.dataset.due,el=c.querySelector('.ans-clock-left'),go=c.querySelector('.ans-clock-go');function f(ms){var m=Math.floor(ms/60000),h=Math.floor(m/60);return (h?h+'시간 ':'')+(m%60)+'분'}function tick(){var d=due-Date.now();if(d>0){el.textContent=f(d)+' 남음';c.classList.remove('is-over')}else{el.textContent='기한 지남 · '+f(-d)+' 지났어요';c.classList.add('is-over');if(go)go.hidden=false}}tick();setInterval(tick,30000)})();</script>
+    {% endif %}
   </div>
 
   <div class="cs-case">
@@ -275,16 +283,18 @@
         <h2>기업 안내 {% if case['seen_at'] %}<span class="cs-pill on">기업이 열어 봄 · {{ case['seen_at'][5:16]|replace('T', ' ')|replace('-', '.') }}</span>{% elif case['forwarded_at'] %}<span class="cs-pill">전달 시도</span>{% endif %}</h2>
         {% if ops.notice_block %}<p class="cs-hint">{{ ops.notice_block }}</p>
         {% else %}<form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice"><span class="cs-hint">{{ ops.company['name'] }} {% if ops.notice_to %}공식 이메일({{ ops.notice_to }}){% endif %}{% if ops.notice_to and ops.notice_phone %}과 {% endif %}{% if ops.notice_phone %}카카오톡({{ ops.notice_phone }}){% endif %}로 이 제보만 볼 수 있는 답변 링크를 보내요.</span><button class="cs-btn" type="submit" onclick="return confirm('{{ ops.company['name'] }}에 안내를 보낼까요?')">{{ '재안내 보내기' if ops.notices|selectattr('status', 'equalto', '보냄')|list else '안내 보내기' }}</button></form>{% endif %}
-        {% if ops.kakao %}{# 운영자 2026-11-16: 소보루 카톡 계정으로 기업 채널 1:1 채팅에 답변 링크를 붙여 넣어 보냄. 버튼은 위아래로 #}
+        {% if ops.copy %}{# 운영자 2026-11-17: 메일이 안 되는 기업은 글·링크를 복사해 문자·카톡·게시판으로 직접 보냄. 보냈다고 기록하면 답변 기한이 시작됨. 버튼은 위아래로 #}
         <div class="kakao-send" id="kakao_send">
-          <span class="cs-label">카톡 채널로 직접 보내기</span>
-          <p class="cs-hint">소보루 카톡 계정으로 로그인한 휴대폰·PC에서 채널을 열고, 복사한 글을 붙여 넣어 보내요.</p>
-          <textarea class="cs-compose" id="kakao-text" rows="7" readonly aria-label="보낼 글">{{ ops.kakao.text }}</textarea>
-          <a class="cs-btn cs-btn-main kakao-open" href="{{ ops.kakao.chat }}" target="_blank" rel="noopener">카톡 채널 열기</a>
-          <button class="cs-btn kakao-copy" type="button" data-copy="#kakao-text">보낼 글 복사</button>
-          <form method="post" class="kakao-done"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice_manual"><input type="hidden" name="memo" value="카카오톡 채널 1:1 채팅으로 답변 링크 보냄"><button class="cs-link" type="submit">보냈어요, 기록 남기기</button></form>
+          <span class="cs-label">직접 보내기</span>
+          <p class="cs-hint">메일이 안 되는 기업은 이 글을 복사해 문자·카톡 채널·고객센터 게시판에 붙여 넣어 보내요. 보낸 뒤 '보냈어요'를 누르면 그때부터 {{ NOTICE_ANSWER_HOURS }}시간 답변 기한이 시작돼요.</p>
+          <textarea class="cs-compose" id="kakao-text" rows="9" readonly aria-label="보낼 글">{{ ops.copy.text }}</textarea>
+          {% if ops.kakao %}<a class="cs-btn cs-btn-main kakao-open" href="{{ ops.kakao.chat }}" target="_blank" rel="noopener">카톡 채널 열기</a>{% endif %}
+          <button class="cs-btn{{ '' if ops.kakao else ' cs-btn-main' }} kakao-copy" type="button" data-copy="#kakao-text" data-label="보낼 글 복사">보낼 글 복사</button>
+          <input type="hidden" id="answer-link" value="{{ ops.copy.link }}">
+          <button class="cs-link" type="button" data-copy="#answer-link" data-label="답변 링크만 복사">답변 링크만 복사</button>
+          <form method="post" class="kakao-done"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice_manual"><input type="hidden" name="memo" value="답변 요청 글·링크를 직접 보냄 (문자·카톡·게시판)"><button class="cs-link" type="submit">보냈어요, 기록 남기기</button></form>
         </div>
-        <script>document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.querySelector(b.dataset.copy),v=t.value,done=function(){b.textContent='복사했어요';setTimeout(function(){b.textContent='보낼 글 복사'},1800)};if(navigator.clipboard){navigator.clipboard.writeText(v).then(done,function(){t.select();document.execCommand('copy');done()})}else{t.select();document.execCommand('copy');done()}})})</script>
+        <script>document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.querySelector(b.dataset.copy),v=t.value,l=b.dataset.label,done=function(){b.textContent='복사했어요';setTimeout(function(){b.textContent=l},1800)},fb=function(){if(t.type==='hidden'){var x=document.createElement('textarea');x.value=v;document.body.appendChild(x);x.select();document.execCommand('copy');x.remove()}else{t.select();document.execCommand('copy')}done()};if(navigator.clipboard){navigator.clipboard.writeText(v).then(done,fb)}else fb()})})</script>
         {% endif %}
         <p class="cs-hint">진행 단계를 '기업 전달'로 바꾸면 첫 안내가 나가요. 제보자가 '답변 독촉'을 누르면 재안내가 나가요. 메일은 같은 제보로 3번까지, 72시간 간격이에요. 기업이 링크를 열어야 '기업 전달 확인'이 돼요.</p>
         {% if ops.notices %}<ol class="ops-notices">{% for n in ops.notices %}<li><span>{{ n['created'][5:16]|replace('T', ' ')|replace('-', '.') }}</span><b>{{ OPS_NOTICE_KINDS.get(n['kind'], n['kind']) }}</b> {{ n['status'] }}{% if n['target'] %} · {{ n['target'] }}{% endif %}{% if n['memo'] %} · {{ n['memo'] }}{% endif %}</li>{% endfor %}</ol>{% endif %}
