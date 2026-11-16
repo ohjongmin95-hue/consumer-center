@@ -2408,8 +2408,8 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('naver-site-verification', home)
         detail = self.client.get('/reports/%d' % public_id).get_data(as_text=True)
         self.assertIn('<meta name="description" content="업체 기타 소비자 제보. 공개 본문 내용입니다">', detail)
-        self.assertIn("<title>공개 제목 - 업체 소비자 제보 | ", detail)  # 기업 이름 검색에 걸리게 (2026-11-10)
-        self.assertIn('<meta property="og:title" content="공개 제목 - 업체 소비자 제보 | 소보루">', detail)
+        self.assertIn("<title>업체 공개 제목 고발 | ", detail)  # 기업 이름으로 시작 (운영자 2026-11-16, 헤이마오식)
+        self.assertIn('<meta property="og:title" content="업체 공개 제목 고발 | 소보루">', detail)
         admin = self.login_admin()
         admin.post('/admin/content', data={'_csrf': self.csrf(admin, '/admin/content'), 'section': 'seo',
             'seo.naver_verification': '<meta name="naver-site-verification" content="abc123naver" />',

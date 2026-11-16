@@ -2298,7 +2298,7 @@ def report_detail(case_id):
                 if (fields['public_subject'],fields['public_body'],fields['public_request'])!=(case['public_subject'],case['public_body'],case['public_request']):log_case(db,case_id,'공개용 글 수정')
                 if decision=='approve':
                     if case['review'] in jebo.NOT_VALID:flash('중복·제외로 처리한 제보는 게시할 수 없어요. 검토 결과를 먼저 바꿔 주세요.');return redirect(url_for(ep['case'],case_id=case_id)+'#publish_review')
-                    db.execute('UPDATE cases SET published=1 WHERE id=?',(case_id,));art_later(case_id);indexnow.ping([canonical_url(url_for('public_case',case_id=case_id))])
+                    db.execute('UPDATE cases SET published=1 WHERE id=?',(case_id,));art_later(case_id)
                     if not case['published']:log_case(db,case_id,'다시 게시')
                     flash('저장했어요. 목록과 기업 페이지에 보여요.' if case['published'] else '다시 게시했어요. 목록과 기업 페이지에 보여요.')
                 elif decision=='hold':
@@ -2509,6 +2509,9 @@ def admin_reports():return reports_list()
 # 자동 게시로 바꾸기 전에 들어와 승인을 기다리던 공개 제보 (운영자가 게시를 내린 기록이 있거나 중복·제외면 뺌)
 def art_later(case_id):
     # 제보가 게시되면 응답을 보낸 뒤 AI 일러스트를 자동으로 그림 (soboru_art.py, 그림이 없을 때만)
+    # 운영자 2026-11-16: 게시될 때마다(접수 즉시 공개·다시 게시·글 수정) 네이버·빙에 IndexNow로 바로 알림
+    try:indexnow.ping([canonical_url(url_for('public_case',case_id=case_id))])
+    except Exception:pass
     ext=app.extensions.get('soboru_art')
     if ext:
         @after_this_request
