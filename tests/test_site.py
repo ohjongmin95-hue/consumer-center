@@ -1856,7 +1856,7 @@ class SiteTest(unittest.TestCase):
             with self.site.conn() as db:
                 case_id = db.execute("SELECT id FROM cases WHERE subject='알림 두번째'").fetchone()['id']
             admin = self.login_admin()
-            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '종결', 'assignee': ''})
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '기업 답변 도착', 'assignee': ''})
             self.assertEqual(kakao[-1][1]['message']['kakaoOptions']['templateId'], 'T2')
             self.assertIn('현재 단계: ', mails[-1][2])
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'message', 'message': '확인 중입니다'})
