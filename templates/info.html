@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'page_blocks.html' import generic %}
 {% block title %}{{ txt(page ~ '.title') }} | {{ txt('site.name') }}{% endblock %}
-{% block description %}{{ txt(page ~ '.intro') or (ui('guide.desc', '소비자고발제보센터 이용 방법이에요. 제보 쓰기부터 업체 답변, 기사로 알리기까지 순서대로 알려 드려요.') if page == 'guide' else txt('seo.description')) }}{% endblock %}
+{% block description %}{{ txt(page ~ '.intro') or {'guide': ui('guide.desc2', '피해 제보를 쓰는 방법부터 업체 답변을 받고 기사로 알리기까지, 고발하는 순서를 한눈에 정리했어요.'), 'process': ui('process.desc2', '제보가 접수된 뒤 검토, 업체 전달, 답변, 종결까지 어떤 단계를 거치는지 알려 드려요.'), 'types': ui('types.desc2', '환불, 배송, 불량, 해지처럼 자주 들어오는 소비자 피해 유형을 모았어요.'), 'faq': ui('faq.desc2', '제보 공개 범위, 업체 답변, 기사화, 개인정보 보호까지 자주 묻는 질문을 모았어요.')}[page] }}{% endblock %}
 {% block head %}{% if page == 'faq' %}{% set qs = [] %}{% for item in items('faq') if item.a %}{% set _ = qs.append({"@type": "Question", "name": item.q|string, "acceptedAnswer": {"@type": "Answer", "text": item.a|string}}) %}{% endfor %}{% if qs %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": qs}|tojson }}</script>{% endif %}{% endif %}{% if page == 'guide' %}{% set steps = [] %}{% for st in g.lists.get('guide_steps', []) if st.title %}{% set _ = steps.append({"@type": "HowToStep", "position": loop.index, "name": st.title|string, "text": st.title|string}) %}{% endfor %}{% if steps %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "HowTo", "@id": canonical_url() ~ "#howto", "name": ui_text('guide.howto_name', '소비자 피해 제보하는 방법'), "inLanguage": "ko", "step": steps, "publisher": {"@id": canonical_url('/') ~ "#organization"}}|tojson }}</script>{% endif %}{% endif %}{% endblock %}
 {% block content %}<main>
 {% if page == 'guide' %}

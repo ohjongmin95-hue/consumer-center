@@ -134,3 +134,6 @@ body.adm .card{margin:0 0 12px;padding-left:16px;padding-right:16px}
 .logo img{height:28px}
 .ui{display:inline-block;vertical-align:-3px;flex:none}
 .heart .ui{width:24px;height:24px;vertical-align:middle}.heart.on{color:var(--accent,#FE9800)}
+.logo small{white-space:nowrap}
+.logo img{height:26px}@media (max-width:400px){.logo img{height:22px}.logo{gap:5px}.gnb nav{gap:10px;font-size:13px}}
+@media (max-width:340px){.logo img{height:20px}.gnb nav{gap:8px;font-size:12px}.logo small{font-size:10px}}

@@ -139,6 +139,11 @@
     {% set pts = partners() %}<div class="org-track">{% for round in range(2) %}<ul{% if round %} aria-hidden="true"{% endif %}>{% for p in pts %}<li style="--h:{{ p.h_px or 32 }}px">{% if p.link %}<a href="{{ p.link }}"{% if round %} tabindex="-1"{% endif %} target="_blank" rel="noopener"{% if p.sub %} class="org-self"{% endif %}>{% else %}<span{% if p.sub %} class="org-self"{% endif %}>{% endif %}<img src="{{ url_for('partner_image', name=p.stored) }}" alt="{{ '' if round else p.name }}" width="{{ p.width }}" height="{{ p.height }}">{% if p.sub %}<small>{{ p.sub }}</small>{% endif %}{% if p.link %}</a>{% else %}</span>{% endif %}</li>{% endfor %}</ul>{% endfor %}</div>
   </section>{% endif %}
   {{ ed_list('home_blocks') }}
+  {% if not is_soboru() %}<section class="section home-about" aria-labelledby="home-about-h">
+    <h2 id="home-about-h">{{ ui('home.about_h', txt('site.name') ~ '는 이런 곳이에요') }}</h2>
+    <p>{{ ui('home.about_p', txt('site.name') ~ '는 환불 거부, 배송 지연, 불량품, 해지 방해 같은 소비자 피해를 제보받는 소비자 고발 사이트예요. 제보가 들어오면 업체에 답변을 요청하고, 여러 사람이 겪는 피해는 기사로 알려요. 로그인 없이도 제보할 수 있어요.') }}</p>
+    <p class="home-about-links"><a href="{{ url_for('reports') }}">{{ ui('home.about_l1', '소비자 제보 보기') }} ›</a><a href="{{ url_for('info_page', page='guide') }}">{{ ui('home.about_l2', '고발하는 방법') }} ›</a></p>
+  </section>{% endif %}
 </main>
 <script>
   // 최근 제보 카드를 30초마다 조용히 다시 불러옵니다. 탭이 숨겨져 있을 때는 건너뜁니다.
