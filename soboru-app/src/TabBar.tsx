@@ -15,7 +15,7 @@ export function tabsFor(member: boolean): Tab[] {
     // 고발하기는 글쓰기 제보(/report, 위에 대화로 제보하기 칸). 알림은 내 정보 안에서 봐요.
     { key: 'home', label: '홈', path: '/' },
     { key: 'rank', label: '기업 순위', path: '/companies/rank' },
-    { key: 'report', label: '고발하기', path: '/report' },
+    { key: 'report', label: '글쓰기', path: '/report' },
     { key: 'explore', label: '둘러보기', path: '/explore' },
     { key: 'my', label: '내 정보', path: '/me' },  // 운영자 2026-11-13: 로그인 전에도 /me → 사이트가 로그인 화면으로 보냄
   ];
