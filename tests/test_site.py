@@ -2105,11 +2105,14 @@ class SiteTest(unittest.TestCase):
             mails.clear(); sms.clear()
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
             self.assertEqual(mails, [])  # 운영자 2026-11-13: 중간 단계(검토 중·기업 답변 대기)는 알리지 않음
+            self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '기업 답변 도착', 'assignee': ''})
+            self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
+            self.assertIn('단계 변경', mails[0][1])
+            self.assertEqual(len(sms), 1)
+            self.assertEqual(sorted(t[1]['message']['to'] for t in texts), ['01022223333', '01099998888'])
+            mails.clear(); sms.clear(); n = len(texts)
             self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'settings', 'status': '종결', 'assignee': ''})
-        self.assertEqual([m[0] for m in mails], ['boss@example.com', 'ops@example.com'])
-        self.assertIn('단계 변경', mails[0][1])
-        self.assertEqual(len(sms), 1)
-        self.assertEqual(sorted(t[1]['message']['to'] for t in texts), ['01022223333', '01099998888'])
+            self.assertEqual((mails, sms, len(texts)), ([], [], n))  # 운영자 2026-11-16: 완료·평가(종결)는 내부 단계라 알리지 않음
         # 로그인 안 했으면 확인 주소는 막힘
         self.assertEqual(self.site.app.test_client().get('/admin/new-cases').status_code, 401)
         notify.ASYNC = True
