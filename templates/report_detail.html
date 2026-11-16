@@ -163,6 +163,15 @@
         </form>
       </details>
 
+      {# 운영자 2026-11-16 (검은고양이 '승인되지 않음'): 반려 사유를 적어 돌려보냄. 제보자가 고쳐 다시 내면 '승인 전'·접수로 돌아옴 #}
+      <details class="cs-panel cs-card" id="return"{% if case['review'] == 'rejected' and case['returned_at'] %} open{% endif %}><summary><h2>반려하고 돌려보내기{% if case['review'] == 'rejected' and case['returned_at'] %} <span class="cs-pill">돌려보냄 · {{ case['returned_at'][5:16]|replace('T', ' ')|replace('-', '.') }}</span>{% endif %}</h2></summary>
+        <p class="cs-hint">거래 정보가 빠졌거나 운영 기준에 맞지 않을 때 써요. 사유가 제보자 화면 맨 위에 보이고 알림이 가요. 공개 목록에서 빠지고, 제보자가 고쳐서 다시 내면 '승인 전'으로 돌아와요.{% if case['review'] == 'rejected' and case['review_note'] %} 지금 사유: {{ case['review_note'] }}{% endif %}</p>
+        <form method="post" class="cs-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="return">
+          <textarea class="cs-compose" data-autogrow name="body" maxlength="1000" required rows="4" placeholder="예: 주문한 날짜와 금액, 업체와 주고받은 내용이 없어 기업에 전달하기 어려워요. 주문 내역을 더해 다시 내 주세요." aria-label="반려 사유"></textarea>
+          <button class="cs-btn" type="submit" onclick="return confirm('반려하고 제보자에게 사유를 보낼까요?')">반려 사유 보내기</button>
+        </form>
+      </details>
+
       {% if ops.requests %}
       <section class="cs-panel" id="request_done">
         <h2>정정·삭제·이의 신청</h2>
@@ -266,6 +275,17 @@
         <h2>기업 안내 {% if case['seen_at'] %}<span class="cs-pill on">기업이 열어 봄 · {{ case['seen_at'][5:16]|replace('T', ' ')|replace('-', '.') }}</span>{% elif case['forwarded_at'] %}<span class="cs-pill">전달 시도</span>{% endif %}</h2>
         {% if ops.notice_block %}<p class="cs-hint">{{ ops.notice_block }}</p>
         {% else %}<form method="post" class="cs-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice"><span class="cs-hint">{{ ops.company['name'] }} {% if ops.notice_to %}공식 이메일({{ ops.notice_to }}){% endif %}{% if ops.notice_to and ops.notice_phone %}과 {% endif %}{% if ops.notice_phone %}카카오톡({{ ops.notice_phone }}){% endif %}로 이 제보만 볼 수 있는 답변 링크를 보내요.</span><button class="cs-btn" type="submit" onclick="return confirm('{{ ops.company['name'] }}에 안내를 보낼까요?')">{{ '재안내 보내기' if ops.notices|selectattr('status', 'equalto', '보냄')|list else '안내 보내기' }}</button></form>{% endif %}
+        {% if ops.kakao %}{# 운영자 2026-11-16: 소보루 카톡 계정으로 기업 채널 1:1 채팅에 답변 링크를 붙여 넣어 보냄. 버튼은 위아래로 #}
+        <div class="kakao-send" id="kakao_send">
+          <span class="cs-label">카톡 채널로 직접 보내기</span>
+          <p class="cs-hint">소보루 카톡 계정으로 로그인한 휴대폰·PC에서 채널을 열고, 복사한 글을 붙여 넣어 보내요.</p>
+          <textarea class="cs-compose" id="kakao-text" rows="7" readonly aria-label="보낼 글">{{ ops.kakao.text }}</textarea>
+          <a class="cs-btn cs-btn-main kakao-open" href="{{ ops.kakao.chat }}" target="_blank" rel="noopener">카톡 채널 열기</a>
+          <button class="cs-btn kakao-copy" type="button" data-copy="#kakao-text">보낼 글 복사</button>
+          <form method="post" class="kakao-done"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notice_manual"><input type="hidden" name="memo" value="카카오톡 채널 1:1 채팅으로 답변 링크 보냄"><button class="cs-link" type="submit">보냈어요, 기록 남기기</button></form>
+        </div>
+        <script>document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.querySelector(b.dataset.copy),v=t.value,done=function(){b.textContent='복사했어요';setTimeout(function(){b.textContent='보낼 글 복사'},1800)};if(navigator.clipboard){navigator.clipboard.writeText(v).then(done,function(){t.select();document.execCommand('copy');done()})}else{t.select();document.execCommand('copy');done()}})})</script>
+        {% endif %}
         <p class="cs-hint">진행 단계를 '기업 전달'로 바꾸면 첫 안내가 나가요. 제보자가 '답변 독촉'을 누르면 재안내가 나가요. 메일은 같은 제보로 3번까지, 72시간 간격이에요. 기업이 링크를 열어야 '기업 전달 확인'이 돼요.</p>
         {% if ops.notices %}<ol class="ops-notices">{% for n in ops.notices %}<li><span>{{ n['created'][5:16]|replace('T', ' ')|replace('-', '.') }}</span><b>{{ OPS_NOTICE_KINDS.get(n['kind'], n['kind']) }}</b> {{ n['status'] }}{% if n['target'] %} · {{ n['target'] }}{% endif %}{% if n['memo'] %} · {{ n['memo'] }}{% endif %}</li>{% endfor %}</ol>{% endif %}
         <details class="cs-more" id="notice_manual"><summary>전화·우편 등 직접 연락 기록</summary>

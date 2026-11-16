@@ -257,8 +257,12 @@ def install(S):
     @app.route('/companies/suggest')
     def companies_suggest():
         q=request.args.get('q','').strip()[:60]
-        with conn() as db:rows=search(db,q,8) if len(norm(q))>=1 else []
-        resp=jsonify([{'id':c['id'],'name':c['name'],'sub':' · '.join(x for x in (c['brand'],c['biz_name']) if x and x!=c['name']),'n':c['n_public'],'member':c['status']=='active'} for c in rows])
+        with conn() as db:
+            rows=search(db,q,8) if len(norm(q))>=1 else []
+            # 연락처를 아는 기업(공식 이메일·안내 휴대폰·연락처 장부)은 고르면 바로 전달돼요 (운영자 2026-11-16 헤이마오식 고발 대상)
+            known={r[0] for r in db.execute("SELECT DISTINCT company_id FROM company_contacts WHERE company_id IS NOT NULL AND (main_email!='' OR cs_email!='')")} if rows else set()
+        resp=jsonify([{'id':c['id'],'name':c['name'],'sub':' · '.join(x for x in (c['brand'],c['biz_name']) if x and x!=c['name']),'n':c['n_public'],'member':c['status']=='active',
+                       'contact':bool(c['official_email'] or ('notice_phone' in c.keys() and c['notice_phone']) or c['id'] in known)} for c in rows])
         resp.headers['Cache-Control']='no-store'
         return resp
 

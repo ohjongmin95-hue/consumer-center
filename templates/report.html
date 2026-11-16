@@ -6,6 +6,7 @@
 <main class="page"><div class="wrap">
   {# 운영자 2026-11-03: 제보 화면에 큰 제목 두지 않음 (읽는 프로그램용으로만 남김) #}<h1 class="sr-only">{{ txt('report.title') }}</h1>
   {% include 'report_mode.html' %}
+  {% include 'report_flow.html' %}
 
   {% if txt('report.notes') %}
   <details class="must-read" open>
@@ -25,7 +26,7 @@
       </div>{% endif %}
       <div class="field"><label for="r-industry">{{ ui('report.f_industry', '업종') }} <small>*</small></label><select id="r-industry" name="industry" required><option value="">{{ ui('report.f_industry_pick', '업종을 골라 주세요') }}</option>{% for x in industries %}<option value="{{ x.name }}"{% if request.form.get('industry') == x.name %} selected{% endif %}>{{ x.name }}{% if x.examples %} — {{ x.examples }}{% endif %}</option>{% endfor %}</select>{{ ed_list('report_industries') }}</div>
       <div class="field"><label for="r-category">{{ ui('report.f_category', '제보 유형') }} <small>*</small></label><select id="r-category" name="category" required><option value="">{{ ui('report.f_category_pick', '선택해 주세요') }}</option>{% for x in categories %}<option {% if request.form.get('category', request.args.get('category')) == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></div>
-      <div class="field co-pick"><label for="r-company">{{ ui('report.f_company', '업체·서비스명') }} <small>*</small></label><input id="r-company" name="company" maxlength="120" required autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="r-company-list" placeholder="{{ ui('report.f_company_ph', '예: 소보루쇼핑몰') }}" value="{{ request.form.get('company','') }}"><input type="hidden" name="company_id" value="{{ request.form.get('company_id','') }}"><ul class="co-suggest" id="r-company-list" role="listbox" hidden></ul><p class="hint">{{ ui('report.f_company_hint', '홈페이지 주소 말고 정확한 업체명(상호)을 적어 주세요. 정확할수록 빨리 확인할 수 있어요.') }} {{ ui('report.f_company_hint2', '등록된 기업은 이름을 치면 아래에 떠요. 없으면 그대로 적어 주세요.') }}</p></div>
+      <div class="field co-pick"><label for="r-company">{{ ui('report.f_company', '업체·서비스명') }} <small>*</small></label><input id="r-company" name="company" maxlength="120" required autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="r-company-list" placeholder="{{ ui('report.f_company_ph', '예: 소보루쇼핑몰') }}" value="{{ request.form.get('company','') }}"><input type="hidden" name="company_id" value="{{ request.form.get('company_id','') }}"><ul class="co-suggest" id="r-company-list" role="listbox" hidden></ul><p class="co-chip" id="r-company-chip" hidden></p><p class="hint">{{ ui('report.f_company_hint', '홈페이지 주소 말고 정확한 업체명(상호)을 적어 주세요. 정확할수록 빨리 확인할 수 있어요.') }} {{ ui('report.f_company_hint3', '이름을 치면 등록된 기업이 떠요. 고르면 그 기업에 바로 연결되고, 없으면 직접 추가하면 돼요.') }}</p></div>
       <div class="field"><label for="r-occurred">{{ ui('report.f_occurred', '피해가 일어난 날') }}</label><input id="r-occurred" name="occurred_on" type="date" max="{{ today }}" value="{{ request.form.get('occurred_on','') }}"><p class="hint">{{ ui('report.f_occurred_hint', '정확하지 않으면 비워 두셔도 돼요.') }}</p></div>
       <div class="field"><label for="r-subject">{{ ui('report.f_subject', '제보 제목') }} <small>*</small></label><input id="r-subject" name="subject" maxlength="160" required placeholder="{{ ui('report.f_subject_ph', '피해 내용을 한 줄로 요약해 주세요') }}" value="{{ request.form.get('subject','') }}"></div>
       <div class="field"><label for="r-description">{{ ui('report.f_description', '피해 내용') }} <small>*</small></label><textarea id="r-description" name="description" maxlength="6000" required placeholder="{{ ui('report.f_description_ph', '구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요') }}">{{ request.form.get('description','') }}</textarea></div>
@@ -109,24 +110,46 @@
     var input = document.getElementById('r-company'), list = document.getElementById('r-company-list');
     if (!input || !list) return;
     var hidden = input.form.querySelector('[name=company_id]'), timer = null, items = [], cur = -1;
+    // 운영자 2026-11-16: 헤이마오식 고발 대상. 가입 기업·연락처 아는 기업이 뜨고, 고르면 바로 연결. 없으면 '○○' 직접 추가
+    var chip = document.getElementById('r-company-chip');
+    function showChip(c) {
+      if (!chip) return;
+      if (!c) { chip.hidden = true; chip.textContent = ''; return; }
+      chip.textContent = c.member ? '{{ ui('report.co_member', '가입 기업이에요. 담당자에게 바로 전달돼요.') }}' : c.contact ? '{{ ui('report.co_contact', '연락처를 아는 기업이에요. 검토 뒤 바로 전달돼요.') }}' : '{{ ui('report.co_listed', '등록된 기업이에요. 같은 기업 제보와 함께 모아 볼 수 있어요.') }}';
+      chip.hidden = false;
+    }
     function close() { list.hidden = true; input.setAttribute('aria-expanded', 'false'); cur = -1; }
-    function pick(i) { var c = items[i]; if (!c) return; input.value = c.name; hidden.value = c.id; close(); }
+    function pick(i) {
+      var c = items[i]; if (!c) return;
+      if (c.add) { hidden.value = ''; showChip(null); close(); return; }
+      input.value = c.name; hidden.value = c.id; showChip(c); close();
+    }
     function mark() { Array.prototype.forEach.call(list.children, function (li, i) { li.setAttribute('aria-selected', i === cur ? 'true' : 'false'); }); }
     input.addEventListener('input', function () {
-      hidden.value = ''; clearTimeout(timer);
+      hidden.value = ''; showChip(null); clearTimeout(timer);
       var q = input.value.trim();
       if (!q) { close(); return; }
       timer = setTimeout(function () {
         fetch('{{ url_for('companies_suggest') }}?q=' + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (rows) {
-          items = rows; list.innerHTML = '';
-          rows.forEach(function (c, i) {
+          var exact = rows.some(function (c) { return c.name.replace(/\s/g, '') === q.replace(/\s/g, ''); });
+          items = exact ? rows : rows.concat([{ add: true, name: q }]); list.innerHTML = '';
+          items.forEach(function (c, i) {
             var li = document.createElement('li'); li.setAttribute('role', 'option'); li.id = 'r-co-' + i;
-            var b = document.createElement('b'); b.textContent = c.name; li.appendChild(b);
-            if (c.sub) { var s = document.createElement('span'); s.textContent = c.sub; li.appendChild(s); }
+            if (c.add) {
+              li.className = 'co-add';
+              var a = document.createElement('b'); a.textContent = '\u2018' + c.name + '\u2019 {{ ui('report.co_add', '직접 추가') }}'; li.appendChild(a);
+              var t = document.createElement('span'); t.textContent = '{{ ui('report.co_add_hint', '목록에 없으면 이 이름 그대로 접수해요. 연락처는 저희가 찾아요.') }}'; li.appendChild(t);
+            } else {
+              var row = document.createElement('div'); row.className = 'co-row';
+              var b = document.createElement('b'); b.textContent = c.name; row.appendChild(b);
+              if (c.member || c.contact) { var tag = document.createElement('em'); tag.className = c.member ? 'co-tag is-member' : 'co-tag'; tag.textContent = c.member ? '{{ ui('report.co_tag_member', '가입 기업') }}' : '{{ ui('report.co_tag_contact', '연락처 있음') }}'; row.appendChild(tag); }
+              li.appendChild(row);
+              if (c.sub) { var s = document.createElement('span'); s.textContent = c.sub; li.appendChild(s); }
+            }
             li.addEventListener('mousedown', function (e) { e.preventDefault(); pick(i); });
             list.appendChild(li);
           });
-          list.hidden = !rows.length; input.setAttribute('aria-expanded', rows.length ? 'true' : 'false'); cur = -1;
+          list.hidden = !items.length; input.setAttribute('aria-expanded', items.length ? 'true' : 'false'); cur = -1;
         }).catch(close);
       }, 180);
     });

@@ -7785,3 +7785,84 @@ class SiteTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+    # 운영자 2026-11-16: 관리자 기업 간편 등록(여러 곳 한 번에) → 제보 쓰기 자동완성에 '연락처 있음'으로 바로 뜸
+    def test_bulk_add_and_suggest(self):
+        admin = self.login_admin()
+        r = self.post_form(admin, '/admin/companies', {'action': 'bulk', 'rows': '간편몰 / 간편, KANPYEON / cs@kanpyeon.kr / 010-1234-5678 / pf.kakao.com/_kanp\n간편헬스\t\thelp@kh.kr\t\n간편몰 / 간편마켓\n잘못몰 / / not-mail / 02-1'})
+        self.assertEqual(r.status_code, 302)
+        page = admin.get('/admin/companies').get_data(as_text=True)
+        self.assertIn('새로 3곳 등록, 1곳 정보를 채웠어요.', page); self.assertIn('잘못몰', page)
+        rows = self.client.get('/companies/suggest?q=간편').get_json()
+        mall = next(c for c in rows if c['name'] == '간편몰')
+        self.assertTrue(mall['contact']); self.assertFalse(mall['member'])
+        self.assertTrue(any(c['name'] == '간편몰' for c in self.client.get('/companies/suggest?q=kanpyeon').get_json()))
+        self.assertTrue(any(c['name'] == '간편몰' for c in self.client.get('/companies/suggest?q=간편마켓').get_json()))
+        self.assertFalse(next(c for c in self.client.get('/companies/suggest?q=잘못몰').get_json())['contact'])
+        form = self.client.get('/report').get_data(as_text=True)
+        self.assertIn('id="r-company-chip"', form); self.assertIn('직접 추가', form)
+        self.assertIn('data-flow-open', form); self.assertIn('id="flow-sheet"', form)
+        with self.site.conn() as db:
+            self.assertEqual(db.execute("SELECT kakao_url FROM companies WHERE name='간편몰'").fetchone()[0], 'https://pf.kakao.com/_kanp')
+
+    def _flow_case(self, company, phone):
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': company, 'description': '환불이 2주째 안 돼요', 'subject': company + ' 환불 지연',
+                'reporter_name': '김소비', 'phone': phone, 'contact': '', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'use_consent': 'on', 'truth': 'on', 'visibility': 'public', 'share_company': 'on'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db: cid = db.execute('SELECT id FROM cases WHERE company=? ORDER BY id DESC', (company,)).fetchone()[0]
+        reporter = self.site.app.test_client()
+        self.post_form(reporter, '/lookup', {'mode': 'phone', 'phone': phone, 'password': '1234'})
+        reporter.post('/lookup/%d' % cid, data={'_csrf': self.csrf(reporter, '/lookup')})
+        return cid, reporter
+
+    def test_return_with_reason_and_resubmit(self):
+        # 운영자 2026-11-16: 반려 사유를 적어 돌려보냄 → 제보자 화면에 사유 + 고쳐서 다시 내기 → '승인 전'·접수로
+        admin = self.login_admin()
+        cid, reporter = self._flow_case('반려상점', '010-6666-1212')
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'return', 'body': '주문 날짜와 금액을 더해 주세요.'})
+        with self.site.conn() as db:
+            row = db.execute('SELECT review,returned_at,published FROM cases WHERE id=?', (cid,)).fetchone()
+        self.assertEqual(row['review'], 'rejected'); self.assertTrue(row['returned_at']); self.assertEqual(row['published'], 0)
+        page = reporter.get('/case').get_data(as_text=True)
+        self.assertIn('제보가 반려됐어요', page); self.assertIn('주문 날짜와 금액을 더해 주세요.', page); self.assertIn('고쳐서 다시 내기', page)
+        self.post_form(reporter, '/case/edit', {'resubmit': '1', 'subject': '반려상점 환불 지연', 'description': '11월 1일 3만 원 주문, 환불이 2주째 안 돼요', 'request_text': '환불'})
+        with self.site.conn() as db:
+            row = db.execute('SELECT review,returned_at,status FROM cases WHERE id=?', (cid,)).fetchone()
+        self.assertEqual((row['review'], row['returned_at'], row['status']), ('', '', '접수'))
+        page = reporter.get('/case').get_data(as_text=True)
+        self.assertNotIn('제보가 반려됐어요', page); self.assertIn('센터가 곧 내용을 살펴봐요', page)
+
+    def test_followup_after_company_answer(self):
+        # 운영자 2026-11-16: 기업 답변이 아쉬우면 추가 불만 → 기업에 다시 요청, 단계는 다시 '기업 답변 대기'
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        mails = []
+        env = {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'ops@example.com'}
+        patcher = patch.dict(os.environ, env); patcher.start(); self.addCleanup(patcher.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        admin = self.login_admin()
+        self.post_form(admin, '/admin/companies', {'action': 'create', 'name': '추가상점', 'official_email': 'cs@more-shop.example', 'kakao_url': 'pf.kakao.com/_more'})
+        cid, reporter = self._flow_case('추가상점', '010-6666-3434')
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'review', 'review': 'ok'})
+        page = admin.get('/admin/reports/%d' % cid).get_data(as_text=True)
+        self.assertIn('https://pf.kakao.com/_more/chat', page); self.assertIn('보낼 글 복사', page); self.assertIn('/company/%d/' % cid, page)
+        self.assertNotIn('기업 답변이 만족스럽지 않나요?', reporter.get('/case').get_data(as_text=True))
+        old = (datetime.datetime.now() - datetime.timedelta(days=4)).isoformat(timespec='seconds')
+        with self.site.conn() as db:
+            db.execute("INSERT INTO messages(case_id,author,body,created) VALUES(?,?,?,?)", (cid, '기업 답변', '확인 후 환불하겠습니다.', self.site.now()))
+            db.execute("UPDATE cases SET status='기업 답변 도착' WHERE id=?", (cid,))
+            db.execute('UPDATE company_notices SET created=? WHERE case_id=?', (old, cid))
+        page = reporter.get('/case').get_data(as_text=True)
+        self.assertIn('기업 답변이 만족스럽지 않나요?', page); self.assertIn('기업이 답했어요', page)
+        mails.clear()
+        self.post_form(reporter, '/case/followup', {'body': '일주일째 환불이 안 들어왔어요.'})
+        with self.site.conn() as db:
+            row = db.execute('SELECT status,followup_at FROM cases WHERE id=?', (cid,)).fetchone()
+        self.assertEqual(row['status'], '기업 답변 대기'); self.assertTrue(row['followup_at'])
+        sent = [m for m in mails if m[0] == 'cs@more-shop.example']
+        self.assertEqual(len(sent), 1); self.assertIn('추가 의견', sent[0][2])
+        page = reporter.get('/case').get_data(as_text=True)
+        self.assertIn('[추가 불만] 일주일째', page); self.assertNotIn('추가 불만 남기기</button>', page)
