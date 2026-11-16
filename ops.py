@@ -74,6 +74,8 @@ def hours_between(a, b):
         return None
 
 
+NOTICE_ANSWER_HOURS = int(os.getenv('NOTICE_ANSWER_HOURS', '24'))  # 운영자 2026-11-17: 기업 답변 기한은 하루
+
 def install(S):
     app = S.app; conn = S.conn; notify = S.notify; now = S.now; jebo = S.jebo
     STATUSES = S.STATUSES
@@ -262,31 +264,36 @@ def install(S):
         link = S.answer_link(db, case) or S.answer_link(db, case, new=True)  # 입장 요청서에 넣은 링크와 같은 링크 (운영자 2026-11-13)
         optout = optout_url(db, company)
         kind = 'remind' if db.execute("SELECT 1 FROM company_notices WHERE case_id=? AND kind IN ('first','remind') AND status='보냄'", (cid,)).fetchone() else 'first'
-        subject = f"[{notify.CENTER}] {company['name']} 관련 소비자 제보 안내 ({case['receipt']})" + (' - 재안내' if kind == 'remind' else '')
-        body = (f"{company['name']} 고객 담당자님께,\n\n안녕하세요. {notify.INTRO}입니다.\n{company['name']}와(과) 관련된 소비자 제보가 접수돼 안내드립니다.\n\n"
-                f"■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n■ 접수일: {case['created'][:10]}\n\n"
-                + (FOLLOWUP_LINE + "\n\n" if nudge == 'followup' else "제보자가 아직 답변을 받지 못해 답변을 기다리고 있다고 알려 왔습니다.\n\n" if nudge else '') +
-                f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남길 수 있습니다. 답변 등록은 무료이며, 링크는 이 제보 하나만 볼 수 있습니다.\n{link}\n\n"
-                "제보와 답변 기록은 기사로 다뤄질 수 있습니다. "
-                "답변을 남기시면 귀사의 입장도 함께 전달되며, 해결되지 않은 제보는 한국소비자원(1372)·공정거래위원회 등 관계 기관의 피해구제 절차로 안내합니다.\n\n"
-                "이 메일에 바로 답장하셔도 담당자가 받아 봅니다.\n\n"
-                "제보는 소비자 개인의 경험과 주장이며, 센터가 사실관계를 확인한 내용이 아닙니다. 답변 여부와 내용은 귀사가 정합니다.\n"
-                f"{notify.CENTER}는 공공기관이 아닌 민간 플랫폼입니다.\n\n"
-                f"이런 안내 메일을 그만 받으려면: {optout}")
-        html = render_template('company_notice_email.html', subject=subject, company=company['name'], site=notify.CENTER, intro=notify.INTRO, receipt=case['receipt'],
+        # 운영자 2026-11-17: 플랫폼답게 '소보루고발' 이름으로, 기자 소개 + 하루 기한 + 기사화 예정 + 기업 회원 무료 가입
+        brand = '소보루고발'
+        due = datetime.datetime.now() + datetime.timedelta(hours=NOTICE_ANSWER_HOURS)
+        deadline = f"{due.month}월 {due.day}일({'월화수목금토일'[due.weekday()]}) {'오전' if due.hour < 12 else '오후'} {due.hour % 12 or 12}시"
+        title = case['public_subject'] or S.mask_personal(case['subject'])
+        reporter = (case['assignee'] or '').strip()
+        token = link.rstrip('/').rsplit('/', 1)[-1]
+        signup = S.canonical_url(url_for('biz_signup', case=cid, t=token)) if token else S.canonical_url(url_for('biz_signup'))
+        subject = f"[{brand}] {company['name']} 관련 고발 글 답변 요청 ({deadline}까지)" + (' - 재요청' if kind == 'remind' else '')
+        hello = f"안녕하세요. {brand}{' ' + reporter + ' 기자' if reporter else ''}입니다."
+        why = (FOLLOWUP_LINE if nudge == 'followup' else '제보자가 아직 답변을 기다리고 있습니다.' if nudge else f"소비자가 {company['name']}와(과) 관련된 피해를 고발했습니다.")
+        body = (f"{company['name']} 담당자님께,\n\n{hello}\n{why}\n\n"
+                f"■ 고발 글: {title}\n■ 분야: {case['category']}\n■ 답변 기한: {deadline}\n\n"
+                f"아래 링크에서 고발 글을 보고 답변해 주세요. 가입·로그인 없이 열리고, 이 글 하나만 볼 수 있습니다.\n{link}\n\n"
+                "기한 안에 답이 없으면 기사로 다룰 예정입니다. 답변을 주시면 귀사 입장도 함께 싣습니다.\n\n"
+                f"기업 회원은 무료입니다. 가입하면 새 고발 글을 바로 알려 드리고 한 화면에서 답할 수 있습니다.\n{signup}\n\n"
+                "고발 글은 소비자 개인의 경험과 주장입니다. 이 메일에 바로 답장하셔도 담당자가 받아 봅니다.\n\n"
+                f"이런 메일을 그만 받으려면: {optout}")
+        html = render_template('company_notice_email.html', subject=subject, company=company['name'], title=title, reporter=reporter, deadline=deadline, signup=signup,
                                category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind')
         sent, fails = [], []
         if to:
             try:
                 # 운영 메일함(OPS_EMAIL, 하이웍스)에 사본을 남겨 보낸 기록을 볼 수 있게 (운영자 2026-11-10)
-                notify.send_email(to, subject, body, html=html, from_name=notify.CENTER, bcc=[os.getenv('OPS_EMAIL', '').strip()]); sent.append(notify.mask(to))
+                notify.send_email(to, subject, body, html=html, from_name=brand, bcc=[os.getenv('OPS_EMAIL', '').strip()]); sent.append(notify.mask(to))
             except Exception as e:
                 fails.append('메일: ' + str(e)[:150])
         if phone:  # 휴대폰을 넣어 두면 카카오톡 채널로도 (알림톡 템플릿 심사 전이면 문자) (운영자 2026-11-10)
-            text = (f"[{notify.CENTER}] {company['name']} 관련 소비자 제보 안내\n\n안녕하세요. {notify.INTRO}입니다.\n"
-                    f"{company['name']}와(과) 관련된 소비자 제보가 접수돼 안내드립니다.\n\n■ 접수번호: {case['receipt']}\n■ 분야: {case['category']}\n\n"
-                    + (FOLLOWUP_LINE + "\n\n" if nudge == 'followup' else "제보자가 아직 답변을 받지 못해 답변을 기다리고 있습니다.\n\n" if nudge else '') +
-                    f"아래 링크에서 제보 내용을 확인하고 공식 답변을 남길 수 있습니다.\n{link}\n\n안내를 그만 받으려면: {optout}")
+            text = (f"[{brand}] {company['name']} 관련 고발 글 답변 요청\n\n{hello}\n{why}\n\n■ 고발 글: {title}\n■ 답변 기한: {deadline}\n\n"
+                    f"아래 링크에서 고발 글을 보고 답변해 주세요. 기한 안에 답이 없으면 기사로 다룰 예정입니다.\n{link}\n\n안내를 그만 받으려면: {optout}")
             try:
                 if notify.kakao_ready('company_notice'):
                     notify.bizmsg.alimtalk(phone, notify.bizmsg.template(notify.KAKAO_TEMPLATE_ENV['company_notice']),

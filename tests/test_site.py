@@ -1904,7 +1904,7 @@ class SiteTest(unittest.TestCase):
                 self.post_form(admin, '/admin/reports/%d' % case_id, {'form': 'notice'})
             body = json.dumps([a[1] for a in sent], ensure_ascii=False)
             self.assertIn('01033334444', body)
-            self.assertIn('안녕하세요. 소비자고발제보센터(소비자를위한신문)입니다.', body)
+            self.assertIn('[소보루고발]', body); self.assertIn('답변 기한', body)
             self.assertIn('/company/%d/' % case_id, body)
             with self.site.conn() as db:
                 n = db.execute("SELECT status,target FROM company_notices WHERE case_id=?", (case_id,)).fetchone()
@@ -4459,8 +4459,8 @@ class SiteTest(unittest.TestCase):
         self.post_form(admin, path, {'form': 'notice'})
         sent = [m for m in mails if m[0] == 'cs@notice-shop.example']
         self.assertEqual(len(sent), 1)
-        self.assertIn('민간 플랫폼', sent[0][2])
-        self.assertIn('제보 확인하고 답변하기', sent[0][3]); self.assertIn('/company/optout/', sent[0][3])  # 꾸민 HTML 메일도 함께
+        self.assertIn('기사로 다룰 예정', sent[0][2]); self.assertIn('/biz/signup?case=', sent[0][2])  # 운영자 2026-11-17: 소보루고발 이름, 하루 기한, 기업 회원 무료 가입
+        self.assertIn('고발 글 보고 답변하기', sent[0][3]); self.assertIn('/company/optout/', sent[0][3])  # 꾸민 HTML 메일도 함께
         link = re.search(r'http://localhost(/company/\d+/\S+)', sent[0][2])[1]
         optout = re.search(r'http://localhost(/company/optout/\S+)', sent[0][2])[1]
         with self.site.conn() as db:
