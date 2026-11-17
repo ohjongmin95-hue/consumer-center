@@ -23,8 +23,9 @@
   {% endif %}
   {% if view == 'contact' %}<a class="jl-back" href="{{ url_for('admin_reports') }}">‹ 제보 목록</a>{% endif %}
   <nav class="jl-tabs"{% if view == 'contact' %} hidden{% endif %} aria-label="진행 단계별 보기">
-    <a href="{{ qs(status='') }}"{% if not status and not view %} class="on" aria-current="page"{% endif %}>전체 <b>{{ all_count }}</b></a>
+    <a href="{{ qs(status='') }}"{% if not status and not view and not due %} class="on" aria-current="page"{% endif %}>전체 <b>{{ all_count }}</b></a>
     {% for s in STAGE_STATUS %}<a href="{{ qs(status=s) }}"{% if status == s %} class="on" aria-current="page"{% endif %}>{{ stage_names()[loop.index0] }} <b>{{ counts.get(s, 0) }}</b></a>{% endfor %}
+    {% if n_over or due %}<a class="jl-tab-over{% if due %} on{% endif %}" href="{{ url_for('admin_reports', due='over') }}"{% if due %} aria-current="page"{% endif %}>기한 지남 <b>{{ n_over }}</b></a>{% endif %}{# 운영자 2026-11-17: 기업 답변 기한이 지난 제보 #}
     {% if layout == 'reporter_base.html' %}<a class="jl-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
   </nav>
 
@@ -95,7 +96,7 @@
         <td class="jl-co" title="{{ c['company'] }}">{{ c['company'] }}</td>
         <td class="jl-st">{% if bulk %}{# 줄마다 바로 단계 바꾸기 (운영자 2026-11-13: 하나씩 따로) #}<select class="jl-in cs-status s{{ stage_of(c['status']) }}" data-id="{{ c['id'] }}" data-kind="st" aria-label="{{ c['receipt'] }} 진행 단계">{% for st in statuses %}<option value="{{ st }}"{% if st == c['status'] or (c['status'] not in statuses and loop.first) %} selected{% endif %}>{{ stage_names()[loop.index0] }}</option>{% endfor %}</select>{% else %}<span class="cs-status s{{ stage_of(c['status']) }}">{{ stage_names()[stage_of(c['status']) - 1] }}</span>{% endif %}{% if c['review'] in ('duplicate', 'rejected') %}<span class="rv-chip rv-{{ c['review'] }}">{{ reviews[c['review']] }}</span>{% endif %}</td>
         <td class="jl-as{% if not c['assignee'] %} is-none{% endif %}" title="{{ c['assignee'] or '' }}">{% if bulk %}<select class="jl-in jl-in-as" data-id="{{ c['id'] }}" data-kind="as" aria-label="{{ c['receipt'] }} 담당 기자"><option value="">미배정</option>{% for n in staff_names %}<option{% if n == c['assignee'] %} selected{% endif %}>{{ n }}</option>{% endfor %}{% if c['assignee'] and c['assignee'] not in staff_names %}<option selected disabled>{{ c['assignee'] }}</option>{% endif %}</select>{% else %}{% if c['assignee'] %}<span class="jl-ava" aria-hidden="true">{{ c['assignee'][:1] }}</span>{% endif %}{{ c['assignee'] or '미배정' }}{% endif %}</td>
-        <td class="c-dt" title="{{ c['created'][:16]|replace('T', ' ') }}">{{ c['created'][5:10]|replace('-', '.') }}</td>
+        {% set ck = clocks.get(c['id']) %}<td class="c-dt" title="{{ c['created'][:16]|replace('T', ' ') }}">{{ c['created'][5:10]|replace('-', '.') }}{% if ck and not ck.answered %}<small class="jl-due{{ ' is-over' if ck.over }}" data-due="{{ ck.due_ms }}">{{ '기한 지남' if ck.over else '답변 대기' }}</small>{% endif %}</td>
       </tr>
       {% else %}
       <tr><td colspan="{{ 6 if bulk else 5 }}" class="cs-empty">{{ '조건에 맞는 제보가 없어요.' if q or status or mine or review or track or assignee else '아직 접수된 제보가 없어요.' }}</td></tr>
@@ -168,5 +169,9 @@
   document.addEventListener('click', function (e) {
     document.querySelectorAll('.jl-pick[open]').forEach(function (d) { if (!d.contains(e.target)) d.open = false; });
   });
+</script>
+<script>
+  // 답변 기한: 줄마다 남은 시간·지난 시간 (운영자 2026-11-17)
+  (function(){function tick(){document.querySelectorAll('.jl-due[data-due]').forEach(function(el){var d=+el.dataset.due-Date.now(),h=Math.floor(Math.abs(d)/36e5),m=Math.floor(Math.abs(d)%36e5/6e4),t=h?h+'시간':m+'분';el.textContent=d>0?t+' 남음':t+' 지남';el.classList.toggle('is-over',d<=0)})}tick();setInterval(tick,60000)})();
 </script>
 {% endblock %}

@@ -185,6 +185,12 @@ def install(S):
                             answered=a[:16].replace('T', ' ') if a and a >= t[:19] else '', over=not (a and a >= t[:19]) and due < datetime.datetime.now())
         return out
     S.ops_answer_clocks = answer_clocks
+
+    def overdue_ids(db):
+        """기업 답변 기한(보낸 뒤 NOTICE_ANSWER_HOURS)이 지났는데 답이 없는 제보 id (운영자 2026-11-17: 홈 '오늘 할 일'·목록 '기한 지남')"""
+        ids = [r['id'] for r in db.execute("SELECT id FROM cases WHERE status IN ('기업 답변 대기','연락 시도 중') AND review NOT IN ('rejected','duplicate')")]
+        return [cid for cid, c in answer_clocks(db, ids).items() if c['over']]
+    S.ops_overdue_ids = overdue_ids
     S.app.jinja_env.globals['NOTICE_ANSWER_HOURS'] = NOTICE_ANSWER_HOURS
 
     def article_draft(db, case):
@@ -363,7 +369,7 @@ def install(S):
                 "기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다. 답변을 주시면 귀사 입장도 함께 싣겠습니다.\n\n"
                 f"■ 제목: {title}\n" + (f"■ 무슨 일이 있었나요: {gist}\n" if gist else '') + (f"■ 소비자가 원하는 것: {demand}\n" if demand else '') + f"■ 답변 기한: {deadline}\n\n"
                 f"아래 링크에서 고발 글을 보고 답변해 주세요. 가입·로그인 없이 열리고, 이 글 하나만 볼 수 있습니다.\n{link}\n\n"
-                f"소보루고발 기업 등록은 무료예요. 홍보·CS 담당자가 사업자번호 없이 바로 등록할 수 있어요. 새 고발 글을 바로 알려 드리고, 한 화면에서 모아 답할 수 있어요.\n{signup}\n\n"
+                f"소보루고발 기업 등록은 무료예요. 홍보·고객센터 담당자가 사업자번호 없이 바로 등록할 수 있어요. 새 고발 글을 바로 알려 드리고, 한 화면에서 모아 답할 수 있어요.\n{signup}\n\n"
                 "이 메일에 회신하시면 담당 기자가 받습니다.")
         html = render_template('company_notice_email.html', subject=subject, company=company['name'], title=title, reporter=reporter, deadline=deadline, signup=signup, gist=gist, demand=demand,
                                category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind')
@@ -698,7 +704,8 @@ def install(S):
         n_late, late = delayed(db)
         return dict(late=late, n_late=n_late, delay_days=DELAY_DAYS,
                     n_requests=db.execute("SELECT COUNT(*) FROM case_requests WHERE status='접수'").fetchone()[0],
-                    n_unreviewed=db.execute("SELECT COUNT(*) FROM cases WHERE review=''").fetchone()[0])
+                    n_unreviewed=db.execute("SELECT COUNT(*) FROM cases WHERE review=''").fetchone()[0],
+                    n_overdue=len(overdue_ids(db)), n_contact=sum(len(c) for _, c in contact_needed(db)))
     S.ops_home_extras = home_extras
 
     # ---- 운영 통계 ----------------------------------------------------------------

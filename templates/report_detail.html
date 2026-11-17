@@ -20,6 +20,34 @@
     {% endif %}
   </div>
 
+  {# 운영자 2026-11-17: 토스처럼 '지금 할 일' 하나만 크게, 아래는 탭(내용·기업·제보자·기록)으로 나눔. 버튼은 하나 #}
+  {% if ep.list == 'admin_reports' %}
+  {% set ck = ops.clock if ops else None %}
+  {% set answered_msg = msgs|selectattr('author', 'equalto', '기업 답변')|list %}
+  {% set has_contact = (ops.notice_to or ops.notice_phone) if ops else False %}
+  {% if ck and ck.over and not ck.answered %}{% set td = ('red', '기업 답변 기한이 지났어요', '보낸 때 ' ~ ck.sent[5:]|replace('-', '.') ~ ' · 기한 ' ~ ck.due[5:]|replace('-', '.') ~ '. 초안을 만들면 관리자 > 기사 초안에 들어가요.', 'draft', '기사 초안 만들기') %}
+  {% elif answered_msg and case['status'] != STATUSES[-1] %}{% set td = ('or', '기업 답변이 왔어요', '답변을 확인하고 제보자에게 알린 뒤 종결해 주세요.', '#settings', '단계 바꾸기') %}
+  {% elif case['review'] == '' %}{% set td = ('or', '제보를 검토해 주세요', '내용과 개인정보를 확인하고 처리 단계를 정해 주세요.', '#check', '검토하러 가기') %}
+  {% elif case['status'] == '연락 시도 중' or (case['share_company'] and not case['forwarded_at'] and not has_contact and case['review'] == 'ok') %}{% set td = ('bl', '기업 연락처를 넣어 주세요', '연락처를 넣으면 답변 요청이 바로 나가고, 그때부터 ' ~ NOTICE_ANSWER_HOURS ~ '시간 답변 기한이 시작돼요.', '#desk_contact', '연락처 넣기') %}
+  {% elif ck and not ck.answered %}{% set td = ('gr', '기업 답변을 기다리고 있어요', '기한이 지나면 여기서 바로 기사 초안을 만들 수 있어요.', '', '') %}
+  {% else %}{% set td = None %}{% endif %}
+  {% if td %}
+  <section class="v3-now is-{{ td[0] }}" aria-label="지금 할 일">
+    <p class="v3-now-k">지금 할 일</p>
+    <h2>{{ td[1] }}</h2>
+    <p class="v3-now-d">{{ td[2] }}</p>
+    {% if td[3] == 'draft' %}<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="article_draft"><button class="cs-btn cs-btn-main v3-now-go" type="submit">{{ td[4] }}</button></form>
+    {% elif td[3] %}<a class="cs-btn cs-btn-main v3-now-go" href="{{ td[3] }}" data-v3-go>{{ td[4] }}</a>{% endif %}
+    {% if td[3] == '#desk_contact' %}<a class="v3-now-sub" href="#notice" data-v3-go>메일이 안 되면 글을 복사해 직접 보내기</a>{% endif %}
+  </section>
+  {% endif %}
+  <div class="v3-tabs" role="tablist" aria-label="제보 화면 나누기" hidden>
+    <button type="button" role="tab" data-tab="c" aria-selected="true">내용</button>
+    <button type="button" role="tab" data-tab="co" aria-selected="false">기업</button>
+    <button type="button" role="tab" data-tab="p" aria-selected="false">제보자</button>
+    <button type="button" role="tab" data-tab="l" aria-selected="false">기록</button>
+  </div>
+  {% endif %}
   <div class="cs-case">
     <div class="cs-col">
       <section class="cs-panel">
@@ -226,7 +254,7 @@
 
     <aside class="cs-side">
       {# 1. 처리: 단계·담당·공개 #}
-      <form class="cs-panel cs-card" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="settings">
+      <form class="cs-panel cs-card" id="settings" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="settings">
         <h2>처리</h2>
         <div class="cs-two">
           <div class="field"><label for="c-status">진행 단계</label><select id="c-status" name="status">{% for s in STAGE_STATUS %}<option value="{{ s }}"{% if loop.index == stage_of(case['status']) %} selected{% endif %}>{{ loop.index }}. {{ stage_names()[loop.index0] }}</option>{% endfor %}</select></div>
@@ -239,7 +267,7 @@
 
 
       {# 2. 기업: 기업 페이지 연결, 가입 기업 전달, 답변 링크 #}
-      <section class="cs-panel cs-card">
+      <section class="cs-panel cs-card" id="co_card">
         <h2>기업 {% if linked %}<span class="cs-pill on">연결됨</span>{% else %}<span class="cs-pill">연결 전</span>{% endif %}{% if not case['share_company'] %} <span class="cs-pill off">전달 미동의</span>{% endif %}</h2>
         {# 운영자 2026-11-13: 제보가 들어오면 업체는 자동으로 저장·연결 (같은 이름이면 그 기업에). 바꿀 때만 고르면 바로 저장, 저장 버튼 없음 #}
         {% if linked %}<p class="co-linked"><b>{{ linked['name'] }}</b>{{ ' (가입 기업)' if linked['status'] == 'active' }}</p>
@@ -342,7 +370,7 @@
       </section>
 
       {# 3. 제보자: 정보·동의, 조회 비밀번호, 알림 기록 #}
-      <section class="cs-panel cs-card">
+      <section class="cs-panel cs-card" id="reporter">
         <h2>제보자</h2>
         <dl class="cs-dl">
           <dt>이름</dt><dd>{{ case['reporter_name'] or '—' }}</dd>
@@ -399,4 +427,31 @@
     t.addEventListener('input', grow); grow();
   });
 </script>
+{% if ep.list == 'admin_reports' %}
+<script>
+  // 운영자 2026-11-17: 탭으로 나눠 한 번에 하나만 (내용·기업·제보자·기록). 처리(단계·담당)는 늘 위에. 주소의 #칸 이름이면 그 탭으로
+  (function(){
+    var page=document.querySelector('.cs-case'),bar=document.querySelector('.v3-tabs');if(!page||!bar)return;
+    document.body.classList.add('v3-detail');bar.hidden=false;
+    // 운영자 2026-11-17: PC는 화면 전체 폭. 왼쪽 = 탭+내용, 오른쪽 = '지금 할 일'과 처리 (늘 보이게)
+    var grid=document.createElement('div');grid.className='v3-grid';var left=document.createElement('div');left.className='v3-left';var aside=document.createElement('aside');aside.className='v3-aside';aside.setAttribute('aria-label','지금 할 일과 처리');var ain=document.createElement('div');ain.className='v3-aside-in';aside.appendChild(ain);
+    bar.parentNode.insertBefore(grid,bar);left.appendChild(bar);left.appendChild(page);grid.appendChild(left);grid.appendChild(aside);
+    var now=document.querySelector('.v3-now');if(now)ain.appendChild(now);
+    var map={co:['#co_card','#notice','#desk_contact','#desk_answer'],p:['#reporter'],l:['.cs-logbox']};
+    var all=[].slice.call(page.querySelectorAll('.cs-col > *, .cs-side > *')).filter(function(el){return el.tagName!=='SCRIPT'});
+    all.forEach(function(el){el.dataset.pane='c'});
+    Object.keys(map).forEach(function(k){map[k].forEach(function(q){page.querySelectorAll(q).forEach(function(el){el.dataset.pane=k})})});
+    var st=document.getElementById('settings');if(st){st.dataset.pane='all';ain.appendChild(st);all=all.filter(function(el){return el!==st})}
+    var log=page.querySelector('.cs-logbox');if(log)log.open=true;
+    function show(k){bar.querySelectorAll('[role=tab]').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.tab===k))});all.forEach(function(el){el.hidden=!(el.dataset.pane===k||el.dataset.pane==='all')})}
+    function goTo(id){var el=document.getElementById(id);if(!el)return false;var box=el.closest('[data-pane]')||el;show(box.dataset.pane==='all'?'c':box.dataset.pane);if(el.tagName==='DETAILS')el.open=true;el.querySelectorAll('details.cs-more').forEach(function(d){if(/연락처/.test(d.textContent.slice(0,20)))d.open=true});setTimeout(function(){el.scrollIntoView({behavior:'smooth',block:'start'})},30);return true}
+    bar.addEventListener('click',function(e){var b=e.target.closest('[role=tab]');if(b)show(b.dataset.tab)});
+    document.addEventListener('click',function(e){var a=e.target.closest('a[href^="#"]');if(!a||a.getAttribute('href').length<2)return;if(goTo(a.getAttribute('href').slice(1)))e.preventDefault()});
+    // 긴 입력 칸은 제목 줄만 보이고 누르면 펼쳐짐 (토스 목록 줄처럼)
+    ['#publish_review','#article','#triage','#company_request','#request_done'].forEach(function(q){var el=page.querySelector(q);if(!el)return;var h=el.querySelector('h2');if(!h)return;el.classList.add('v3-fold');h.setAttribute('role','button');h.tabIndex=0;h.addEventListener('click',function(e){if(e.target.closest('a,button'))return;el.classList.toggle('open')});h.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();el.classList.toggle('open')}})});
+    var _go=goTo;goTo=function(id){var el=document.getElementById(id);if(el&&el.classList.contains('v3-fold'))el.classList.add('open');return _go(id)};
+    show('c');if(location.hash.length>1)goTo(location.hash.slice(1));
+  })();
+</script>
+{% endif %}
 {% endblock %}

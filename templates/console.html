@@ -45,14 +45,15 @@
 }[name]|safe }}</svg>{% endmacro %}
 {% if admin_active() and request.endpoint != 'admin_login' %}
 {# 운영자 2026-11-03 (밤): '사이트 화면 편집' 하나로. 첫 화면 사진도 여기. 사업자 정보·검색 노출은 문구 고치기 화면의 칸이라 메뉴에서 뺌 #}
+{# 운영자 2026-11-17: 토스처럼 쓰기 편하게. 하는 일 기준으로 묶음 (제보·기업·기사·사람·통계), 화면·문구·사진 등 가끔 쓰는 건 '사이트 설정' 하나로 접어 둠 #}
 {% set groups = [
-  ('', [('admin', 'home', '홈'), ('admin_visits', 'chart', '방문 통계')]),
-  ('제보', [('admin_reports', 'inbox', '제보 처리'), ('admin_requests', 'mail', '정정·이의 신청'), ('admin_stats', 'chart', '운영 통계'), ('admin_partners', 'image', '협력 기관'), ('admin_check', 'book', '사기 전에 확인'), ('admin_howto', 'book', '분쟁·대응')]),
+  ('', [('admin', 'home', '홈')]),
+  ('제보', [('admin_reports', 'inbox', '제보 처리'), ('admin_requests', 'mail', '정정·이의 신청'), ('admin_takedowns', 'flag', '게시중단 요청')]),
   ('기업', [('admin_companies', 'building', '기업'), ('admin_contacts', 'mail', '기업 연락처')]),
-  ('회원', [('admin_members', 'users', '회원'), ('admin_experts', 'id', '소보루 자문단'), ('admin_expert_mail', 'mail', '자문단 섭외 메일'), ('admin_takedowns', 'flag', '게시중단 요청')]),
-  ('콘텐츠', [('admin_ask', 'chat', 'AI 상담'), ('admin_ai_usage', 'chart', 'AI 사용량'), ('admin_drafts', 'book', '기사 초안'), ('admin_public_data', 'chart', '공공데이터'), ('admin_laws', 'book', '법령 학습')]),
-  ('사이트 화면 편집', [('admin_site', 'edit', '화면에서 바로 고치기'), ('admin_hero_photos', 'image', '첫 화면 사진'), ('admin_lists', 'layers', '메뉴·구성'), ('admin_content', 'text', '문구·사업자 정보·검색')]),
-  ('계정', [('admin_staff', 'id', '기자 계정'), ('admin_password', 'key', '비밀번호 변경'), ('admin_qr', 'flag', '매장 QR')]),
+  ('기사·콘텐츠', [('admin_drafts', 'edit', '기사 초안'), ('admin_check', 'book', '사기 전에 확인'), ('admin_howto', 'book', '분쟁·대응'), ('admin_public_data', 'chart', '공공데이터')]),
+  ('사람', [('admin_members', 'users', '회원'), ('admin_experts', 'id', '소보루 자문단'), ('admin_expert_mail', 'mail', '자문단 섭외 메일'), ('admin_staff', 'id', '기자 계정')]),
+  ('통계', [('admin_visits', 'chart', '방문 통계'), ('admin_stats', 'chart', '운영 통계'), ('admin_ai_usage', 'chart', 'AI 사용량')]),
+  ('사이트 설정', [('admin_site', 'edit', '화면에서 바로 고치기'), ('admin_hero_photos', 'image', '첫 화면 사진'), ('admin_lists', 'layers', '메뉴·구성'), ('admin_content', 'text', '문구·사업자 정보·검색'), ('admin_partners', 'image', '협력 기관'), ('admin_ask', 'chat', 'AI 상담'), ('admin_laws', 'book', '법령 학습'), ('admin_qr', 'flag', '매장 QR'), ('admin_password', 'key', '비밀번호 변경')]),
 ] %}
 {# 운영자 2026-11-05: 관리자 하나에서 위쪽 전환 버튼으로 '소비자고발제보센터'·'소보루 매거진'을 오감. 메뉴는 서로 겹치지 않음 (mag_admin.py) #}
 {% set space = admin_space() if admin_space is defined else 'jebo' %}
@@ -121,14 +122,16 @@
 <div class="ad-shell">
   <nav class="ad-side" aria-label="관리 메뉴">
     {% for group, links in groups %}
-    <div class="ad-group">{% if group %}<p class="ad-group-title">{{ group }}</p>{% endif %}
+    {% set fold = group == '사이트 설정' %}{% set open_ = fold and active in links|map(attribute=0)|list %}
+    {% if fold %}<details class="ad-group ad-fold"{% if open_ %} open{% endif %}><summary class="ad-group-title">{{ group }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>{% else %}
+    <div class="ad-group">{% if group %}<p class="ad-group-title">{{ group }}</p>{% endif %}{% endif %}
       {# 사이트 꾸미기: 지금 고치는 사이트(소보루/소비자고발제보센터)를 그대로 따라감. '사업자 정보'·'검색 노출'은 문구 고치기 화면의 한 칸으로 바로 감 #}
 
       {% for e, ico, label in links %}{% set ep, _, sec = e.partition('#') %}
-      {%- if group == '사이트 화면 편집' %}{% set href = face_url(ep) ~ ('#section-' ~ sec if sec else '') %}{% set on = active == ep and not sec %}
+      {%- if ep in ('admin_site', 'admin_hero_photos', 'admin_lists', 'admin_content') %}{% set href = face_url(ep) ~ ('#section-' ~ sec if sec else '') %}{% set on = active == ep and not sec %}
       {%- else %}{% set href = url_for(ep) %}{% set on = active == ep %}{% endif -%}
       <a href="{{ href }}"{% if ep == 'admin_content' %} data-sec="{{ sec }}"{% endif %}{% if on %} class="on" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span>{% if e == 'admin_reports' %}<em class="ad-badge" id="ad-new-badge"{% if not nc.count %} hidden{% endif %}>{{ nc.count }}</em>{% endif %}</a>{% endfor %}
-    </div>
+    {% if fold %}</details>{% else %}</div>{% endif %}
     {% endfor %}
   </nav>
   <div class="ad-main">

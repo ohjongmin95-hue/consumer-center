@@ -2239,6 +2239,10 @@ def reports_list():
     assignee=request.args.get('assignee','').strip()[:80]  # 담당자별 몰아 보기 ('-'는 미배정)
     if assignee=='-':where.append("COALESCE(assignee,'')=''")
     elif assignee:where.append('assignee=?');args.append(assignee)
+    due='over' if request.args.get('due')=='over' and g.area=='admin' else ''
+    if due:
+        with conn() as db:over=ops_overdue_ids(db)
+        where.append('id IN (%s)'%(','.join(str(int(i)) for i in over) or '0'))
     cond=' AND '.join(where)
     view='contact' if request.args.get('view')=='contact' and g.area=='admin' else ''
     with conn() as db:
@@ -2254,7 +2258,9 @@ def reports_list():
         cases=db.execute('SELECT id,receipt,industry,category,company,subject,status,created,assignee,public_consent,published,share_company,review FROM cases WHERE '+cond+' ORDER BY '+order+' LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
         track_counts=triage_counts(db);track_of=triage_rows(db,[c['id'] for c in cases])
         assignee_counts=db.execute("SELECT COALESCE(assignee,'') AS name,COUNT(*) AS n FROM cases GROUP BY 1 ORDER BY name=''").fetchall()
-    return render_template('reports_list.html',layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
+        clocks=ops_answer_clocks(db,[c['id'] for c in cases]) if g.area=='admin' else {}
+        n_over=len(ops_overdue_ids(db)) if g.area=='admin' else 0
+    return render_template('reports_list.html',due=due,clocks=clocks,n_over=n_over,layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
                            review=review,sort=sort,review_counts={k:review_counts.get(v,0) for k,v in jebo.REVIEW_KEYS.items()},reviews=jebo.REVIEWS,review_keys=jebo.REVIEW_KEYS,legacy_pending=legacy_pending,
                            track=track,track_counts=track_counts,track_of=track_of,assignee=assignee,assignee_counts=assignee_counts,view=view,need=need,need_cases=sum(len(c) for _,c in need),staff_names=staff_names,statuses=STATUSES)
 
@@ -3316,7 +3322,7 @@ _jebo=types.SimpleNamespace(**globals());jebo.install(_jebo)
 send_company_verify=_jebo.send_company_verify
 # 3차 운영 자동화: 심사 보조·기업 통지·알림·정정·삭제·이의·운영 통계 (ops.py)
 _ops=types.SimpleNamespace(**globals());ops.install(_ops)
-for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_admin_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras','ops_auto_forward','ops_contact_needed','ops_send_pending','ops_contact_saved'):globals()[_k]=getattr(_ops,_k)
+for _k in ('ops_handle_form','OPS_FORMS','ops_context','ops_member_alert','ops_admin_alert','ops_answer_alert','ops_risk_alert','ops_reporter_extras','ops_company_objection','ops_company_requests','ops_home_extras','ops_auto_forward','ops_contact_needed','ops_send_pending','ops_contact_saved','ops_answer_clocks','ops_overdue_ids'):globals()[_k]=getattr(_ops,_k)
 # 기업 대응 관리: AI 기업 입장 요청서, 기업 연락처, 전달 기록, 기업 답변 등록 (companydesk.py)
 _desk=types.SimpleNamespace(**globals());companydesk.install(_desk)
 for _k in ('desk_context','desk_handle_form','DESK_FORMS','desk_after_submit','desk_generate'):globals()[_k]=getattr(_desk,_k)

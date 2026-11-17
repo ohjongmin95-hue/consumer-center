@@ -3480,7 +3480,7 @@ class SiteTest(unittest.TestCase):
         home = admin.get('/admin').get_data(as_text=True)
         self.assertIn('관리자 홈', home)
         self.assertIn('기자 계정', home)
-        for label in ('사이트 화면 편집', '화면에서 바로 고치기', '첫 화면 사진', '메뉴·구성', '문구·사업자 정보·검색', '제보 처리'):
+        for label in ('화면에서 바로 고치기', '첫 화면 사진', '메뉴·구성', '문구·사업자 정보·검색', '제보 처리', '사이트 설정'):
             self.assertIn(label, home)
         site = admin.get('/admin/site').get_data(as_text=True)
         self.assertIn('화면에서 바로 고치기', site)
