@@ -9,7 +9,7 @@
   <div class="cs-case-head">
     <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ cat_label(case['category']) }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}{% if case['occurred_on'] %} · 발생 {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
     <h1 class="cs-title">{{ case['subject'] }}</h1>
-    <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ stage_of(case['status']) }}">{{ stage_names()[stage_of(case['status']) - 1] }}</span></p>
+    <p class="cs-company">업체 <b>{{ case['company'] }}</b> {% if case['review'] == 'duplicate' %}<span class="cs-status s-dup">중복 반려</span>{% else %}<span class="cs-status s{{ stage_of(case['status']) }}">{{ stage_names()[stage_of(case['status']) - 1] }}</span>{% endif %}</p>
     {% set ck = ops.clock if ops and case['status'] in ('기업 답변 대기', '연락 시도 중') else None %}{% if ck %}{# 운영자 2026-11-17: 기업에 보낸 때부터 답변 기한을 실시간으로. 지나면 기사 초안으로 #}
     <div class="ans-clock{{ ' is-done' if ck.answered else ' is-over' if ck.over else '' }}" data-due="{{ ck.due_ms }}"{% if ck.answered %} data-answered="1"{% endif %}>
       <div class="ans-clock-main"><span class="ans-clock-k">기업 답변 기한</span><b class="ans-clock-left">{% if ck.answered %}기업이 답했어요{% elif ck.over %}기한 지남{% else %}남은 시간 계산 중{% endif %}</b></div>
@@ -25,7 +25,8 @@
   {% set ck = ops.clock if ops else None %}
   {% set answered_msg = msgs|selectattr('author', 'equalto', '기업 답변')|list %}
   {% set has_contact = (ops.notice_to or ops.notice_phone) if ops else False %}
-  {% if ck and ck.over and not ck.answered and case['status'] in ('기업 답변 대기', '연락 시도 중') %}{% set td = ('red', '기업 답변 기한이 지났어요', '보낸 때 ' ~ ck.sent[5:]|replace('-', '.') ~ ' · 기한 ' ~ ck.due[5:]|replace('-', '.') ~ '. 초안을 만들면 관리자 > 기사 초안에 들어가요.', 'draft', '기사 초안 만들기') %}
+  {% if case['review'] in ('duplicate', 'rejected') %}{% set td = None %}{# 운영자 2026-11-17: 중복·제외로 반려한 제보는 할 일 없음 #}
+  {% elif ck and ck.over and not ck.answered and case['status'] in ('기업 답변 대기', '연락 시도 중') %}{% set td = ('red', '기업 답변 기한이 지났어요', '보낸 때 ' ~ ck.sent[5:]|replace('-', '.') ~ ' · 기한 ' ~ ck.due[5:]|replace('-', '.') ~ '. 초안을 만들면 관리자 > 기사 초안에 들어가요.', 'draft', '기사 초안 만들기') %}
   {% elif answered_msg and case['status'] != STATUSES[-1] %}{% set td = ('or', '기업 답변이 왔어요', '답변을 확인하고 제보자에게 알린 뒤 종결해 주세요.', '#settings', '단계 바꾸기') %}
   {% elif case['review'] == '' %}{% set td = ('or', '제보를 검토해 주세요', '내용과 개인정보를 확인하고 처리 단계를 정해 주세요.', '#check', '검토하러 가기') %}
   {% elif case['status'] == '연락 시도 중' or (case['share_company'] and not case['forwarded_at'] and not has_contact and case['review'] == 'ok') %}{% set td = ('bl', '기업 연락처를 넣어 주세요', '연락처를 넣으면 답변 요청이 바로 나가고, 그때부터 ' ~ NOTICE_ANSWER_HOURS ~ '시간 답변 기한이 시작돼요.', '#desk_contact', '연락처 넣기') %}
@@ -143,7 +144,7 @@
         <h2>심사 확인</h2>
         {% if ops.risks %}<p class="ops-flag"><span class="cs-pill off">개인정보 의심</span> 원문에 <b>{{ ops.risks|join(', ') }}</b>로 보이는 내용이 있어요.{% if case['public_consent'] %} 공개용 글에서 꼭 가려 주세요.{% endif %}</p>{% endif %}
         {% if ops.public_risks %}<p class="ops-flag"><span class="cs-pill off">공개 글 확인</span> 공개용 글에 <b>{{ ops.public_risks|join(', ') }}</b>로 보이는 내용이 남아 있어요.</p>{% endif %}
-        {% if ops.dups %}<p class="cs-hint">최근 90일 안에 비슷한 제보가 있어요. 같은 피해면 아래 '검토'에서 중복으로 정해 주세요.</p>
+        {% if ops.dups %}<p class="cs-hint">최근 90일 안에 비슷한 제보가 있어요. 같은 피해면 진행 단계에서 '중복 반려'를 골라 주세요.</p>
         <ul class="ops-dups">{% for d, why in ops.dups %}<li><a href="{{ url_for(ep.case, case_id=d['id']) }}"><span class="mono">{{ d['receipt'] }}</span> {{ d['subject'] }}</a><span>{{ d['company'] }} · {{ d['status'] }} · {{ why|join(', ') }}</span></li>{% endfor %}</ul>{% endif %}
       </section>
       {% endif %}
@@ -257,7 +258,7 @@
       <form class="cs-panel cs-card" id="settings" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="settings">
         <h2>처리</h2>
         <div class="cs-two">
-          <div class="field"><label for="c-status">진행 단계</label><select id="c-status" name="status">{% for s in STAGE_STATUS %}<option value="{{ s }}"{% if loop.index == stage_of(case['status']) %} selected{% endif %}>{{ loop.index }}. {{ stage_names()[loop.index0] }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="c-status">진행 단계</label><select id="c-status" name="status">{% set dup = case['review'] == 'duplicate' %}{% for s in STAGE_STATUS %}<option value="{{ s }}"{% if not dup and loop.index == stage_of(case['status']) %} selected{% endif %}>{{ loop.index }}. {{ stage_names()[loop.index0] }}</option>{% endfor %}<option disabled>──────</option><option value="dup"{% if dup %} selected{% endif %}>중복 반려</option></select></div>
           <div class="field"><label for="c-assignee">담당 기자</label><select id="c-assignee" name="assignee"><option value="">미배정</option>{% for n in staff_names %}<option{% if n == case['assignee'] %} selected{% endif %}>{{ n }}</option>{% endfor %}{% if case['assignee'] and case['assignee'] not in staff_names %}<option selected>{{ case['assignee'] }}</option>{% endif %}</select></div>
         </div>
         {% if case['public_consent'] %}<label class="cs-check"><input type="checkbox" name="published"{% if case['published'] %} checked{% endif %}><span>사이트에 공개</span></label>{% endif %}<label class="cs-check"><input type="checkbox" name="company_hidden"{% if case['company_hidden'] %} checked{% endif %}><span>업체명 숨기기 (공개 화면에 '업체명 비공개'로 보여요)</span></label>

@@ -866,6 +866,24 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(article_drafts.load_files(SimpleNamespace(conn=self.site.conn, now=self.site.now)), 0)  # 다시 읽어도 덮어쓰지 않음
         self.assertEqual(self.client.get('/admin/drafts').status_code, 302)
 
+    def test_settings_duplicate_reject(self):
+        # 운영자 2026-11-17: 진행 단계 칸에서 '중복 반려' → 검토 결과 중복, 비공개, 종결. 다른 단계를 고르면 풀림
+        self.assertEqual(self.post_form(self.client, '/report', self.DESK_REPORT).status_code, 200)
+        admin = self.login_admin()
+        with self.site.conn() as db:
+            cid = db.execute('SELECT id FROM cases ORDER BY id DESC LIMIT 1').fetchone()['id']
+        page = admin.get('/admin/reports/%d' % cid).get_data(as_text=True)
+        self.assertIn('<option value="dup">중복 반려</option>', page)
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'settings', 'status': 'dup', 'assignee': ''})
+        with self.site.conn() as db:
+            c = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
+        self.assertEqual((c['review'], c['published'], c['status']), ('duplicate', 0, self.site.STATUSES[-1]))
+        self.assertIn('<option value="dup" selected>중복 반려</option>', admin.get('/admin/reports/%d' % cid).get_data(as_text=True))
+        self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'settings', 'status': '검토 중', 'assignee': ''})
+        with self.site.conn() as db:
+            c = db.execute('SELECT * FROM cases WHERE id=?', (cid,)).fetchone()
+        self.assertEqual((c['review'], c['status']), ('', '검토 중'))
+
     def test_admin_ai_writer(self):
         # 운영자 2026-11-17: 보도자료 → 오민주 기자 문체 기사. 서버가 기자 페이지에서 학습, 다 쓰면 기사 초안함으로 (ai_writer.py)
         import ai_writer
@@ -3319,10 +3337,10 @@ class SiteTest(unittest.TestCase):
         self.assertIn('단순 반품·환불 문의라', page)
         listing = admin.get('/admin/reports').get_data(as_text=True)
         self.assertIn('자동 응답 <b>1</b>', listing)
-        self.assertIn('<span class="tri-auto">자동 응답</span>', listing)
+        self.assertNotIn('<span class="tri-auto">', listing)  # 운영자 2026-11-17: 목록 줄에는 분류 표시 안 함
         self.assertNotIn('환불이 안 돼요', admin.get('/admin/reports?track=story').get_data(as_text=True))
         # 확인하고 보내기: 제보자 메시지로 들어가고 다시 누르면 막음
-        body = t['body'].replace('안내드려요.', '안내드려요. (담당자 확인)')
+        body = t['body'].replace('잘 확인했습니다.', '잘 확인했습니다. (담당자 확인)')
         self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'triage_send', 'body': body})
         self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'triage_send', 'body': body})
         with self.site.conn() as db:
@@ -3348,7 +3366,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             t2 = db.execute('SELECT * FROM case_triage WHERE case_id=?', (old,)).fetchone()
         self.assertEqual((t2['track'], t2['ai_track']), ('auto', 'story'))
-        self.assertIn('■ 관련 법률 안내', t2['body'])
+        self.assertIn('잘 확인했습니다', t2['body']); self.assertNotIn('■', t2['body'])
         # AI가 배열 대신 글 한 덩어리로 줘도 글자 단위로 쪼개지지 않음
         res = self.site.triage.clean({'track': 'auto', 'guidance': '헬스장 이용권은 계약서를 먼저 확인해요.\n\n남은 기간 환불은 분쟁해결기준을 따라요.', 'steps': '1. 계약서를 확인해요.\n2. 서면으로 요청해요.', 'refs': []},
                                      {'reporter_name': '홍길동'}, self.site.triage.POOL_ALL)
