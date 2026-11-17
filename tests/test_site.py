@@ -3340,7 +3340,7 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('<span class="tri-auto">', listing)  # 운영자 2026-11-17: 목록 줄에는 분류 표시 안 함
         self.assertNotIn('환불이 안 돼요', admin.get('/admin/reports?track=story').get_data(as_text=True))
         # 확인하고 보내기: 제보자 메시지로 들어가고 다시 누르면 막음
-        body = t['body'].replace('잘 읽었어요.', '잘 읽었어요. (담당자 확인)')
+        body = t['body'].replace('잘 확인했습니다.', '잘 확인했습니다. (담당자 확인)')
         self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'triage_send', 'body': body})
         self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'triage_send', 'body': body})
         with self.site.conn() as db:
@@ -3366,7 +3366,7 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             t2 = db.execute('SELECT * FROM case_triage WHERE case_id=?', (old,)).fetchone()
         self.assertEqual((t2['track'], t2['ai_track']), ('auto', 'story'))
-        self.assertIn('보내 주신 내용 잘 읽었어요', t2['body']); self.assertNotIn('■', t2['body'])
+        self.assertIn('잘 확인했습니다', t2['body']); self.assertNotIn('■', t2['body'])
         # AI가 배열 대신 글 한 덩어리로 줘도 글자 단위로 쪼개지지 않음
         res = self.site.triage.clean({'track': 'auto', 'guidance': '헬스장 이용권은 계약서를 먼저 확인해요.\n\n남은 기간 환불은 분쟁해결기준을 따라요.', 'steps': '1. 계약서를 확인해요.\n2. 서면으로 요청해요.', 'refs': []},
                                      {'reporter_name': '홍길동'}, self.site.triage.POOL_ALL)

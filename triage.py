@@ -35,9 +35,10 @@ POOL={'배송·교환·환불':DOOR+['ecom:제15조:①','ecom:제15조:②','ec
       '계약·해지':['ecom:제17조:①','ecom:제17조:②','ecom:제18조:②','ecom:제18조:⑨','basic:제16조:③']+DOOR,
       '허위·과장 광고':['ecom:제17조:③','ecom:제18조:⑩','ecom:제21조:①:1'],
       '고객 응대':['ecom:제21조:①:3','ecom:제21조:①:1','basic:제16조:③']+DOOR}
-# 운영자 2026-11-17: "너무 AI 응답 같아. 사람이 담당자가 쓴 것처럼, 좀 짧게." → 담당 기자가 직접 쓴 짧은 답장 꼴. ■ 머리글·긴 면책 문구 없음
-HELP='업체와 끝내 해결되지 않으면 1372 소비자상담센터(국번 없이 1372)나 한국소비자원 피해구제(www.kca.go.kr)를 이용해 보세요.'
-CLOSING='더 알려 주실 내용이나 자료가 있으면 여기로 답장 주세요. 저도 계속 살펴볼게요.'
+# 운영자 2026-11-17: "너무 AI 응답 같아. 사람이 담당자가 쓴 것처럼, 좀 짧게." → 짧은 답장 꼴. ■ 머리글·긴 면책 문구 없음
+# 운영자 2026-11-17 (저녁): "토스 느낌 말고 경어체, '소비자고발제보센터 드림'으로" → 합니다체, 센터 이름으로 서명
+HELP='업체와 해결되지 않으면 1372 소비자상담센터(국번 없이 1372) 또는 한국소비자원 피해구제(www.kca.go.kr)를 이용하실 수 있습니다.'
+CLOSING='추가로 알려 주실 내용이나 자료가 있으시면 이 화면으로 답장 주시기 바랍니다. 저희도 계속 살펴보겠습니다.'
 SYSTEM=('너는 소비자고발제보센터의 제보 분류와 답변 초안을 돕는다. 제보 내용과 [조문 후보]만 근거로 JSON을 만든다.\n'
         '법률 안내는 [조문 후보]에 주어진 법령 원문에서만 끌어온다. 네가 아는 일반 지식이나 인터넷 검색 결과로 법 내용을 말하지 않는다.\n'
         '1) 분류 track: "story"(취재 검토) 또는 "auto"(자동 응답).\n'
@@ -46,7 +47,7 @@ SYSTEM=('너는 소비자고발제보센터의 제보 분류와 답변 초안을
         '   애매하면 story로 한다.\n'
         '2) reason: 그렇게 나눈 이유 한두 문장(운영자용).\n'
         '3) guidance: 제보자에게 줄 법률 안내 1~2문단 배열(모두 합쳐 250자 이내). 담당 기자가 제보자에게 직접 쓰는 짧은 답장처럼 쓴다. '
-        '"안내드립니다", "도움이 될 만한", "정리해 드리면" 같은 상투적인 말과 번호·머리글 없이, 사람이 말하듯 자연스러운 해요체로. '
+        '"도움이 될 만한", "정리해 드리면" 같은 상투적인 말과 번호·머리글 없이, 담당자가 직접 쓰는 정중한 경어체(~습니다, ~하실 수 있습니다)로. 해요체는 쓰지 않는다. '
         '법 이름은 필요하면 문장 안에 한 번만 자연스럽게("전자상거래법에 따라 ~") 넣는다. [조문 후보]의 내용만 근거로 쓴다. '
         '조문에 없는 기간·금액·권리를 지어내지 않는다. 기업이 법을 위반했다고 단정하지 않는다("~라면 ~할 수 있어요"처럼 조건으로 쓴다). '
         '개인정보(이름·연락처·주소·계좌·주문번호)는 쓰지 않는다. 조문 번호는 문단에 쓰지 않아도 된다.\n'
@@ -56,7 +57,7 @@ SYSTEM=('너는 소비자고발제보센터의 제보 분류와 답변 초안을
         '   제보 상황에 맞는 법만 고른다. 매장에서 직접 맺은 이용권 계약에는 전자상거래법을 쓰지 말고 방문판매법 계속거래 조문을 쓴다. '
         '맞는 조문이 없으면 끌어다 쓰지 말고, 계약서·약관 확인과 품목별 소비자분쟁해결기준·1372 상담을 중심으로 일반적인 안내만 한다.\n'
         '4) refs: guidance의 근거가 된 조문 후보 id 0~4개 배열(후보 목록의 id 그대로). 맞는 조문이 없으면 빈 배열.\n'
-        '5) steps: 제보자가 할 일 2~3개 배열(예: 업체에 문자로 환불을 요청하고 캡처해 두세요). 한 줄 30자 안팎의 짧은 해요체.\n'
+        '5) steps: 제보자가 할 일 2~3개 배열(예: 업체에 문자로 환불을 요청하고 내용을 캡처해 두시기 바랍니다). 한 줄 35자 안팎의 짧은 경어체(~하시기 바랍니다).\n'
         'guidance와 steps는 반드시 문자열의 배열(JSON array)로 쓴다.')
 
 def ref_pool(category):return POOL.get(category,POOL_ALL)
@@ -128,14 +129,12 @@ def _branded(text):
     return notify.branded(text)
 
 def compose(res,who=''):
-    """제보자에게 보낼 답장 초안. 담당 기자 이름으로 짧게 (who 없으면 '담당 기자')."""
-    who=(who or '').strip()
-    me=f'{who} 기자' if who else '담당 기자'
-    parts=[f'안녕하세요, 소비자고발제보센터 {me}입니다. 보내 주신 내용 잘 읽었어요.','','\n\n'.join(res['guidance'][:2])]
-    if res['steps']:parts+=['','이렇게 해 보시면 좋겠어요.']+[f'{i}. {t}' for i,t in enumerate(res['steps'][:3],1)]
+    """제보자에게 보낼 답장 초안. 정중한 경어체, 소비자고발제보센터 이름으로 (who는 예전 호출과 맞추려고 남김)."""
+    parts=['안녕하세요. 소비자고발제보센터입니다. 보내 주신 제보 내용을 잘 확인했습니다.','','\n\n'.join(res['guidance'][:2])]
+    if res['steps']:parts+=['','아래와 같이 해 보시기를 권해 드립니다.']+[f'{i}. {t}' for i,t in enumerate(res['steps'][:3],1)]
     parts+=['',HELP]
     if res['refs']:parts+=['','참고한 법 조항']+[f"- {c['label']} ({c['title']})" if c['title'] else f"- {c['label']}" for c in (cite(r) for r in res['refs'][:3])]
-    parts+=['',CLOSING,'',f'{me} 드림']
+    parts+=['',CLOSING,'','소비자고발제보센터 드림']
     return _branded('\n'.join(parts))
 
 _desk=None
@@ -165,7 +164,7 @@ def install(S):
         with conn() as db:
             old=row(db,case_id)
             keep=old and old['set_by'] and old['track']
-            save(db,case_id,track=old['track'] if keep else res['track'],ai_track=res['track'],reason=res['reason'],body=compose(res,case['assignee'] if 'assignee' in case.keys() else ''),
+            save(db,case_id,track=old['track'] if keep else res['track'],ai_track=res['track'],reason=res['reason'],body=compose(res),
                  refs=json.dumps(res['refs'],ensure_ascii=False),model=model,error='',status='draft')
             S.log_case(db,case_id,f"AI 분류: {TRACKS[res['track']]} · 답변 초안 생성")
         return True
@@ -184,10 +183,6 @@ def install(S):
         for r in (json.loads(t['refs'] or '[]') if t and t['refs'] else []):
             try:refs.append(cite(r))
             except (KeyError,ValueError):pass  # 법령 파일이 바뀌어 없어진 조문은 건너뜀
-        if t and t['body'] and t['status']!='sent' and '담당 기자' in t['body']:
-            # 초안을 만들 땐 담당이 없을 수 있어, 화면에 보일 때 담당 기자(없으면 지금 보는 사람) 이름으로 채움
-            who=(case['assignee'] if 'assignee' in case.keys() else '') or S.actor_name()
-            if who and who not in ('대표','관리자','운영자','자동'):t=dict(t,body=t['body'].replace('담당 기자',f'{who} 기자'))
         return dict(t=t,refs=refs,ready=_desk.ai_ready())
     S.triage_context=context
 
