@@ -2594,7 +2594,7 @@ class SiteTest(unittest.TestCase):
             self.assertNotEqual(self.client.get('/favicon.ico', base_url='https://consumerjebo.co.kr').data, self.client.get('/favicon.ico').data)
             self.assertIn('class="site-header"', jebo)
             self.assertNotIn('class="sb"', jebo)
-            self.assertIn('<title>소비자고발제보센터 - 소비자 피해 고발·제보 사이트</title>', jebo); self.assertIn('소비자고발제보센터는 이런 곳이에요', jebo)
+            self.assertIn('<title>소비자고발제보센터 - 소비자 피해 고발·제보 사이트</title>', jebo); self.assertNotIn('이런 곳이에요', jebo); self.assertIn('og:description', jebo)
             self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', jebo)
             self.assertIn('여러분의 제보가', jebo)
             sob = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
