@@ -139,6 +139,7 @@
     {# 운영자 2026-11-03: 고정돼 있으면 공식 기관 같아서 띠처럼 흘러가게 #}
     {# 운영자 2026-11-04: 관리자 > 협력 기관·배너에서 넣은 로고 (높이·작은 글씨도 관리자에서) #}
     {% set pts = partners() %}<div class="org-track">{% for round in range(2) %}<ul{% if round %} aria-hidden="true"{% endif %}>{% for p in pts %}<li style="--h:{{ p.h_px or 32 }}px">{% if p.link %}<a href="{{ p.link }}"{% if round %} tabindex="-1"{% endif %} target="_blank" rel="noopener"{% if p.sub %} class="org-self"{% endif %}>{% else %}<span{% if p.sub %} class="org-self"{% endif %}>{% endif %}<img src="{{ url_for('partner_image', name=p.stored) }}" alt="{{ '' if round else p.name }}" width="{{ p.width }}" height="{{ p.height }}">{% if p.sub %}<small>{{ p.sub }}</small>{% endif %}{% if p.link %}</a>{% else %}</span>{% endif %}</li>{% endfor %}</ul>{% endfor %}</div>
+    <p class="home-about">{{ ui('home.about_p', txt('site.name') ~ '는 환불 거부, 배송 지연, 불량품, 해지 방해 같은 소비자 피해를 제보받아 업체에 답변을 요청하고, 여러 사람이 겪는 피해는 기사로 알리는 소비자 고발 사이트예요.') }}</p>
   </section>{% endif %}
 </main>
 <script>
