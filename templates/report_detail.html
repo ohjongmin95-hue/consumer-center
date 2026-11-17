@@ -10,7 +10,7 @@
     <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ cat_label(case['category']) }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}{% if case['occurred_on'] %} · 발생 {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
     <h1 class="cs-title">{{ case['subject'] }}</h1>
     <p class="cs-company">업체 <b>{{ case['company'] }}</b> <span class="cs-status s{{ stage_of(case['status']) }}">{{ stage_names()[stage_of(case['status']) - 1] }}</span></p>
-    {% set ck = ops.clock if ops else None %}{% if ck %}{# 운영자 2026-11-17: 기업에 보낸 때부터 답변 기한을 실시간으로. 지나면 기사 초안으로 #}
+    {% set ck = ops.clock if ops and case['status'] in ('기업 답변 대기', '연락 시도 중') else None %}{% if ck %}{# 운영자 2026-11-17: 기업에 보낸 때부터 답변 기한을 실시간으로. 지나면 기사 초안으로 #}
     <div class="ans-clock{{ ' is-done' if ck.answered else ' is-over' if ck.over else '' }}" data-due="{{ ck.due_ms }}"{% if ck.answered %} data-answered="1"{% endif %}>
       <div class="ans-clock-main"><span class="ans-clock-k">기업 답변 기한</span><b class="ans-clock-left">{% if ck.answered %}기업이 답했어요{% elif ck.over %}기한 지남{% else %}남은 시간 계산 중{% endif %}</b></div>
       <p class="ans-clock-sub">보낸 때 {{ ck.sent[5:]|replace('-', '.') }} · 기한 {{ ck.due[5:]|replace('-', '.') }}{% if ck.answered %} · 답한 때 {{ ck.answered[5:]|replace('-', '.') }}{% endif %}</p>
@@ -25,7 +25,7 @@
   {% set ck = ops.clock if ops else None %}
   {% set answered_msg = msgs|selectattr('author', 'equalto', '기업 답변')|list %}
   {% set has_contact = (ops.notice_to or ops.notice_phone) if ops else False %}
-  {% if ck and ck.over and not ck.answered %}{% set td = ('red', '기업 답변 기한이 지났어요', '보낸 때 ' ~ ck.sent[5:]|replace('-', '.') ~ ' · 기한 ' ~ ck.due[5:]|replace('-', '.') ~ '. 초안을 만들면 관리자 > 기사 초안에 들어가요.', 'draft', '기사 초안 만들기') %}
+  {% if ck and ck.over and not ck.answered and case['status'] in ('기업 답변 대기', '연락 시도 중') %}{% set td = ('red', '기업 답변 기한이 지났어요', '보낸 때 ' ~ ck.sent[5:]|replace('-', '.') ~ ' · 기한 ' ~ ck.due[5:]|replace('-', '.') ~ '. 초안을 만들면 관리자 > 기사 초안에 들어가요.', 'draft', '기사 초안 만들기') %}
   {% elif answered_msg and case['status'] != STATUSES[-1] %}{% set td = ('or', '기업 답변이 왔어요', '답변을 확인하고 제보자에게 알린 뒤 종결해 주세요.', '#settings', '단계 바꾸기') %}
   {% elif case['review'] == '' %}{% set td = ('or', '제보를 검토해 주세요', '내용과 개인정보를 확인하고 처리 단계를 정해 주세요.', '#check', '검토하러 가기') %}
   {% elif case['status'] == '연락 시도 중' or (case['share_company'] and not case['forwarded_at'] and not has_contact and case['review'] == 'ok') %}{% set td = ('bl', '기업 연락처를 넣어 주세요', '연락처를 넣으면 답변 요청이 바로 나가고, 그때부터 ' ~ NOTICE_ANSWER_HOURS ~ '시간 답변 기한이 시작돼요.', '#desk_contact', '연락처 넣기') %}

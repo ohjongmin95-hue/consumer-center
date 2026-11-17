@@ -1,7 +1,7 @@
 {% extends 'console.html' %}
 {% block title %}관리자 홈 | {{ txt('site.name') }}{% endblock %}
 {% block content %}
-<main class="ad-page">
+<main class="ad-page v3-home">
   <header class="ad-head">
     <div><h1>홈</h1></div>
     <button type="button" class="ad-notify-on" id="ad-notify-on" hidden>브라우저 알림 켜기</button>
@@ -22,6 +22,8 @@
     (stats.flagged, url_for('admin_board'), '신고된 게시글·댓글', '', 'gr', '신'),
   ] %}
   {% set live = todos|selectattr(0)|list %}
+  <div class="v3-cols">{# 운영자 2026-11-17: PC는 두 단으로 한 화면에 (왼쪽 할 일·소식, 오른쪽 숫자·방문·지연) #}
+  <div class="v3-ca">
   <section class="ad-panel v3-todo" aria-labelledby="v3-todo-h">
     <h2 id="v3-todo-h">오늘 할 일</h2>
     {% if live %}<ul>{% for n, href, label, sub, tone, mark in live %}
@@ -29,7 +31,14 @@
     </ul>{% else %}<p class="v3-empty">지금 할 일이 없어요.</p>{% endif %}
   </section>
 
-  <section class="ad-panel" aria-label="숫자로 보기">
+    <section class="ad-panel hm-feed" aria-labelledby="hm-feed-h">
+      <h2 id="hm-feed-h">최근 소식</h2>
+      {% if h.feed %}<ul>{% for x in h.feed %}<li><a href="{{ x.href }}"><span class="hm-k k-{{ loop.index0 % 3 }} is-{{ {'제보': 'c', '회원': 'm', '자문단': 'e'}[x.kind] }}">{{ x.kind }}</span><span class="hm-t"><b>{{ x.text }}</b>{% if x.sub %}<small>{{ x.sub }}</small>{% endif %}</span><time>{{ (x.at or '')[5:16]|replace('-', '.')|replace('T', ' ') }}</time></a></li>{% endfor %}</ul>
+      {% else %}<p class="cs-hint">아직 소식이 없어요.</p>{% endif %}
+    </section>
+  </div>
+  <div class="v3-cb">
+  <section class="ad-panel v3-statp" aria-label="숫자로 보기">
     <dl class="v3-stats">
       <a href="{{ url_for('admin_visits') }}"><dt>오늘 방문</dt><dd>{{ '{:,}'.format(h.visits_today) }}<small>명</small></dd><i>오늘 제보 {{ h.cases_today }}건</i></a>
       <a href="{{ url_for('admin_reports') }}"><dt>전체 제보</dt><dd>{{ '{:,}'.format(h.cases_total) }}<small>건</small></dd><i>최근 7일 +{{ stats.new_cases }}</i></a>
@@ -39,27 +48,22 @@
     <p class="v3-mini"><a href="{{ url_for('admin_experts') }}">소보루 자문단 {{ h.experts }}명</a><a href="{{ url_for('admin_letter') }}">소보루 레터 구독 {{ '{:,}'.format(h.letter) }}명</a><a href="{{ url_for('admin_ai_usage') }}">이번 달 AI 비용 {{ '{:,}'.format(h.ai_krw) }}원</a></p>
   </section>
 
-  <div class="v3-two">
-    <section class="ad-panel hm-feed" aria-labelledby="hm-feed-h">
-      <h2 id="hm-feed-h">최근 소식</h2>
-      {% if h.feed %}<ul>{% for x in h.feed %}<li><a href="{{ x.href }}"><span class="hm-k k-{{ loop.index0 % 3 }} is-{{ {'제보': 'c', '회원': 'm', '자문단': 'e'}[x.kind] }}">{{ x.kind }}</span><span class="hm-t"><b>{{ x.text }}</b>{% if x.sub %}<small>{{ x.sub }}</small>{% endif %}</span><time>{{ (x.at or '')[5:16]|replace('-', '.')|replace('T', ' ') }}</time></a></li>{% endfor %}</ul>
-      {% else %}<p class="cs-hint">아직 소식이 없어요.</p>{% endif %}
-    </section>
-    <section class="ad-panel" aria-labelledby="v3-vis-h">
+    <section class="ad-panel v3-vis" aria-labelledby="v3-vis-h">
       <div class="ad-panel-head"><h2 id="v3-vis-h">최근 7일 방문</h2><a class="ad-link" href="{{ url_for('admin_visits') }}">방문 통계 ›</a></div>
     <div class="hm-chart" role="img" aria-label="최근 7일 방문자">
       {% for x in h.days %}<div class="hm-bar{% if loop.last %} is-today{% endif %}"><em>{{ x.visits }}</em><i style="height:{{ (100 * x.visits / h.peak)|round|int if x.visits else 2 }}%"></i><span>{{ x.label }}</span></div>{% endfor %}
     </div>
     </section>
-  </div>
-
   {% if ops.late %}
-  <section class="ad-panel" id="late">
+  <section class="ad-panel v3-late" id="late">
     <div class="ad-panel-head"><h2>처리 지연 제보</h2><a class="ad-link" href="{{ url_for('admin_stats') }}">운영 통계 ›</a></div>
     <p class="cs-hint">종결 전인데 {{ ops.delay_days }}일 넘게 처리 기록·메시지가 없는 제보예요. 오래된 순서예요.</p>
-    <ul class="ad-rows">{% for c in ops.late[:5] %}<li><a href="{{ url_for('admin_report', case_id=c['id']) }}"><span class="ad-row-main"><b>{{ c['subject'] }}</b><small>{{ c['company'] }} · 마지막 기록 {{ c['last'][:10]|replace('-', '.') }}</small></span><span class="ad-row-side"><em>{{ c['status'] }}</em><small>{{ c['receipt'] }}</small></span></a></li>{% endfor %}</ul>
+    <ul class="ad-rows">{% for c in ops.late[:4] %}<li><a href="{{ url_for('admin_report', case_id=c['id']) }}"><span class="ad-row-main"><b>{{ c['subject'] }}</b><small>{{ c['company'] }} · 마지막 기록 {{ c['last'][:10]|replace('-', '.') }}</small></span><span class="ad-row-side"><em>{{ c['status'] }}</em><small>{{ c['receipt'] }}</small></span></a></li>{% endfor %}</ul>
   </section>
   {% endif %}
+
+  </div>
+  </div>
 
 </main>
 {% endblock %}
