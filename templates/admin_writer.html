@@ -1,0 +1,57 @@
+{% extends 'console.html' %}
+{% block title %}기사 쓰기 | {{ site_name() }}{% endblock %}
+{% block content %}
+{# 운영자 2026-11-17: 보도자료·원문 → 오민주 기자 문체 기사 (ai_writer.py). 다 쓰면 기사 초안함으로 #}
+<main class="cs-page ad wr">
+  <h1 class="cs-title">기사 쓰기</h1>
+  <p class="wr-lead">보도자료나 원문을 붙여 넣으면 오민주 기자 문체로 새로 써요. 다 쓰면 기사 초안에 들어가요.</p>
+  <form method="post" class="wr-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="wr-kind" role="radiogroup" aria-labelledby="wr-kind-h"><p class="wr-kind-h" id="wr-kind-h">어떤 기사인가요</p><div class="wr-kinds">
+      {% for k, v in kinds.items() %}<label><input type="radio" name="kind" value="{{ k }}"{% if (form.get('kind') or 'release') == k %} checked{% endif %}><span><b>{{ v[0] }}</b><small>{{ v[1] }}</small></span></label>{% endfor %}
+    </div></div>
+    <label class="wr-f">원문<textarea name="source" rows="14" placeholder="보도자료, 기사 원문, 취재 메모를 붙여 넣으세요">{{ form.get('source', '') }}</textarea></label>
+    <label class="wr-f">기사 주소 <small>붙여 넣을 원문이 없을 때만</small><input name="url" type="url" inputmode="url" placeholder="https://" value="{{ form.get('url', '') }}"></label>
+    <label class="wr-f">우리 각도 <small>넣지 않아도 돼요</small><input name="memo" maxlength="500" placeholder="예: 환불 거부가 되풀이되는데 소비자원은 권고만 한다" value="{{ form.get('memo', '') }}"></label>
+    <button class="cs-btn cs-btn-main wr-go" type="submit">기사 쓰기</button>
+  </form>
+
+  <section class="wr-learn" aria-label="문체 학습">
+    <div class="wr-row">
+      <span class="wr-ic" aria-hidden="true">오</span>
+      <span class="wr-t"><b>오민주 기자 문체</b>
+        <small>{% if st.state == 'learning' %}기사를 모으고 있어요. 몇 분 뒤 새로고침해 주세요.{% elif st.n %}기사 {{ st.n }}편 학습 · {{ st.updated }}{% elif st.state == 'fail' %}기사를 못 모았어요. 다시 학습해 주세요.{% else %}아직 학습 전이에요.{% endif %}</small></span>
+      <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="do" value="learn"><button class="wr-link" type="submit"{% if st.state == 'learning' %} disabled{% endif %}>다시 학습하기</button></form>
+    </div>
+    {% if st.guide %}<details class="wr-guide"><summary>정리한 문체 규칙 보기</summary><pre>{{ st.guide }}</pre></details>{% endif %}
+  </section>
+</main>
+<style>
+body.console .ad-main>main.wr{max-width:760px!important;margin:0!important}
+.wr-lead{margin:6px 0 24px;font-size:15px;line-height:23px;color:#6B7684}
+.wr-form{display:grid;gap:20px}
+.wr-kind-h{margin:0 0 8px;font-size:14px;font-weight:700;color:#4E5968}
+.wr-kinds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+body.console .wr-kinds label{position:relative;display:block;width:auto;max-width:none;margin:0;padding:0;cursor:pointer}
+.wr-kinds input{position:absolute;opacity:0;width:1px;height:1px}
+body.console .wr-kinds span{display:grid;gap:2px;padding:14px 12px;border-radius:14px;background:#F2F4F6;text-align:center}
+.wr-kinds b{font-size:15px;color:#333D4B}.wr-kinds small{font-size:13px;color:#8B95A1}
+body.console .wr-kinds input:checked+span{background:#FFF3E0;box-shadow:inset 0 0 0 2px #FE9800}.wr-kinds input:checked+span b{color:#E57A00}
+.wr-kinds input:focus-visible+span{outline:2px solid #FE9800;outline-offset:2px}
+.wr-f{display:grid;gap:8px;font-size:14px;font-weight:700;color:#4E5968}.wr-f small{font-weight:400;color:#8B95A1}
+.wr-f textarea,.wr-f input{width:100%;box-sizing:border-box;padding:14px 16px;border:1px solid #E5E8EB;border-radius:14px;font:inherit;font-weight:400;font-size:15px;line-height:1.7;color:#191F28;background:#fff}
+.wr-f textarea{resize:vertical;min-height:240px}
+.wr-f textarea:focus,.wr-f input:focus{outline:0;border-color:#FE9800;box-shadow:0 0 0 3px #FFF3E0}
+body.console .wr-go{width:100%;padding:16px!important;border-radius:16px!important;font-size:17px!important}
+.wr-learn{margin:40px 0 0;border-top:1px solid #F2F4F6}
+.wr-row{display:flex;align-items:center;gap:12px;padding:18px 0}
+.wr-ic{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:#FFF3E0;color:#E57A00;font-weight:800}
+.wr-t{flex:1;min-width:0}.wr-t b{display:block;font-size:16px;color:#191F28}.wr-t small{display:block;margin-top:2px;font-size:13px;color:#8B95A1}
+.wr-row form{margin:0}
+body.console .wr-link{border:0;background:none!important;box-shadow:none!important;padding:8px 0;font:inherit;font-size:14px;font-weight:600;color:#6B7684;cursor:pointer}
+body.console .wr-link:hover{color:#191F28}body.console .wr-link:disabled{color:#B0B8C1;cursor:default}
+.wr-guide summary{cursor:pointer;font-size:14px;color:#6B7684;padding:4px 0 12px}
+.wr-guide pre{margin:0;white-space:pre-wrap;word-break:keep-all;font:inherit;font-size:14px;line-height:1.8;color:#333D4B}
+@media(max-width:480px){body.console .wr-kinds span{padding:12px 6px}.wr-kinds small{font-size:12px}}
+@media(max-width:900px){body.console .wr-kinds span{background:#fff}.wr-f textarea,.wr-f input{background:#fff}}
+</style>
+{% endblock %}

@@ -2,7 +2,7 @@
 {% block title %}기사 초안 | {{ site_name() }}{% endblock %}
 {% block content %}
 {# 운영자 2026-11-15: 기사 스레드에서 쓴 초안을 관리자에서 보고 고침 (article_drafts.py) #}
-<main class="cs-page ad">
+<main class="cs-page ad">{% if d and d.body.startswith('(AI가 기사를 쓰고 있어요') %}<meta http-equiv="refresh" content="8">{% endif %}
 {% if not d %}
   <h1 class="cs-title">기사 초안</h1>
   <p class="au-help">기사 초안이 여기에 모여요. 노란색 [가상] 부분을 실제 취재로 채운 뒤 복사해서 신문 사이트에 올리면 돼요.</p>
@@ -31,7 +31,7 @@
   <script>
   (function () {
     var view = document.getElementById('ad-view');
-    view.innerHTML = view.innerHTML.replace(/\[가상[^\]]*\]/g, function (m) { return '<mark>' + m + '</mark>'; });
+    view.innerHTML = view.innerHTML.replace(/\[가상[^\]]*\]|【가안】/g, function (m) { return '<mark>' + m + '</mark>'; });
     var btn = document.getElementById('ad-copy'), msg = document.getElementById('ad-msg');
     btn.onclick = function () {
       var body = document.getElementById('ad-body').value.replace(/^## /gm, '');
