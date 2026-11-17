@@ -1095,7 +1095,7 @@ class SiteTest(unittest.TestCase):
         prod = self.client.get('/', base_url='http://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', prod)
         self.assertIn('<meta property="og:url" content="https://consumerjebo.co.kr/">', prod)
-        self.assertIn('<loc>https://consumerjebo.co.kr/</loc>', self.client.get('/sitemap.xml', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
+        self.assertIn('<loc>https://consumerjebo.co.kr/</loc><lastmod>' + datetime.date.today().isoformat() + '</lastmod><changefreq>daily</changefreq><priority>1.0</priority>', self.client.get('/sitemap.xml', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
         self.assertIn('Sitemap: https://consumerjebo.co.kr/sitemap.xml', self.client.get('/robots.txt', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
         # soboru.co.kr로 들어와도 같은 사이트, 대표 주소는 CANONICAL_HOST(기본 consumerjebo.co.kr)
         self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True))

@@ -753,7 +753,8 @@ def sitemap_xml():
         if GROUPS_ON:pages+=[(url_for('groups',_external=True),None)]+[(url_for('group_page',group_id=r['id'],_external=True),r['updated'][:10]) for r in db.execute("SELECT id,updated FROM damage_groups WHERE status IN ('open','active','closed') ORDER BY id DESC LIMIT 500")]
     here=request.host_url.rstrip('/');base=canonical_url('')
     pages=[(base+u[len(here):] if u.startswith(here) else u,d) for u,d in pages if own_page(u)]  # 운영 도메인 주소로 통일, 다른 사이트가 대표인 화면은 빼기
-    body=''.join('<url><loc>%s</loc>%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '') for u,d in pages)
+    home=base+'/'  # 운영자 2026-11-17: 네이버가 이용 안내를 대표로 띄워서, 첫 화면을 가장 중요한 페이지로 표시
+    body=''.join('<url><loc>%s</loc>%s%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '','<changefreq>daily</changefreq><priority>1.0</priority>' if u==home else '<priority>0.5</priority>') for u,d in pages)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
 @app.route('/rss.xml')
