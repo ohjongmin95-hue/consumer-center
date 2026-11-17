@@ -733,7 +733,7 @@ def robots_txt():
 def sitemap_xml():
     today=datetime.date.today().isoformat()
     pages=[(url_for('home',_external=True),today)]+[(url_for(e,_external=True),None) for e in ('reports','board','companies','report','takedown')]  # 내 제보 조회는 개인 화면이라 검색 제외(noindex)
-    pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq')]
+    pages+=[(url_for('info_page',page=p,_external=True),None) for p in (('process','faq') if current_face()=='jebo' else ('guide','process','faq'))]  # 제보센터 이용 안내는 검색 제외 (2026-11-17)
     if current_face()=='jebo':pages.append((url_for('about_page',_external=True),None))  # 서비스 소개 (AI 브리핑용 정의 문장)  # 피해 유형별 안내는 메뉴에서 빠짐
     # 나중에 붙는 기능(법률 질문·생활정보 검색어 트렌드·쇼핑 인사이트)은 켜져 있을 때만
     if 'law_ask' in app.view_functions and g.content.get('ask.off','').strip() not in ('끔','끄기','off'):pages.append((url_for('law_ask',_external=True),None))

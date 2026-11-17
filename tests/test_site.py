@@ -602,6 +602,7 @@ class SiteTest(unittest.TestCase):
         txt = c.get('/llms.txt', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('# 소비자고발제보센터', txt)
         self.assertIn('/about', c.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
+        jg = self.client.get('/guide', base_url='https://consumerjebo.co.kr').get_data(as_text=True); self.assertIn('<meta name="robots" content="noindex,follow">', jg); self.assertNotIn('/guide<', c.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
         adm = self.login_admin()
         self.assertIn('오늘 방문', adm.get('/admin').get_data(as_text=True))
 
