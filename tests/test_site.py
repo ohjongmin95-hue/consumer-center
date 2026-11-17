@@ -3319,7 +3319,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('단순 반품·환불 문의라', page)
         listing = admin.get('/admin/reports').get_data(as_text=True)
         self.assertIn('자동 응답 <b>1</b>', listing)
-        self.assertIn('<span class="tri-auto">자동 응답</span>', listing)
+        self.assertNotIn('<span class="tri-auto">', listing)  # 운영자 2026-11-17: 목록 줄에는 분류 표시 안 함
         self.assertNotIn('환불이 안 돼요', admin.get('/admin/reports?track=story').get_data(as_text=True))
         # 확인하고 보내기: 제보자 메시지로 들어가고 다시 누르면 막음
         body = t['body'].replace('안내드려요.', '안내드려요. (담당자 확인)')
