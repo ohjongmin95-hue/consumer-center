@@ -1176,3 +1176,5 @@ body.v3-detail .v3-aside #settings{order:2}
   .v3-cols .v3-todo{order:1}.v3-cols .v3-statp{order:2}.v3-cols .hm-feed{order:3}.v3-cols .v3-vis{order:4}.v3-cols .v3-late{order:5}
   body.console .v3-cols>*>.ad-panel{margin-bottom:12px}
 }
+body.console .cs-status.s-dup{background:#F2F4F6;color:#6B7684}
+body.v3-detail .v3-aside-in>#settings:only-child{border-top:0!important;padding-top:0!important}
