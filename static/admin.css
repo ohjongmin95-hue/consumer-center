@@ -1072,7 +1072,43 @@ body.console .v3-now-go{display:block;width:100%;margin-top:18px;padding:15px 16
 body.v3-detail .ad-main>main.cs-page,body.v3-detail .cs-page{max-width:780px!important;margin:0 auto!important}
 body.v3-detail .cs-case [data-pane]{width:100%!important;max-width:none!important;align-self:stretch;box-sizing:border-box}
 body.v3-detail .cs-case .cs-two{grid-template-columns:repeat(2,minmax(0,1fr))}
-body.v3-detail .cs-case-head:has(+ .v3-now.is-red) .ans-clock{display:none}
+body.v3-detail:has(.v3-now.is-red) .cs-case-head .ans-clock{display:none}
 body.v3-detail #settings .cs-btn-main{background:#F2F4F6!important;color:#333D4B!important}
 body.v3-detail #settings .cs-btn-main:hover{background:#E5E8EB!important}
 body.v3-detail #desk_answer,body.v3-detail .cs-logbox{order:1}
+/* ===== 관리자 v3.1 PC (운영자 2026-11-17: "주변에 회색 여백 없이, PC잖아") =====
+   PC에서는 회색 바탕·둥근 카드 없이 흰 화면 전체를 쓰고, 칸은 선으로 나눔. 제보 상세는 왼쪽 내용 + 오른쪽 고정 '지금 할 일·처리' */
+@media(min-width:901px){
+  body.console .ad-shell,body.console .ad-main{background:#fff}
+  body.console .ad-main{padding:28px 40px 80px}
+  body.console .ad-main>main,body.console .ad-main>.ad-page{max-width:none}
+  body.console .ad-panel,body.console .cs-panel,body.console .ad-main .form-panel,body.console .ad-card,body.console .cs-table-wrap,body.console .ad-main .tablewrap{border-radius:0;background:#fff;box-shadow:none}
+  body.console .ad-panel,body.console .ad-main .form-panel{padding:24px 0;margin:0;border-top:1px solid #E5E8EB}
+  body.console .cs-table-wrap,body.console .ad-main .tablewrap{border-top:1px solid #E5E8EB}
+  body.console .jl-tabs a{background:#F2F4F6!important}
+  body.console .jl-tabs a.on{background:#191F28!important}
+  .v3-two{gap:48px}
+  .v3-todo li a{padding:16px 0}
+  /* 제보 상세 */
+  body.v3-detail .ad-main>main.cs-page,body.v3-detail .cs-page{max-width:none!important;margin:0!important}
+  body.v3-detail .ad-main{padding:0}
+  body.v3-detail .cs-page>.cs-crumbs,body.v3-detail .cs-page>.cs-case-head{margin-left:40px;margin-right:40px}
+  body.v3-detail .cs-page>.cs-crumbs{margin-top:24px}
+  body.v3-detail .cs-case-head{margin-bottom:0;padding-bottom:24px}
+  .v3-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;border-top:1px solid #E5E8EB;min-height:calc(100vh - 220px)}
+  .v3-left{min-width:0;padding:0 40px 80px}
+  .v3-aside{border-left:1px solid #E5E8EB;padding:24px 28px 40px}
+  .v3-aside-in{position:sticky;top:88px;display:grid;gap:0}
+  body.v3-detail .v3-tabs{top:64px;margin:0 0 4px;padding:0;gap:24px;border-radius:0;border-bottom:1px solid #E5E8EB}
+  body.v3-detail .v3-tabs button{flex:none;padding:16px 2px 14px;border-radius:0;font-size:16px;margin-bottom:-1px;border-bottom:2px solid transparent}
+  body.v3-detail .v3-tabs button[aria-selected=true]{background:none;color:#191F28;border-bottom-color:#191F28}
+  body.v3-detail .cs-case{gap:0!important}
+  body.v3-detail .cs-left .cs-panel,body.v3-detail .v3-left .cs-panel{padding:24px 0!important;border-top:0}
+  body.v3-detail .v3-left .cs-case [data-pane]:not([hidden]){border-bottom:1px solid #F2F4F6!important}
+  body.v3-detail .v3-left .cs-text{max-width:760px}
+  body.v3-detail .v3-aside .v3-now{margin:0 0 20px}
+  body.v3-detail .v3-aside #settings{order:2;padding:24px 0 0!important;border-top:1px solid #E5E8EB}
+  body.v3-detail .v3-aside #settings .cs-two{grid-template-columns:minmax(0,1fr)!important}
+}
+@media(max-width:900px){.v3-grid{display:flex;flex-direction:column}.v3-aside{order:-1}.v3-aside-in{display:flex;flex-direction:column;gap:12px}.v3-aside .v3-now{margin:0}}
+body.v3-detail .v3-aside #settings{order:2}
