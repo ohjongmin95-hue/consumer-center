@@ -2285,6 +2285,14 @@ def report_detail(case_id):
                 flash(f"제보 {case['receipt']}를 삭제했어요.");return redirect(url_for(ep['list']))
             if form=='settings':
                 status=request.form.get('status','')
+                dup_msg=''
+                if status=='dup':
+                    # 운영자 2026-11-17: 진행 단계에서 바로 '중복 반려' (검토 결과 중복 + 비공개 + 종결로 정리. 제보자 알림 없음)
+                    if case['review']!='duplicate':set_review(db,case,'duplicate','진행 단계에서 중복 반려');dup_msg='중복으로 반려했어요. 공개 목록과 처리 단계에서 빠져요.'
+                    case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone();status=STATUSES[-1]
+                elif case['review']=='duplicate' and status in STATUSES:
+                    set_review(db,case,'');dup_msg="중복 반려를 풀었어요. 검토 결과는 '승인 전'이에요."
+                    case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
                 if status not in STATUSES:abort(400)
                 assignee=request.form.get('assignee',case['assignee'] or '').strip()[:80]
                 published=int(bool(request.form.get('published'))) if case['public_consent'] and case['review'] not in jebo.NOT_VALID else 0
@@ -2297,7 +2305,7 @@ def report_detail(case_id):
                 st_msg=set_status(db,case,status)  # '기업 전달'이면 기업에 자동으로 보냄
                 if assignee!=(case['assignee'] or ''):log_case(db,case_id,f"담당 기자: {assignee or '미배정'}")
                 if case['public_consent'] and published!=case['published']:log_case(db,case_id,'공개로 전환' if published else '비공개로 전환')
-                flash('저장했어요.'+(' '+st_msg if st_msg else ''))
+                flash(dup_msg or '저장했어요.'+(' '+st_msg if st_msg else ''))
             elif form=='publish_review':
                 # 공개 심사: 공개용 글을 다듬고(개인정보·비방 표현 정리) 승인하거나 비공개로 둠. 원문은 그대로 보관.
                 fields={k:request.form.get(k,'').strip() for k in ('public_subject','public_body','public_request')}

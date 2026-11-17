@@ -257,7 +257,7 @@
       <form class="cs-panel cs-card" id="settings" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="form" value="settings">
         <h2>처리</h2>
         <div class="cs-two">
-          <div class="field"><label for="c-status">진행 단계</label><select id="c-status" name="status">{% for s in STAGE_STATUS %}<option value="{{ s }}"{% if loop.index == stage_of(case['status']) %} selected{% endif %}>{{ loop.index }}. {{ stage_names()[loop.index0] }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="c-status">진행 단계</label><select id="c-status" name="status">{% set dup = case['review'] == 'duplicate' %}{% for s in STAGE_STATUS %}<option value="{{ s }}"{% if not dup and loop.index == stage_of(case['status']) %} selected{% endif %}>{{ loop.index }}. {{ stage_names()[loop.index0] }}</option>{% endfor %}<option disabled>──────</option><option value="dup"{% if dup %} selected{% endif %}>중복 반려</option></select></div>
           <div class="field"><label for="c-assignee">담당 기자</label><select id="c-assignee" name="assignee"><option value="">미배정</option>{% for n in staff_names %}<option{% if n == case['assignee'] %} selected{% endif %}>{{ n }}</option>{% endfor %}{% if case['assignee'] and case['assignee'] not in staff_names %}<option selected>{{ case['assignee'] }}</option>{% endif %}</select></div>
         </div>
         {% if case['public_consent'] %}<label class="cs-check"><input type="checkbox" name="published"{% if case['published'] %} checked{% endif %}><span>사이트에 공개</span></label>{% endif %}<label class="cs-check"><input type="checkbox" name="company_hidden"{% if case['company_hidden'] %} checked{% endif %}><span>업체명 숨기기 (공개 화면에 '업체명 비공개'로 보여요)</span></label>
