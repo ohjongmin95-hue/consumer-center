@@ -866,6 +866,41 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(article_drafts.load_files(SimpleNamespace(conn=self.site.conn, now=self.site.now)), 0)  # 다시 읽어도 덮어쓰지 않음
         self.assertEqual(self.client.get('/admin/drafts').status_code, 302)
 
+    def test_admin_ai_writer(self):
+        # 운영자 2026-11-17: 보도자료 → 오민주 기자 문체 기사. 서버가 기자 페이지에서 학습, 다 쓰면 기사 초안함으로 (ai_writer.py)
+        import ai_writer
+        from types import SimpleNamespace
+        S = SimpleNamespace(conn=self.site.conn, now=self.site.now)
+        lst = '<a href="/article/20261110580123">a</a><a href="/article/20261110580123?x=1">a</a><a href="https://www.kyeonggi.com/article/20261109580001">b</a>'
+        self.assertEqual(ai_writer.list_links(lst), ['https://www.kyeonggi.com/article/20261110580123', 'https://www.kyeonggi.com/article/20261109580001'])
+        art = ('<meta property="og:title" content="경기도 \'똑버스\'의 배신…&quot;30분 대기&quot; - 경기일보">'
+               '<meta property="article:published_time" content="2026-11-10T09:00:00+09:00"><article><p>' + '첫 문단은 리드 문장으로 길게 이어지는 것으로 나타났다. ' * 8 + '</p>'
+               '<p>' + '둘째 문단도 충분히 길게 쓴 문장으로 이어졌다고 전했다. ' * 8 + '</p><p>오민주 기자 democracy555@kyeonggi.com</p></article>')
+        title, body, pub = ai_writer.article_parts(art)
+        self.assertEqual((title, pub), ('경기도 \'똑버스\'의 배신…"30분 대기"', '2026-11-10')); self.assertIn('\n\n', body); self.assertNotIn('@kyeonggi', body)
+        self.assertEqual(ai_writer.article_parts(art.replace('오민주', '김기자')), ('', '', ''))
+        calls = []
+        def chat(system, user, n):
+            calls.append((system, user))
+            if 'JSON으로만: {"guide"' in system: return {'guide': '- 제목은 핵심어…인용'}
+            return {'title': '새 제목', 'titles': ['검색 제목'], 'deck': ['부제 하나', '부제 둘'], 'category': '생활', 'body': '완전히 새로 쓴 리드 문장이 들어간 것으로 나타났다.\n\n둘째 문단이다.', 'keywords': ['환불'], 'needs': ['인터뷰']}
+        pages = {ai_writer.LIST_URL: lst}
+        with patch.object(ai_writer, '_fetch', lambda u: pages.get(u, art)), patch('news_desk.chat', chat):
+            ai_writer.learn(S)
+            st = ai_writer.style_state(S)
+            self.assertEqual((st['n'], st['guide'], st['state']), (2, '- 제목은 핵심어…인용', ''))
+            admin = self.login_admin()
+            page = admin.get('/admin/write').get_data(as_text=True)
+            self.assertIn('기사 2편 학습', page); self.assertIn('기사 쓰기', page)
+            self.assertEqual(page.count('class="cs-btn cs-btn-main'), 1)  # 큰 버튼 하나
+            with patch.object(ai_writer.threading, 'Thread', lambda target, args, daemon: SimpleNamespace(start=lambda: target(*args))):
+                r = admin.post('/admin/write', data={'_csrf': self.csrf(admin, '/admin/write'), 'kind': 'flash', 'source': '보도자료 원문입니다. ' * 10, 'memo': '환불'})
+            self.assertEqual(r.status_code, 302)
+            one = admin.get(r.headers['Location']).get_data(as_text=True)
+        self.assertIn('새 제목', one); self.assertIn('부제 하나', one); self.assertIn('검색용 제목: 검색 제목', one); self.assertIn('원문과 다른 문장 100%', one)
+        self.assertIn('속보', calls[-1][0]); self.assertIn('제목은 핵심어', calls[-1][0]); self.assertIn('[우리 각도] 환불', calls[-1][1])
+        self.assertEqual(self.client.get('/admin/write').status_code, 302)
+
     def test_phone_start_signup_and_login(self):
         # 운영자 2026-11-03 (밤): 카카오 아니면 휴대폰 번호(문자 인증). 닉네임 비우면 자동, 같은 번호로 다시 오면 로그인
         sent = []
