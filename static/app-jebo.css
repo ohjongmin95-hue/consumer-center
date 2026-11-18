@@ -430,3 +430,7 @@ span.ap-av.c0{background:#3182F6}span.ap-av.c1{background:#F04452}span.ap-av.c2{
 .ac-blocked{color:#8B95A1}
 /* 로그인 화면 바탕 흰색 (운영자 2026-11-15) */
 body:has(.auth-page-login),.auth-page-login{background:#fff!important}
+/* 통계 이름은 한 줄로 (운영자 2026-11-18: '오늘 올라온 글' 두 줄로 깨짐) */
+.ap-num{min-width:0}
+.ap-num small{white-space:nowrap;letter-spacing:-.2px}
+@media(max-width:340px){.ap-num small{font-size:12px}.ap-num+.ap-num{padding-left:10px}.ap-num{padding-right:8px}}

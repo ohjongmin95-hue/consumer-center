@@ -733,7 +733,7 @@ def robots_txt():
 def sitemap_xml():
     today=datetime.date.today().isoformat()
     pages=[(url_for('home',_external=True),today)]+[(url_for(e,_external=True),None) for e in ('reports','board','companies','report','takedown')]  # 내 제보 조회는 개인 화면이라 검색 제외(noindex)
-    pages+=[(url_for('info_page',page=p,_external=True),None) for p in ('guide','process','faq')]
+    pages+=[(url_for('info_page',page=p,_external=True),None) for p in (('process','faq') if current_face()=='jebo' else ('guide','process','faq'))]  # 제보센터 이용 안내는 검색 제외 (2026-11-17)
     if current_face()=='jebo':pages.append((url_for('about_page',_external=True),None))  # 서비스 소개 (AI 브리핑용 정의 문장)  # 피해 유형별 안내는 메뉴에서 빠짐
     # 나중에 붙는 기능(법률 질문·생활정보 검색어 트렌드·쇼핑 인사이트)은 켜져 있을 때만
     if 'law_ask' in app.view_functions and g.content.get('ask.off','').strip() not in ('끔','끄기','off'):pages.append((url_for('law_ask',_external=True),None))
@@ -753,7 +753,8 @@ def sitemap_xml():
         if GROUPS_ON:pages+=[(url_for('groups',_external=True),None)]+[(url_for('group_page',group_id=r['id'],_external=True),r['updated'][:10]) for r in db.execute("SELECT id,updated FROM damage_groups WHERE status IN ('open','active','closed') ORDER BY id DESC LIMIT 500")]
     here=request.host_url.rstrip('/');base=canonical_url('')
     pages=[(base+u[len(here):] if u.startswith(here) else u,d) for u,d in pages if own_page(u)]  # 운영 도메인 주소로 통일, 다른 사이트가 대표인 화면은 빼기
-    body=''.join('<url><loc>%s</loc>%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '') for u,d in pages)
+    home=base+'/'  # 운영자 2026-11-17: 네이버가 이용 안내를 대표로 띄워서, 첫 화면을 가장 중요한 페이지로 표시
+    body=''.join('<url><loc>%s</loc>%s%s</url>'%(escape(u),'<lastmod>%s</lastmod>'%d if d else '','<changefreq>daily</changefreq><priority>1.0</priority>' if u==home else '<priority>0.5</priority>') for u,d in pages)
     return app.response_class('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+body+'</urlset>',mimetype='application/xml')
 
 @app.route('/rss.xml')

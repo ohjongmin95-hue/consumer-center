@@ -2136,12 +2136,11 @@ body:not(.sb) .ev-field .ev-txt small,.ev-field .ev-txt small{font-size:13.5px;c
 @media(max-width:680px){.rp-alt.rp-talk{padding:20px 16px}.rp-b{max-width:88%}}
 /* 로그인 화면 바탕 흰색 (운영자 2026-11-15) */
 body:has(.auth-page-login),body:has(.auth-page-login) main,.auth-page-login{background:#fff!important}
-/* 첫 화면 사이트 소개 (검색엔진이 '소비자고발제보센터' 대표 페이지로 읽도록, 2026-11-16) */
-.home-about{background:#fff;border-radius:20px;padding:24px 22px;margin-bottom:40px}
-.home-about h2{font-size:20px!important;letter-spacing:-.4px;margin:0 0 10px!important;color:#191F28}
-.home-about p{margin:0;color:#4E5968;font-size:15px;line-height:1.7;word-break:keep-all}
-.home-about .home-about-links{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px}
-.home-about .home-about-links a{color:#E57A00;font-weight:700;font-size:14px}
-
 /* 고르기 칸 화살표 (운영자 2026-11-16) */
 body:not(.sb) .field select, body:not(.sb) .field select:focus { -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%238B95A1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; background-size: 18px 18px; padding-right: 46px; }
+/* 첫 화면 맨 아래 한 줄 소개 (네이버 검색 설명용, 운영자 2026-11-17) */
+.home-about{max-width:600px;margin:40px auto 0;padding:24px 16px 0;border-top:1px solid #F2F4F6;text-align:center;color:#8B95A1!important;font-size:13px;line-height:1.65;letter-spacing:-.2px;word-break:keep-all;text-wrap:balance}
+@media(max-width:760px){.home-about{margin-top:32px;font-size:12.5px}}
+/* 로고 띠 = 첫 화면 사진 바로 밑 (운영자 2026-11-17) */
+.org-band.is-bottom{margin:24px auto 8px!important}
+@media(max-width:760px){.org-band.is-bottom{margin:16px auto 0!important}}

@@ -313,7 +313,7 @@ class SiteTest(unittest.TestCase):
             cid = db.execute('INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,created,public_consent,published) VALUES(?,?,?,?,?,?,?,?,?,?)',
                              ('ac1', 'x', '배송·교환·환불', '가게', '택배가 안 와요', '본문입니다', '환불해 주세요', '2026-11-13T10:00:00', 1, 1)).lastrowid
         page = self.client.get('/reports/%d' % cid, base_url=jebo, headers=ua).get_data(as_text=True)
-        for text in ('ac-co', '고발 글 번호 %d' % cid, '환불', 'img/av/bird-', '나도 고발 글 쓰기'):
+        for text in ('ac-co', '고발 번호 %d' % cid, '환불', 'img/av/bird-', '나도 고발하기'):
             self.assertIn(text, page)
         self.assertNotIn('ac-co', self.client.get('/reports/%d' % cid, base_url=jebo).get_data(as_text=True))
 
@@ -602,6 +602,7 @@ class SiteTest(unittest.TestCase):
         txt = c.get('/llms.txt', base_url='https://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('# 소비자고발제보센터', txt)
         self.assertIn('/about', c.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
+        jg = self.client.get('/guide', base_url='https://consumerjebo.co.kr').get_data(as_text=True); self.assertIn('<meta name="robots" content="noindex,follow">', jg); self.assertNotIn('/guide<', c.get('/sitemap.xml', base_url='https://consumerjebo.co.kr').get_data(as_text=True))
         adm = self.login_admin()
         self.assertIn('오늘 방문', adm.get('/admin').get_data(as_text=True))
 
@@ -1095,7 +1096,7 @@ class SiteTest(unittest.TestCase):
         prod = self.client.get('/', base_url='http://consumerjebo.co.kr').get_data(as_text=True)
         self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', prod)
         self.assertIn('<meta property="og:url" content="https://consumerjebo.co.kr/">', prod)
-        self.assertIn('<loc>https://consumerjebo.co.kr/</loc>', self.client.get('/sitemap.xml', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
+        self.assertIn('<loc>https://consumerjebo.co.kr/</loc><lastmod>' + datetime.date.today().isoformat() + '</lastmod><changefreq>daily</changefreq><priority>1.0</priority>', self.client.get('/sitemap.xml', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
         self.assertIn('Sitemap: https://consumerjebo.co.kr/sitemap.xml', self.client.get('/robots.txt', base_url='http://consumerjebo.co.kr').get_data(as_text=True))
         # soboru.co.kr로 들어와도 같은 사이트, 대표 주소는 CANONICAL_HOST(기본 consumerjebo.co.kr)
         self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True))
@@ -2594,7 +2595,7 @@ class SiteTest(unittest.TestCase):
             self.assertNotEqual(self.client.get('/favicon.ico', base_url='https://consumerjebo.co.kr').data, self.client.get('/favicon.ico').data)
             self.assertIn('class="site-header"', jebo)
             self.assertNotIn('class="sb"', jebo)
-            self.assertIn('<title>소비자고발제보센터 - 소비자 피해 고발·제보 사이트</title>', jebo); self.assertIn('소비자고발제보센터는 이런 곳이에요', jebo)
+            self.assertIn('<title>소비자고발제보센터 - 소비자 피해 고발·제보 사이트</title>', jebo); self.assertNotIn('이런 곳이에요', jebo); self.assertIn('class="home-about"', jebo); self.assertIn('og:description', jebo)
             self.assertIn('<link rel="canonical" href="https://consumerjebo.co.kr/">', jebo)
             self.assertIn('여러분의 제보가', jebo)
             sob = self.client.get('/', base_url='https://soboru.co.kr').get_data(as_text=True)
@@ -4513,7 +4514,7 @@ class SiteTest(unittest.TestCase):
         sent = [m for m in mails if m[0] == 'cs@notice-shop.example']
         self.assertEqual(len(sent), 1)
         self.assertIn('기사를 작성할 예정', sent[0][2]); self.assertIn('/biz/signup?case=', sent[0][2])  # 운영자 2026-11-17: 소보루고발 이름, 하루 기한, 기업 회원 무료 가입
-        self.assertIn('고발 글 보고 답변하기', sent[0][3]); self.assertNotIn('/company/optout/', sent[0][3])  # 꾸민 HTML 메일도 함께. 운영자 2026-11-17: 뉴스레터 아니라 수신 거부 줄 없음
+        self.assertIn('고발 내용 보고 답변하기', sent[0][3]); self.assertNotIn('/company/optout/', sent[0][3])  # 꾸민 HTML 메일도 함께. 운영자 2026-11-17: 뉴스레터 아니라 수신 거부 줄 없음
         link = re.search(r'http://localhost(/company/\d+/\S+)', sent[0][2])[1]
         with self.site.conn() as db:
             optout = '/company/optout/' + db.execute("SELECT optout_token FROM companies WHERE official_email='cs@notice-shop.example'").fetchone()[0]
