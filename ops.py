@@ -258,9 +258,9 @@ def install(S):
         name = (company['name'] if company else '') or case['company']
         title = case['public_subject'] or S.mask_personal(case['subject'])
         gist, demand = notice_gist(db, case)
-        text = (f"[소보루고발] {name} 관련 고발 글 답변 요청\n\n안녕하세요. 소비자를위한신문(소보루){' ' + reporter + ' 기자' if reporter else ''}입니다.\n"
+        text = (f"[소보루고발] {name} 관련 고발 답변 요청\n\n안녕하세요. 소비자를위한신문(소보루){' ' + reporter + ' 기자' if reporter else ''}입니다.\n"
                 f"소비자가 {name} 관련 피해를 고발해 답변을 요청드립니다.\n기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다. 답변을 주시면 귀사 입장도 함께 싣겠습니다.\n\n■ 제목: {title}\n" + (f"■ 무슨 일이 있었나요: {gist}\n" if gist else '') + (f"■ 소비자가 원하는 것: {demand}\n" if demand else '') + f"■ 답변 기한: {deadline}\n\n"
-                f"아래 링크에서 고발 글을 보고 답변해 주세요. 가입·로그인 없이 열립니다.\n{link}")
+                f"아래 링크에서 고발 내용을 보고 답변해 주세요. 가입·로그인 없이 열립니다.\n{link}")
         return dict(text=text, link=link, deadline=deadline)
 
     def notice_target(company):
@@ -362,14 +362,14 @@ def install(S):
         gist, demand = notice_gist(db, case)
         token = link.rstrip('/').rsplit('/', 1)[-1]
         signup = S.canonical_url(url_for('biz_signup', case=cid, t=token)) if token else S.canonical_url(url_for('biz_signup'))
-        subject = f"[{brand}] {company['name']} 관련 고발 글 입장 요청 ({deadline}까지)" + (' - 재요청' if kind == 'remind' else '')
+        subject = f"[{brand}] {company['name']} 관련 고발 입장 요청 ({deadline}까지)" + (' - 재요청' if kind == 'remind' else '')
         hello = f"안녕하세요. 소비자를위한신문(소보루){' ' + reporter + ' 기자' if reporter else ''}입니다."
         why = (FOLLOWUP_LINE if nudge == 'followup' else '제보자가 아직 답변을 기다리고 있습니다.' if nudge else f"소비자가 {company['name']} 관련 피해를 고발했습니다.")
         body = (f"{company['name']} 담당자님께,\n\n{hello}\n{why}\n\n"
                 "기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다. 답변을 주시면 귀사 입장도 함께 싣겠습니다.\n\n"
                 f"■ 제목: {title}\n" + (f"■ 무슨 일이 있었나요: {gist}\n" if gist else '') + (f"■ 소비자가 원하는 것: {demand}\n" if demand else '') + f"■ 답변 기한: {deadline}\n\n"
-                f"아래 링크에서 고발 글을 보고 답변해 주세요. 가입·로그인 없이 열리고, 이 글 하나만 볼 수 있습니다.\n{link}\n\n"
-                f"소보루고발 기업 등록은 무료예요. 홍보·고객센터 담당자가 사업자번호 없이 바로 등록할 수 있어요. 새 고발 글을 바로 알려 드리고, 한 화면에서 모아 답할 수 있어요.\n{signup}\n\n"
+                f"아래 링크에서 고발 내용을 보고 답변해 주세요. 가입·로그인 없이 열리고, 이 고발 하나만 볼 수 있습니다.\n{link}\n\n"
+                f"소보루고발 기업 등록은 무료예요. 홍보·고객센터 담당자가 사업자번호 없이 바로 등록할 수 있어요. 새 고발을 바로 알려 드리고, 한 화면에서 모아 답할 수 있어요.\n{signup}\n\n"
                 "이 메일에 회신하시면 담당 기자가 받습니다.")
         html = render_template('company_notice_email.html', subject=subject, company=company['name'], title=title, reporter=reporter, deadline=deadline, signup=signup, gist=gist, demand=demand,
                                category=case['category'], created=case['created'][:10], link=link, optout=optout, nudge=nudge, remind=kind == 'remind')
@@ -381,8 +381,8 @@ def install(S):
             except Exception as e:
                 fails.append('메일: ' + str(e)[:150])
         if phone:  # 휴대폰을 넣어 두면 카카오톡 채널로도 (알림톡 템플릿 심사 전이면 문자) (운영자 2026-11-10)
-            text = (f"[{brand}] {company['name']} 관련 고발 글 답변 요청\n\n{hello}\n{why}\n\n■ 제목: {title}\n■ 답변 기한: {deadline}\n\n"
-                    f"아래 링크에서 고발 글을 보고 답변해 주세요. 기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다.\n{link}")
+            text = (f"[{brand}] {company['name']} 관련 고발 답변 요청\n\n{hello}\n{why}\n\n■ 제목: {title}\n■ 답변 기한: {deadline}\n\n"
+                    f"아래 링크에서 고발 내용을 보고 답변해 주세요. 기한 안에 답변이 없으시면 제보된 고발 내용을 인정하시고 따로 밝히실 입장이 없는 것으로 보고 기사를 작성할 예정입니다.\n{link}")
             try:
                 if notify.kakao_ready('company_notice'):
                     notify.bizmsg.alimtalk(phone, notify.bizmsg.template(notify.KAKAO_TEMPLATE_ENV['company_notice']),

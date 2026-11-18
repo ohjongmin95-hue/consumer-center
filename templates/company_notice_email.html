@@ -5,13 +5,13 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>{{ subject }}</title></head>
 <body style="margin:0;padding:0;background:#ffffff;word-break:keep-all;">
-<div style="display:none;max-height:0;overflow:hidden;">{{ company }} 관련 고발 글에 대한 입장을 {{ deadline }}까지 요청드립니다.</div>
+<div style="display:none;max-height:0;overflow:hidden;">{{ company }} 관련 고발에 대한 입장을 {{ deadline }}까지 요청드립니다.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;"><tr><td align="center" style="padding:24px 0 0;">
 <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:480px;">
   <tr><td style="padding:0;background:#191F28;"><img src="{{ canonical_url(url_for('static', filename='img/mail-request-head.png')) }}" width="480" alt="소보루고발 · 취재 요청" style="display:block;width:100%;max-width:480px;height:auto;border:0;"></td></tr>
   <tr><td style="padding:40px 24px 0;{{ F }}">
     <p style="margin:0 0 8px;font-size:15px;line-height:22px;font-weight:700;color:#E57A00;">{{ '제보자 추가 의견' if nudge == 'followup' else '답변 재요청' if (nudge or remind) else '답변 요청' }}</p>
-    <h1 style="margin:0;font-size:24px;line-height:33px;font-weight:700;color:#191f28;"><span style="color:#E57A00;">{{ company }}</span>에 대한<br>고발 글이 올라왔습니다</h1>
+    <h1 style="margin:0;font-size:24px;line-height:33px;font-weight:700;color:#191f28;"><span style="color:#E57A00;">{{ company }}</span>에 대한<br>고발이 올라왔습니다</h1>
     <p style="margin:16px 0 0;font-size:16px;line-height:26px;color:#333d4b;">안녕하세요. 소비자를위한신문(소보루){% if reporter %} {{ reporter }} 기자{% endif %}입니다. 아래 고발 내용을 확인하시고 <b style="color:#E57A00;">{{ deadline }}까지</b> 답변 부탁드립니다.</p>
     {# 운영자 2026-11-17: 기사 작성 안내는 위에서 먼저 알림. 회색 상자는 힘없다 해서 연한 귤색 + 느낌표 #}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;background:#FFF3E0;border-radius:16px;"><tr>
       <td width="22" valign="top" style="padding:20px 0 20px 20px;"><div style="width:22px;height:22px;border-radius:11px;background:#FE9800;color:#ffffff;font-size:14px;line-height:22px;font-weight:800;text-align:center;{{ F }}">!</div></td>
@@ -30,7 +30,7 @@
     </table>
   </td></tr>
   <tr><td style="padding:32px 24px 0;{{ F }}">
-    <a href="{{ link }}" style="display:block;text-align:center;background:#FE9800;color:#ffffff;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;padding:16px 20px;border-radius:16px;">고발 글 보고 답변하기</a>
+    <a href="{{ link }}" style="display:block;text-align:center;background:#FE9800;color:#ffffff;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;padding:16px 20px;border-radius:16px;">고발 내용 보고 답변하기</a>
     <p style="margin:12px 0 0;text-align:center;font-size:14px;line-height:21px;color:#6b7684;">가입·로그인 없이 바로 열립니다</p>
   </td></tr>
   <tr><td style="padding:32px 24px 0;{{ F }}">
@@ -45,7 +45,7 @@
       <p style="margin:0 0 6px;font-size:13px;line-height:19px;font-weight:700;color:#E57A00;">홍보 · 고객센터 담당자라면</p>
       <p style="margin:0 0 16px;font-size:20px;line-height:29px;font-weight:700;color:#191f28;">소보루고발에 무료로<br>기업을 등록해 보세요</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr><td width="28" valign="top" style="padding:0 0 10px;font-size:15px;line-height:22px;font-weight:700;color:#FE9800;{{ F }}">✓</td><td style="padding:0 0 10px;font-size:15px;line-height:22px;color:#333d4b;{{ F }}">새 고발 글을 바로 알려 드려요</td></tr>
+        <tr><td width="28" valign="top" style="padding:0 0 10px;font-size:15px;line-height:22px;font-weight:700;color:#FE9800;{{ F }}">✓</td><td style="padding:0 0 10px;font-size:15px;line-height:22px;color:#333d4b;{{ F }}">새 고발을 바로 알려 드려요</td></tr>
         <tr><td width="28" valign="top" style="padding:0 0 10px;font-size:15px;line-height:22px;font-weight:700;color:#FE9800;{{ F }}">✓</td><td style="padding:0 0 10px;font-size:15px;line-height:22px;color:#333d4b;{{ F }}">한 화면에서 모아 답해요</td></tr>
         <tr><td width="28" valign="top" style="padding:0 0 4px;font-size:15px;line-height:22px;font-weight:700;color:#FE9800;{{ F }}">✓</td><td style="padding:0 0 4px;font-size:15px;line-height:22px;color:#333d4b;{{ F }}">사업자번호 없이 등록해요</td></tr>
       </table>
