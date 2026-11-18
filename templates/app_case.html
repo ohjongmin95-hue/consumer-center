@@ -17,7 +17,7 @@
   <article class="ac-card ac-post">
     <h1 class="ac-t"><em class="ac-st s{{ now_step }}">{{ pub_names()[now_step - 1] }}</em>{{ subject }}</h1>
     <div class="ac-who">{% set src = avatar_url(author['id']) if author and avatar_url is defined else '' %}<img class="ac-av" src="{{ src or soboru_av(author['id'] if author else case['id']) }}" alt="">
-      <span><b>{{ author['nickname'] if author else ui('home.card_anon', '익명 소비자') }}</b><small>{{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }} {{ ui('app.started2', '고발 글을 올렸어요') }}</small></span></div>
+      <span><b>{{ author['nickname'] if author else ui('home.card_anon', '익명 소비자') }}</b><small>{{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }} {{ ui('app.started3', '고발했어요') }}</small></span></div>
     {% set blocked_author = case['user_id'] and case['user_id'] in blocked_ids() %}
     {% if blocked_author %}<p class="ac-body ac-blocked">{{ ui('app.blocked_post', '차단한 사용자의 글이에요. 내 정보 > 차단한 사용자에서 풀 수 있어요.') }}</p>{% else %}
     <p class="ac-body">{{ description }}</p>{% endif %}
@@ -40,7 +40,7 @@
   </section>{% endif %}
 
   {# 운영자 2026-11-13: 고발에서 기관 신고로 이어지게. 내 글이면 내용으로 신고서를 채움 #}
-  <a class="ac-card ap-sg" href="{% if g.user and case['user_id'] == g.user['id'] %}{{ url_for('singo_home', case=case['id']) }}{% else %}{{ singo_for(case['category']) }}{% endif %}"><i class="tf" aria-hidden="true">🧭</i><span><b>{{ ui('app.sg_case', '기관에도 신고하기') }}</b><small>{% if g.user and case['user_id'] == g.user['id'] %}{{ ui('app.sg_case_s2', '이 고발 글로 신고서를 써 드려요') }}{% else %}{{ ui('app.sg_case_s2', '이런 피해는 어디에 신고하는지 알려 드려요') }}{% endif %}</small></span><em aria-hidden="true">›</em></a>
+  <a class="ac-card ap-sg" href="{% if g.user and case['user_id'] == g.user['id'] %}{{ url_for('singo_home', case=case['id']) }}{% else %}{{ singo_for(case['category']) }}{% endif %}"><i class="tf" aria-hidden="true">🧭</i><span><b>{{ ui('app.sg_case', '기관에도 신고하기') }}</b><small>{% if g.user and case['user_id'] == g.user['id'] %}{{ ui('app.sg_case_s3', '이 고발 내용으로 신고서를 써 드려요') }}{% else %}{{ ui('app.sg_case_s2', '이런 피해는 어디에 신고하는지 알려 드려요') }}{% endif %}</small></span><em aria-hidden="true">›</em></a>
 
   <section class="ac-card">
     <h2 class="ac-h">{{ ui('reports.company_answer', '기업 공식 답변') }}</h2>
@@ -59,16 +59,16 @@
     {% if case['user_id'] and not (g.user and case['user_id'] == g.user['id']) %}
     <form method="post" action="{{ url_for('case_block', case_id=case['id']) }}" class="ac-more-f" onsubmit="return confirm({{ ui_text('board.block_confirm', '이 사용자를 차단할까요? 이 사용자의 글과 댓글이 보이지 않아요.')|tojson|forceescape }})"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <button type="submit" class="ac-more-b ghost">{{ ui('app.block_go', '글쓴이 차단하기') }}</button>
-      <small>{{ ui('app.block_note', '차단하면 이 사용자의 고발 글과 댓글이 나에게 보이지 않아요.') if g.user else ui('app.block_login', '차단은 로그인한 뒤에 할 수 있어요.') }}</small>
+      <small>{{ ui('app.block_note2', '차단하면 이 사용자의 고발과 댓글이 나에게 보이지 않아요.') if g.user else ui('app.block_login', '차단은 로그인한 뒤에 할 수 있어요.') }}</small>
     </form>{% endif %}
   </details>
 
   {% if talk %}<div class="ac-card ac-talk">{% with case_id = case['id'], talk_events = events %}{% include 'case_talk.html' %}{% endwith %}</div>{% endif %}
 </main>
-<nav class="ac-bar" aria-label="{{ ui('app.case_actions', '고발 글 메뉴') }}">
+<nav class="ac-bar" aria-label="{{ ui('app.case_actions2', '고발 메뉴') }}">
   {% if talk %}<form method="post" action="{{ url_for('case_react', case_id=case['id']) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="metoo"><button type="submit" class="ac-ic{{ ' on' if 'metoo' in talk.mine }}" aria-label="{{ ui('case.react_metoo', '나도 겪었어요') }}"><i class="tf" aria-hidden="true">👍</i><small>{{ ui('app.c_like', '공감') }} {{ talk.counts['metoo'] }}</small></button></form>
   <a class="ac-ic" href="#talk" aria-label="{{ ui('case.comments', '댓글') }}"><i class="tf" aria-hidden="true">💬</i><small>{{ ui('app.c_talk', '댓글') }} {{ talk.comments|length }}</small></a>{% endif %}
   <button type="button" class="ac-ic" data-share data-title="{{ subject }}" data-done="✓" aria-label="{{ ui('case.share', '공유하기') }}"><i class="tf" aria-hidden="true">🔗</i><small>{{ ui('app.share_s', '공유') }}</small></button>
-  <a class="ac-go" href="{{ url_for('report') }}">{{ ui('app.me_too2', '나도 고발 글 쓰기') }}</a>
+  <a class="ac-go" href="{{ url_for('report') }}">{{ ui('app.me_too3', '나도 고발하기') }}</a>
 </nav>
 <script>document.querySelectorAll('[data-share]').forEach(function(b){b.addEventListener('click',function(){var u=location.href.split('#')[0],t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u}).catch(function(){});return}(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){},function(){})})})</script>

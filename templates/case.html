@@ -5,7 +5,7 @@
 {%- if case['review'] in ('rejected', 'duplicate') -%}{% set guide = ui('case.guide_returned', '고쳐서 다시 내면 센터가 다시 검토해요.') if ops.returned else ui('case.guide_rejected', '센터 검토 결과 이 제보는 진행하지 않기로 했어요. 궁금한 점은 아래 메시지로 물어봐 주세요.') %}
 {%- elif step == 1 %}{% set guide = ui('case.guide_1', '센터가 곧 내용을 살펴봐요. 보통 1~2일 안에 검토해요. 그동안 내용을 고치거나 자료를 더 올릴 수 있어요.') %}
 {%- elif step == 2 %}{% set guide = ui('case.guide_2', '거래 내용과 자료를 확인하고 있어요. 기본 거래 정보가 빠졌으면 보완을 요청하거나 돌려보낼 수 있어요. 자료가 자세할수록 해결될 가능성이 높아요.') %}
-{%- elif step == 3 and not case['forwarded_at'] %}{# 연락 시도 중 (운영자 2026-11-16) #}{% set guide = (ui('case.guide_contact2', '연락이 닿으면 바로 제보를 전할게요.') if case['status'] == '연락 시도 중' else ui('case.guide_contact', '기업 연락처를 찾고 있어요. 연락이 닿으면 바로 제보를 전할게요.')) ~ (' ' ~ ui('case.guide_contact_pub', '그동안 고발 글은 공개돼 있어요.') if case['published'] else '') %}
+{%- elif step == 3 and not case['forwarded_at'] %}{# 연락 시도 중 (운영자 2026-11-16) #}{% set guide = (ui('case.guide_contact2', '연락이 닿으면 바로 제보를 전할게요.') if case['status'] == '연락 시도 중' else ui('case.guide_contact', '기업 연락처를 찾고 있어요. 연락이 닿으면 바로 제보를 전할게요.')) ~ (' ' ~ ui('case.guide_contact_pub2', '그동안 고발 내용은 공개돼 있어요.') if case['published'] else '') %}
 {%- elif step == 3 %}{% set guide = ui('case.guide_3', '기업에 제보를 알렸어요. 제보가 많으면 기업이 처리하는 데 시간이 걸릴 수 있어요. 3일이 지나도 답이 없으면 아래에서 독촉할 수 있어요.') %}
 {%- elif step == 4 %}{% set guide = ui('case.guide_4', '기업이 답했어요. 아래에서 답변을 확인하고, 만족스럽지 않으면 추가 불만을 남겨 주세요.') %}
 {%- else %}{% set guide = ui('case.guide_5', '처리가 끝났어요. 해결됐는지 알려 주세요. 해결되지 않았다면 해결 도우미에서 1372 상담이나 피해구제를 신청할 수 있어요.') %}{% endif -%}

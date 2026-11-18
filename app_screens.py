@@ -170,7 +170,7 @@ def install(S):
         out = []
         for r in db.execute("""SELECT c.id,c.company,c.company_hidden,c.company_id,MAX(m.created) AS at FROM messages m JOIN cases c ON c.id=m.case_id
                 WHERE m.author='기업 답변' AND m.public=1 AND c.public_consent=1 AND c.published=1 GROUP BY c.id ORDER BY at DESC LIMIT 6"""):
-            co = S.pub_company(r); out.append((r['at'], co[:1], f"{co}이(가) 고발 글에 답했어요", r['id'], 'ans'))
+            co = S.pub_company(r); out.append((r['at'], co[:1], f"{co}이(가) 고발에 답했어요", r['id'], 'ans'))
         for r in db.execute("""SELECT c.id,c.company,c.company_hidden,c.confirmed_at AS at,c.rating_note,u.nickname FROM cases c LEFT JOIN users u ON u.id=c.user_id AND u.status='active'
                 WHERE c.outcome='resolved' AND c.public_consent=1 AND c.published=1
                 AND COALESCE(c.confirmed_at,'')<>'' ORDER BY c.confirmed_at DESC LIMIT 6"""):
@@ -180,7 +180,7 @@ def install(S):
         if len(out) < 3:  # 운영자 2026-11-13: 소식 줄은 늘 움직이게. 답변·해결 소식이 적으면 새로 올라온 고발로 채움
             for r in db.execute("SELECT c.id,c.company,c.company_hidden,c.created AS at FROM cases c "
                                 "WHERE c.public_consent=1 AND c.published=1 ORDER BY c.id DESC LIMIT 6"):
-                out.append((r['at'], '', f"{S.pub_company(r)} 고발 글이 올라왔어요", r['id'], 'new'))
+                out.append((r['at'], '', f"{S.pub_company(r)} 고발이 올라왔어요", r['id'], 'new'))
         out.sort(key=lambda x: x[0] or '', reverse=True)
         return out[:6]
 

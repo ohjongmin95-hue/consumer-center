@@ -4,9 +4,9 @@
     {% set tc = talk_counts(cases|map(attribute='no')|list) %}
     {% for c in cases %}{% set open = c.title and not c.secret and not c.pending %}{% set t = tc.get(c.no) or (0, 0) %}{% set src = avatar_url(c.uid) if c.uid and avatar_url is defined else '' %}
     {% if open %}<a class="ap-case ap-hm" href="{{ url_for('public_case', case_id=c.no) }}">{% else %}<div class="ap-case ap-hm">{% endif %}
-      <div class="ap-who"><img class="ap-av" src="{{ src or soboru_av(c.uid or c.no) }}" alt=""><span><b>{{ c.nick or ui('home.card_anon', '익명 소비자') }}</b><small>{{ c.when }} {{ ui('app.started2', '고발 글을 올렸어요') }}</small></span><em class="ap-st s{{ c.step }}">{{ c.status }}</em></div>
+      <div class="ap-who"><img class="ap-av" src="{{ src or soboru_av(c.uid or c.no) }}" alt=""><span><b>{{ c.nick or ui('home.card_anon', '익명 소비자') }}</b><small>{{ c.when }} {{ ui('app.started3', '고발했어요') }}</small></span><em class="ap-st s{{ c.step }}">{{ c.status }}</em></div>
       <div class="ap-hb">
-        <b class="ap-ht">{% if open and t[0] >= 5 %}<i class="ap-tagn hot">HOT</i> {% endif %}{{ c.title if open else ui('app.secret2', '비공개 고발 글이에요') }}</b>
+        <b class="ap-ht">{% if open and t[0] >= 5 %}<i class="ap-tagn hot">HOT</i> {% endif %}{{ c.title if open else ui('app.secret3', '비공개 고발이에요') }}</b>
         {% if c.body and not brief and not no_body %}<p class="ap-hx">{{ c.body }}</p>{% endif %}
         {% if open and not brief %}<dl class="ap-hd">
           <div><dt>{{ ui('app.target', '고발 대상') }}</dt><dd class="co">{{ c.company or ui('app.co_hidden', '업체명 비공개') }}</dd></div>
@@ -16,4 +16,4 @@
         {% if open %}<p class="ap-hc"><span><i class="tf" aria-hidden="true">👍</i>{{ ui('app.c_like', '공감') }} {{ t[0] }}</span><span><i class="tf" aria-hidden="true">💬</i>{{ ui('app.c_talk', '댓글') }} {{ t[1] }}</span>{% if brief %}<span>{{ c.cat }}</span>{% endif %}</p>{% endif %}
       </div>
     {% if open %}</a>{% else %}</div>{% endif %}
-    {% else %}<p class="ap-empty">{{ ui('app.list_empty2', '아직 여기에 올라온 고발 글이 없어요. 첫 글을 남겨 주세요.') }}</p>{% endfor %}
+    {% else %}<p class="ap-empty">{{ ui('app.list_empty3', '아직 여기에 올라온 고발이 없어요. 처음으로 고발해 보세요.') }}</p>{% endfor %}
