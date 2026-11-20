@@ -264,18 +264,24 @@ def install(S):
         out = []
         for co in rows:  # 운영자 2026-11-11: 앱 순위는 '5건 이상' 조건 없이 첫 고발부터. 등급 점수가 없으면 답변 비율로 줄 세움
             gr = dict(jebo.company_grade(db, co['id']))
-            if not gr['scored']: continue  # 아직 답할 기한 안이고 답도 없는 기업은 셀 것이 없음
-            if gr['score'] is None: gr['score'] = round(100 * gr['answered'] / gr['scored'])
+            # 운영자 2026-11-20: 기업에 전달된 고발에 답변이 안 올라왔으면 기한과 상관없이 '답 안 한 고발'로 셈 (답 안 한 기업이 잘하는 곳에 뜨지 않게)
+            fw = [r['id'] for r in db.execute("SELECT id,status,review,reviewed_at,forwarded_at FROM cases WHERE company_id=? AND forwarded_at!=''", (co['id'],)) if jebo.valid(r)]
+            first = jebo.first_answers(db, fw)
+            gr['scored'] = max(gr['scored'], len(fw)); gr['answered'] = max(gr['answered'], sum(1 for i in fw if i in first))
+            if not gr['scored']: continue
+            if gr['score'] is None or not gr['answered']: gr['score'] = round(100 * gr['answered'] / gr['scored'])
             out.append((co, gr))
         return out
 
     def rank_pick(items, tab):
         """잘 답하는 곳 = 점수 높은 위 절반, 아쉬운 곳 = 아래 절반(낮은 순), 답변 빠른 곳 = 보통 답변 시간 짧은 순.
         기업이 적어도 한 기업이 '잘'과 '아쉬운'에 같이 나오지 않게 전체를 먼저 반으로 나눔 (웹 순위와 같은 기준)."""
-        order = sorted(items, key=lambda x: (-x[1]['score'], -x[1]['scored'], x[0]['name']))
+        # 운영자 2026-11-20: 답변이 한 건도 없는 기업은 늘 '아쉬운 곳' (안 한 고발이 많은 순으로 맨 앞)
+        silent = sorted([x for x in items if not x[1]['answered']], key=lambda x: (-x[1]['scored'], x[0]['name']))
+        order = sorted([x for x in items if x[1]['answered']], key=lambda x: (-x[1]['score'], -x[1]['scored'], x[0]['name']))
         half = -(-len(order) // 2)
         if tab == 'good': return order[:half]
-        if tab == 'bad': return order[half:][::-1]
+        if tab == 'bad': return silent + order[half:][::-1]
         return sorted([x for x in items if x[1]['med'] is not None], key=lambda x: (x[1]['med'], -x[1]['score']))
 
     def app_rank():
