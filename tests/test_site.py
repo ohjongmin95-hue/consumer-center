@@ -1875,6 +1875,7 @@ class SiteTest(unittest.TestCase):
         self.assertIn('[전화번호 비공개]', page)
         self.assertIn('[이메일 비공개]', page)
         self.assertNotIn('010-1234-5678', page)
+        self.assertIn('010-1234-5678', admin.get('/admin/reports/%d' % ids['public']).get_data(as_text=True))  # 운영자 2026-11-20: 번호는 제보 기록(관리자)에는 그대로 남음
         self.assertNotIn('secret@example.com', page)
         self.assertIn('공개 업체', page)
         self.assertEqual(self.client.get('/reports/%d' % ids['secret']).status_code, 404)
