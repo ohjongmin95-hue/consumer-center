@@ -34,7 +34,7 @@
         <p class="hint">{{ ui('report.f_company_hint5', '직접 적거나, 화살표를 눌러 찾아서 골라요.') }}</p></div>
       <div class="field"><label for="r-occurred">{{ ui('report.f_occurred', '피해가 일어난 날') }}</label><input id="r-occurred" name="occurred_on" type="date" max="{{ today }}" value="{{ request.form.get('occurred_on','') }}"><p class="hint">{{ ui('report.f_occurred_hint', '정확하지 않으면 비워 두셔도 돼요.') }}</p></div>
       <div class="field"><label for="r-subject">{{ ui('report.f_subject', '제보 제목') }} <small>*</small></label><input id="r-subject" name="subject" maxlength="160" required placeholder="{{ ui('report.f_subject_ph', '피해 내용을 한 줄로 요약해 주세요') }}" value="{{ request.form.get('subject','') }}"></div>
-      <div class="field"><label for="r-description">{{ ui('report.f_description', '피해 내용') }} <small>*</small></label><textarea id="r-description" name="description" maxlength="6000" required placeholder="{{ ui('report.f_description_ph', '구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요') }}">{{ request.form.get('description','') }}</textarea></div>
+      <div class="field"><label for="r-description">{{ ui('report.f_description', '피해 내용') }} <small>*</small></label><textarea id="r-description" name="description" maxlength="6000" required placeholder="{{ ui('report.f_description_ph', '구매·계약 일자, 피해 경위, 업체와 주고받은 내용을 구체적으로 작성해 주세요') }}">{{ request.form.get('description','') }}</textarea><p class="hint">{{ ui('report.f_description_hint', '연락했던 업체 담당자나 고객센터 연락처가 있으면 함께 적어 주세요. 업체에 더 빨리 전할 수 있어요.') }}</p></div>
       <div class="jebo-help" data-help hidden>
         <div class="jh-top"><b>{{ ui('report.help_t', '제보 도우미') }}</b><span class="jh-pct">0%</span></div>
         <div class="jh-bar" aria-hidden="true"><i></i></div>
