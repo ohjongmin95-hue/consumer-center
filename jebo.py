@@ -105,8 +105,10 @@ def company_stats(db,company_id,months=6):
         monthly.append({'label':f'{m}월','key':key,'n':sum(1 for r in good if r['created'][:7]==key),
                         'answered':sum(1 for r in answered if r['created'][:7]==key)})
     top=max([x['n'] for x in monthly]+[1])
-    return {'valid':n,'answered':len(answered),'answer_rate':rate(len(answered)),'confirmed':sum(1 for r in good if r['confirmed_at']),
-            'confirm_rate':rate(sum(1 for r in good if r['confirmed_at'])),'median':fmt_hours(statistics.median(waits)) if len(waits)>=MIN_N else '–','n_waits':len(waits),
+    fw=[r for r in good if r['forwarded_at']]  # 운영자 2026-11-20: 기업에 전달됐는데 답이 없으면 0%로 (답 안 한 기업이 '–'로 가려지지 않게)
+    ans_rate=f"{round(100*sum(1 for r in fw if r['id'] in first)/len(fw))}%" if fw and (n>=MIN_N or not answered) else rate(len(answered))
+    return {'valid':n,'answered':len(answered),'answer_rate':ans_rate,'no_answer':bool(fw) and not answered,'confirmed':sum(1 for r in good if r['confirmed_at']),
+            'confirm_rate':rate(sum(1 for r in good if r['confirmed_at'])),'median':fmt_hours(statistics.median(waits)) if len(waits)>=MIN_N else ('답변 없음' if fw and not answered else '–'),'n_waits':len(waits),
             'resolved':sum(1 for r in good if r['outcome']=='resolved'),
             # 해결 비율: 결과를 알려 준 제보자 중 '해결됐어요'라고 한 비율 (알려 준 사람이 MIN_N명 이상일 때만)
             'resolve_rate':(lambda c:f"{round(100*sum(1 for r in c if r['outcome']=='resolved')/len(c))}%" if len(c)>=MIN_N else '–')([r for r in good if r['outcome'] in ('resolved','unresolved')]),

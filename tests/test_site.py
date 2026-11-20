@@ -288,6 +288,21 @@ class SiteTest(unittest.TestCase):
         self.assertNotIn('section-nav', home)  # 사이트 위 메뉴는 앱에서 숨김
         for tab in ('good', 'bad', 'fast'):
             self.assertIn('ap-ban', self.client.get('/companies/rank?tab=' + tab, base_url=jebo, headers=ua).get_data(as_text=True))
+        # 운영자 2026-11-20: 고발에 답변이 안 올라온 기업은 기한 전이어도 '아쉬운 곳', 답한 기업은 '잘 답하는 곳'. 기업 화면 답변 비율은 0%
+        with self.site.conn() as db:
+            ids = {}
+            for name, ans in (('무응답테스트', False), ('답변테스트', True)):
+                cid = ids[name] = db.execute("INSERT INTO companies(name,biz_no,status,contact_name,contact_phone,contact_email,created) VALUES(?,'','listed','','','','2026-01-01')", (name,)).lastrowid
+                t = (datetime.datetime.now() - datetime.timedelta(days=1)).isoformat(timespec='seconds')
+                case = db.execute("INSERT INTO cases(receipt,lookup_hash,category,company,subject,description,request_text,status,created,company_id,reviewed_at,forwarded_at,industry) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                                  ('NA' + name, 'x', '기타', name, '제목', '내용', '요청', '기업 답변 대기', t, cid, t, t, '쇼핑·유통')).lastrowid
+                if ans: db.execute("INSERT INTO messages(case_id,author,body,created,public) VALUES(?,?,?,?,1)", (case, '기업 답변', '답변', t))
+        good = self.client.get('/companies/rank?tab=good', base_url=jebo, headers=ua).get_data(as_text=True)
+        bad = self.client.get('/companies/rank?tab=bad', base_url=jebo, headers=ua).get_data(as_text=True)
+        self.assertNotIn('무응답테스트', good); self.assertIn('무응답테스트', bad)
+        self.assertIn('답변테스트', good); self.assertNotIn('답변테스트', bad)
+        page = self.client.get('/companies/%d' % ids['무응답테스트'], base_url=jebo).get_data(as_text=True)
+        self.assertIn('0%', page); self.assertIn('답변 없음', page)
         web = self.client.get('/', base_url=jebo).get_data(as_text=True)
         self.assertNotIn('ap-stat', web); self.assertNotIn('토스페이스가 사용되었습니다', web)
         self.assertNotIn('ap-stat', self.client.get('/', headers=ua).get_data(as_text=True))  # 소보루 주소는 그대로
