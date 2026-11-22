@@ -4530,7 +4530,7 @@ class SiteTest(unittest.TestCase):
         sent = [m for m in mails if m[0] == 'cs@notice-shop.example']
         self.assertEqual(len(sent), 1)
         self.assertIn('기사를 작성할 예정', sent[0][2]); self.assertIn('/biz/signup?case=', sent[0][2])  # 운영자 2026-11-17: 소보루고발 이름, 하루 기한, 기업 회원 무료 가입
-        self.assertIn('고발 내용 보고 답변하기', sent[0][3]); self.assertNotIn('/company/optout/', sent[0][3])  # 꾸민 HTML 메일도 함께. 운영자 2026-11-17: 뉴스레터 아니라 수신 거부 줄 없음
+        self.assertIn('고발 내용 보고 답변하기', sent[0][3]); self.assertIn('확인하시고도 답변이 없으면 기사로 다룹니다', sent[0][3]); self.assertNotIn('/company/optout/', sent[0][3])  # 꾸민 HTML 메일도 함께. 운영자 2026-11-17: 뉴스레터 아니라 수신 거부 줄 없음
         link = re.search(r'http://localhost(/company/\d+/\S+)', sent[0][2])[1]
         with self.site.conn() as db:
             optout = '/company/optout/' + db.execute("SELECT optout_token FROM companies WHERE official_email='cs@notice-shop.example'").fetchone()[0]
