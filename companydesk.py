@@ -133,6 +133,11 @@ def polite(text):
         return w+'습니다'  # 했다·있다·없다 → 했습니다·있습니다·없습니다
     return _DA.sub(fix,text)
 
+def two_questions(demands=''):
+    """기업에 묻는 건 두 가지만 (운영자 2026-11-23: 요구 조건이 너무 많음). ①제보자가 원하는 해결이 가능한지 ②사실 여부와 공식 입장"""
+    return ['제보자가 원하는 해결이 가능한지, 가능하다면 언제 어떻게 진행하실지 알려 주시기 바랍니다.',
+            '제보 내용이 사실인지, 이에 대한 귀사의 공식 입장을 알려 주시기 바랍니다.']
+
 def clean_facts(facts,case):
     """AI 결과 다듬기: 빈칸은 '확인 필요', 개인정보 다시 지움, 문단 1~2개·질문 2~3개 (운영자 2026-11-10: 짧고 핵심만)."""
     if not isinstance(facts,dict):raise RuntimeError('AI 응답 형식이 달라요')
@@ -142,8 +147,7 @@ def clean_facts(facts,case):
     paras=[polite(scrub(str(p).strip(),names)) for p in (facts.get('paragraphs') or []) if str(p).strip()][:2]
     qs=[polite(scrub(str(q).strip(),names)) for q in (facts.get('questions') or []) if str(q).strip()][:3]
     if len(paras)<1 or len(qs)<1:raise RuntimeError('AI가 요청서 내용을 채우지 못했어요')
-    if len(qs)<2:qs.append('제보 내용에 대한 귀사의 공식 입장과 향후 해결 계획을 알려 주시기 바랍니다.')
-    out['paragraphs']=paras;out['questions']=qs[:3]
+    out['paragraphs']=paras;out['questions']=two_questions(out.get('demands'))
     return out
 
 def _branded(text):
@@ -176,7 +180,7 @@ def reporter_name(name):
 
 def blank_facts(case):
     return {'company':case['company'],'paragraphs':['제보자에 따르면 (주요 제보 내용을 1~2문단으로 짧게 적어 주세요.)'],
-            'questions':['(확인할 내용 1)','(확인할 내용 2)','(확인할 내용 3)']}
+            'questions':two_questions()}
 
 def install(S):
     app=S.app;conn=S.conn;now=S.now;jebo=S.jebo

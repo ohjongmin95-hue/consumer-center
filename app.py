@@ -1248,7 +1248,7 @@ def company_ai_summary(db,case):
         except ValueError:f=None
         if isinstance(f,dict) and f.get('paragraphs'):
             need=lambda v:v if v and v!='확인 필요' else ''
-            return {'paragraphs':f['paragraphs'],'product':need(f.get('product')),'damage_date':need(f.get('damage_date')),'demands':need(f.get('demands')),'questions':f.get('questions') or []}
+            return {'paragraphs':f['paragraphs'],'product':need(f.get('product')),'damage_date':need(f.get('damage_date')),'demands':need(f.get('demands')),'questions':companydesk.two_questions(f.get('demands'))}  # 운영자 2026-11-23: 질문은 두 가지만
     if case['share_company'] and companydesk.ai_ready() and (case['id'] not in _CO_AI_RUNNING):
         import threading
         _CO_AI_RUNNING.add(case['id'])
