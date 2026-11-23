@@ -74,6 +74,7 @@ def hours_between(a, b):
         return None
 
 
+AUTO_SEND = False  # 운영자 2026-11-23: 기업 전달 자동 발송 X. 관리자가 승인해야만 이메일·알림톡이 나감
 IGNORE_LINE = '※ 열어 보신 기록이 남습니다. 확인하시고도 답변이 없으면 기사로 다룹니다.'  # 운영자 2026-11-22: 읽고 무시하면 기사화 (짧게)
 NOTICE_ANSWER_HOURS = int(os.getenv('NOTICE_ANSWER_HOURS', '24'))  # 운영자 2026-11-17: 기업 답변 기한은 하루
 
@@ -189,7 +190,7 @@ def install(S):
 
     def overdue_ids(db):
         """기업 답변 기한(보낸 뒤 NOTICE_ANSWER_HOURS)이 지났는데 답이 없는 제보 id (운영자 2026-11-17: 홈 '오늘 할 일'·목록 '기한 지남')"""
-        ids = [r['id'] for r in db.execute("SELECT id FROM cases WHERE status IN ('기업 답변 대기','연락 시도 중') AND review NOT IN ('rejected','duplicate')")]
+        ids = [r['id'] for r in db.execute("SELECT id FROM cases WHERE status='기업 답변 대기' AND review NOT IN ('rejected','duplicate')")]
         return [cid for cid, c in answer_clocks(db, ids).items() if c['over']]
     S.ops_overdue_ids = overdue_ids
     S.app.jinja_env.globals['NOTICE_ANSWER_HOURS'] = NOTICE_ANSWER_HOURS
@@ -410,16 +411,9 @@ def install(S):
     def to_wait(db, cid):
         """기업에 전달되면 진행 단계를 '기업 답변 대기'로 올리고 제보자에게 알림 (이미 그 뒤 단계면 그대로)"""
         case = db.execute('SELECT status FROM cases WHERE id=?', (cid,)).fetchone()
-        if case['status'] != '연락 시도 중' and jebo.STATUS_MY.get(case['status'], 0) >= jebo.STATUS_MY['기업 답변 대기']: return
+        if jebo.STATUS_MY.get(case['status'], 0) >= jebo.STATUS_MY['기업 답변 대기']: return
         db.execute("UPDATE cases SET status='기업 답변 대기' WHERE id=?", (cid,)); jebo.mark(db, cid, 'reviewed_at')
         S.log_case(db, cid, f"진행 단계 변경: {case['status']} → 기업 답변 대기"); S.notify_later(cid, 'status')
-
-    def to_contact(db, cid):
-        """기업 연락처가 없어 못 보냈으면 '연락 시도 중'으로 (운영자 2026-11-16). 제보자에게 따로 알리지 않음. 이미 기업 전달 뒤 단계면 그대로"""
-        case = db.execute('SELECT status FROM cases WHERE id=?', (cid,)).fetchone()
-        if case['status'] not in ('접수', '검토 중', '기업 답변 대기'): return
-        db.execute("UPDATE cases SET status='연락 시도 중' WHERE id=?", (cid,)); jebo.mark(db, cid, 'reviewed_at')
-        S.log_case(db, cid, f"진행 단계 변경: {case['status']} → 연락 시도 중 (기업 연락처 없음)")
 
     def auto_forward(db, cid):
         """검토 '정상'으로 승인된 제보를 기업에 자동 전달 (운영자 결정 2026-10-21). 관리자에게 보일 문구('' 이면 할 일 없음).
@@ -445,7 +439,6 @@ def install(S):
         block = notice_block(db, case, company)
         if block:
             S.log_case(db, cid, '기업 자동 전달 못 함: ' + block)
-            if not notice_target(company) and not notice_phone(company): to_contact(db, cid)
             return '기업 자동 전달은 못 했어요. ' + block
         if send_notice(db, case, company, quiet=True, actor='자동 전달'): return f"{company['name']}에 안내를 자동으로 보냈어요."
         return '기업 안내 메일을 보내지 못했어요. 처리 기록을 확인해 주세요.'
@@ -465,20 +458,19 @@ def install(S):
         return sorted(out, key=lambda x: (-len(x[1]), x[0]['name']))
     S.ops_contact_needed = contact_needed
 
-    def contact_status_once():
-        # 한 번만: 예전에 연락처가 없어 못 보냈는데 단계만 '기업 답변 대기'로 바뀐 제보 → '연락 시도 중'
+    def drop_contact_status():
+        # 운영자 2026-11-23: '연락 시도 중' 단계를 뺌 → 그 단계에 있던 제보는 '기업 답변 대기'(기업 전달)로
         with S.conn() as db:
-            db.execute('CREATE TABLE IF NOT EXISTS soboru_flags(key TEXT PRIMARY KEY,created TEXT NOT NULL)')
-            if not db.execute("INSERT OR IGNORE INTO soboru_flags(key,created) VALUES('contact_status_v1',?)", (now(),)).rowcount: return
-            for co, cases in contact_needed(db):
-                for c in cases:
-                    if db.execute('SELECT status FROM cases WHERE id=?', (c['id'],)).fetchone()['status'] == '기업 답변 대기': to_contact(db, c['id'])
-    try: contact_status_once()
+            for r in db.execute("SELECT id FROM cases WHERE status='연락 시도 중'").fetchall():
+                db.execute("UPDATE cases SET status='기업 답변 대기' WHERE id=?", (r['id'],))
+                S.log_case(db, r['id'], "진행 단계 변경: 연락 시도 중 → 기업 전달 (단계 정리)")
+    try: drop_contact_status()
     except Exception as e: print('연락 시도 중 단계 정리를 못 했어요:', e)
 
     def send_pending(db, company_id):
         """기업 연락처가 새로 들어오면, 그 기업의 정상 승인됐지만 못 보낸 제보를 바로 보냄 (운영자 2026-11-13: 어디서 넣든 서로 이어지게).
-        보낸 건수를 돌려줌."""
+        보낸 건수를 돌려줌. 운영자 2026-11-23: 자동 발송 끔 → 연락처를 넣어도 보내지 않음 (관리자가 '기업 안내'에서 승인)"""
+        if not AUTO_SEND: return 0
         sent = 0
         for r in db.execute("SELECT id,company FROM cases WHERE company_id=? AND review='ok' AND COALESCE(forwarded_at,'')='' AND share_company=1 ORDER BY id", (company_id,)).fetchall():
             if db.execute('SELECT forwarded_at FROM cases WHERE id=?', (r['id'],)).fetchone()['forwarded_at']: continue

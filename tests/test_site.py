@@ -4200,7 +4200,7 @@ class SiteTest(unittest.TestCase):
         # 공개 화면은 접수·처리 중·종결 3단계, 제보자 본인 화면은 5단계. 5단계 → 3단계 연결
         jebo = self.site.jebo
         mine = [jebo.my_step({'status': s}) for s in self.site.STATUSES]
-        self.assertEqual(mine, [1, 2, 2, 3, 3, 4, 5])
+        self.assertEqual(mine, [1, 2, 2, 3, 4, 5])
         self.assertEqual([jebo.pub_step(n) for n in range(1, 6)], [1, 2, 2, 2, 3])
         self.assertEqual(jebo.my_step({'status': '접수', 'reviewed_at': 'x', 'forwarded_at': 'x'}), 3)
         self.assertEqual(jebo.my_step({'status': '검토 중'}, has_answer=True), 4)
@@ -4223,8 +4223,8 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:cid = db.execute("SELECT id FROM cases WHERE subject='단계 확인 제보'").fetchone()['id']
         page = admin.get('/admin/reports/%d' % cid).get_data(as_text=True)
         self.assertIn('>3. 추가자료 요청</option>', page)
-        self.assertIn('>4. 연락 시도 중</option>', page)
-        self.assertIn('>5. 기업 전달</option>', page)
+        self.assertNotIn('연락 시도 중', page)  # 운영자 2026-11-23: 단계에서 뺌
+        self.assertIn('>4. 기업 전달</option>', page)
         self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'settings', 'status': '추가 확인', 'assignee': ''})
         with self.site.conn() as db:
             self.assertEqual(db.execute('SELECT status FROM cases WHERE id=?', (cid,)).fetchone()['status'], '추가 확인')
@@ -4255,6 +4255,8 @@ class SiteTest(unittest.TestCase):
             db.execute('UPDATE cases SET share_company=0 WHERE id=?', (second,))  # 기업 전달 동의 없음
         mails.clear()
         self.post_form(admin, '/admin/reports/%d' % first, {'form': 'review', 'review': 'ok'})
+        self.assertFalse([m for m in mails if m[0] == 'cs@nudge-shop.example'])  # 운영자 2026-11-23: 승인만으로는 기업에 보내지 않음
+        admin.post('/admin/reports/bulk', data={'_csrf': self.csrf(admin, '/admin/reports'), 'act': 'forward', 'id': [str(first)]})
         sent = [m for m in mails if m[0] == 'cs@nudge-shop.example']
         self.assertEqual(len(sent), 1); self.assertIn('/company/%d/' % first, sent[0][2])
         self.assertFalse(any(m[0] == 'nudge@example.com' and '진행' in m[1] for m in mails))  # 운영자 2026-11-13: 기업 답변 대기 단계는 제보자에게 알리지 않음
@@ -4263,6 +4265,7 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(row['status'], '기업 답변 대기'); self.assertTrue(row['forwarded_at'])
         mails.clear()
         self.post_form(admin, '/admin/reports/%d' % second, {'form': 'review', 'review': 'ok'})
+        admin.post('/admin/reports/bulk', data={'_csrf': self.csrf(admin, '/admin/reports'), 'act': 'forward', 'id': [str(second)]})
         self.assertFalse([m for m in mails if m[0] == 'cs@nudge-shop.example'])  # 동의 없으면 보내지 않음
         # 제보자: 전달 뒤 3일 전에는 못 누름
         reporter = self.site.app.test_client()
@@ -4308,6 +4311,8 @@ class SiteTest(unittest.TestCase):
         mails.clear()
         r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'ok', 'id': [str(a), str(b)], 'next': '/admin/reports?review=new'})
         self.assertEqual(r.status_code, 302); self.assertTrue(r.location.endswith('/admin/reports?review=new'))
+        self.assertFalse(mails)  # 운영자 2026-11-23: 승인만으로는 보내지 않음
+        admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'forward', 'id': [str(a), str(b)]})
         self.assertEqual(len([m for m in mails if m[0] == 'cs@bulk-shop.example']), 2)
         r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'duplicate', 'id': [str(c)], 'next': 'https://evil.example/'})
         self.assertTrue(r.location.endswith('/admin/reports'))  # 다른 사이트로는 안 돌아감
@@ -4341,10 +4346,11 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db:
             a, b = [r['id'] for r in db.execute("SELECT id FROM cases WHERE company='연락없는상점' ORDER BY id")]
         token = self.csrf(admin, '/admin/reports')
-        r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'ok', 'id': [str(a), str(b)]}, follow_redirects=True)
+        admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'ok', 'id': [str(a), str(b)]})
+        r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'forward', 'id': [str(a), str(b)]}, follow_redirects=True)
         self.assertIn('위 연락처 필요 칸', r.get_data(as_text=True))
         with self.site.conn() as db:
-            self.assertEqual({r['status'] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)', (a, b))}, {'연락 시도 중'})  # 승인했는데 연락처가 없으면 '연락 시도 중' (운영자 2026-11-16)
+            self.assertEqual({r['status'] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)', (a, b))}, {'검토 중'})  # 운영자 2026-11-23: 못 보내도 단계는 그대로 ('연락 시도 중' 없음)
             co = db.execute("SELECT id FROM companies WHERE name='연락없는상점'").fetchone()['id']
         page = admin.get('/admin/reports').get_data(as_text=True)
         self.assertIn('못 보낸 제보 <b>2건</b> · 1곳', page)
@@ -4353,9 +4359,10 @@ class SiteTest(unittest.TestCase):
         r = admin.post('/admin/reports/contact', data={'_csrf': token, 'company_id': co, 'official_email': 'bad'}, follow_redirects=True)
         self.assertIn('이메일 주소를 다시', r.get_data(as_text=True))
         r = admin.post('/admin/reports/contact', data={'_csrf': token, 'company_id': co, 'official_email': 'cs@nc-shop.example'}, follow_redirects=True)
-        self.assertIn('제보 2건을 보냈어요', r.get_data(as_text=True))
+        self.assertIn('보낼 제보 2건은', r.get_data(as_text=True)); self.assertFalse([m for m in mails if m[0] == 'cs@nc-shop.example'])  # 연락처를 넣어도 자동으로 보내지 않음
+        admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'forward', 'id': [str(a), str(b)]})
         with self.site.conn() as db:
-            self.assertEqual({r['status'] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)', (a, b))}, {'기업 답변 대기'})  # 연락처를 넣으면 보내고 다음 단계로
+            self.assertEqual({r['status'] for r in db.execute('SELECT status FROM cases WHERE id IN (?,?)', (a, b))}, {'기업 답변 대기'})  # 보내면 다음 단계로
         self.assertEqual(len([m for m in mails if m[0] == 'cs@nc-shop.example']), 2)
         self.assertIn('연락처가 없어 못 보낸 제보가 없어요', admin.get('/admin/reports?view=contact').get_data(as_text=True))
         # '기업 연락처'에 넣어 둔 메일도 안내 주소로 씀
@@ -4365,7 +4372,9 @@ class SiteTest(unittest.TestCase):
         admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'ok', 'id': [str(d)]})
         mails.clear()
         r = self.post_form(admin, '/admin/contacts', {'name': '연락처만상점', 'cs_email': 'help@contact-only.example'})
-        self.assertEqual(len([m for m in mails if m[0] == 'help@contact-only.example']), 1)  # 연락처를 넣자마자 기다리던 제보가 감
+        self.assertFalse([m for m in mails if m[0] == 'help@contact-only.example'])  # 운영자 2026-11-23: 연락처를 넣어도 자동으로 보내지 않음
+        admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'forward', 'id': [str(d)]})
+        self.assertEqual(len([m for m in mails if m[0] == 'help@contact-only.example']), 1)  # 관리자가 보내면 '기업 연락처' 메일로 감
         # 일괄 단계·담당
         r = admin.post('/admin/reports/bulk', data={'_csrf': token, 'act': 'st:종결', 'id': [str(a)]}, follow_redirects=True)
         self.assertIn("1건의 단계를", r.get_data(as_text=True))
@@ -4403,6 +4412,8 @@ class SiteTest(unittest.TestCase):
         with self.site.conn() as db: cid = db.execute("SELECT id FROM cases WHERE company='유명마켓'").fetchone()['id']
         mails.clear()
         self.post_form(admin, '/admin/reports/%d' % cid, {'form': 'review', 'review': 'ok'})
+        self.assertFalse(mails)  # 운영자 2026-11-23: 승인만으로는 보내지 않음
+        admin.post('/admin/reports/bulk', data={'_csrf': self.csrf(admin, '/admin/reports'), 'act': 'forward', 'id': [str(cid)]})
         self.assertTrue([m for m in mails if m[0] == 'help@famous-market.example'])
         with self.site.conn() as db:
             co = db.execute('SELECT co.* FROM companies co JOIN cases c ON c.company_id=co.id WHERE c.id=?', (cid,)).fetchone()
