@@ -2231,6 +2231,8 @@ def reports_list():
     due='over' if request.args.get('due')=='over' and g.area=='admin' else ''
     reply='1' if request.args.get('reply')=='1' else ''
     if reply:where.append("COALESCE(reply_unread,'')!=''")
+    answered='1' if request.args.get('answered')=='1' else ''  # 운영자 2026-11-23: 대시보드 '기업 답변 받음'을 누르면 그 제보들
+    if answered:where.append("id IN (SELECT case_id FROM messages WHERE author='기업 답변')")
     if due:
         with conn() as db:over=ops_overdue_ids(db)
         where.append('id IN (%s)'%(','.join(str(int(i)) for i in over) or '0'))
@@ -2252,7 +2254,7 @@ def reports_list():
         clocks=ops_answer_clocks(db,[c['id'] for c in cases]) if g.area=='admin' else {}
         n_over=len(ops_overdue_ids(db)) if g.area=='admin' else 0
         n_reply=db.execute("SELECT COUNT(*) FROM cases WHERE COALESCE(reply_unread,'')!=''").fetchone()[0]
-    return render_template('reports_list.html',reply=reply,n_reply=n_reply,due=due,clocks=clocks,n_over=n_over,layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
+    return render_template('reports_list.html',answered=answered,reply=reply,n_reply=n_reply,due=due,clocks=clocks,n_over=n_over,layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
                            review=review,sort=sort,review_counts={k:review_counts.get(v,0) for k,v in jebo.REVIEW_KEYS.items()},reviews=jebo.REVIEWS,review_keys=jebo.REVIEW_KEYS,legacy_pending=legacy_pending,
                            track=track,track_counts=track_counts,track_of=track_of,assignee=assignee,assignee_counts=assignee_counts,view=view,need=need,need_cases=sum(len(c) for _,c in need),staff_names=staff_names,statuses=STATUSES)
 

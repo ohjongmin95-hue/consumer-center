@@ -1,6 +1,6 @@
 {% extends layout %}
 {% block title %}제보 목록 | {{ txt('site.name') }}{% endblock %}
-{% macro qs() %}{% set kw = kwargs %}{{ url_for(ep.list, status=kw.get('status', status) or None, review=kw.get('review', review) or None, sort=kw.get('sort', sort) or None, q=kw.get('q', q) or None, mine=('1' if kw.get('mine', mine) else None), track=kw.get('track', track) or None, assignee=kw.get('assignee', assignee) or None, page=kw.get('page') ) }}{% endmacro %}
+{% macro qs() %}{% set kw = kwargs %}{{ url_for(ep.list, status=kw.get('status', status) or None, review=kw.get('review', review) or None, sort=kw.get('sort', sort) or None, q=kw.get('q', q) or None, mine=('1' if kw.get('mine', mine) else None), track=kw.get('track', track) or None, assignee=kw.get('assignee', assignee) or None, reply=kw.get('reply', reply) or None, answered=kw.get('answered', answered) or None, page=kw.get('page') ) }}{% endmacro %}
 {% block content %}
 {# 토스식 목록: 단계는 밑줄 탭 한 줄, 분류·담당·검토는 펼치는 칩 한 줄, 표는 제목 칸에 접수번호·유형을 함께 적어 열을 줄임 #}
 {% set filtered = track or assignee or review %}
@@ -23,8 +23,9 @@
   {% endif %}
   {% if view == 'contact' %}<a class="jl-back" href="{{ url_for('admin_reports') }}">‹ 제보 목록</a>{% endif %}
   <nav class="jl-tabs"{% if view == 'contact' %} hidden{% endif %} aria-label="진행 단계별 보기">
-    <a href="{{ qs(status='') }}"{% if not status and not view and not due and not reply %} class="on" aria-current="page"{% endif %}>전체 <b>{{ all_count }}</b></a>
+    <a href="{{ qs(status='', reply='', answered='') }}"{% if not status and not view and not due and not reply and not answered %} class="on" aria-current="page"{% endif %}>전체 <b>{{ all_count }}</b></a>
     {% for s in STAGE_STATUS %}<a href="{{ qs(status=s) }}"{% if status == s %} class="on" aria-current="page"{% endif %}>{{ stage_names()[loop.index0] }} <b>{{ counts.get(s, 0) }}</b></a>{% endfor %}
+    {% if answered %}<a class="on" href="{{ url_for(ep.list, answered='1') }}" aria-current="page">기업 답변 받음 <b>{{ total }}</b></a>{% endif %}
     {% if n_reply or reply %}<a class="jl-tab-reply{% if reply %} on{% endif %}" href="{{ url_for(ep.list, reply='1') }}"{% if reply %} aria-current="page"{% endif %}>새 답글 <b>{{ n_reply }}</b></a>{% endif %}{# 운영자 2026-11-23: 제보자가 새로 남긴 답글 #}
     {% if n_over or due %}<a class="jl-tab-over{% if due %} on{% endif %}" href="{{ url_for('admin_reports', due='over') }}"{% if due %} aria-current="page"{% endif %}>기한 지남 <b>{{ n_over }}</b></a>{% endif %}{# 운영자 2026-11-17: 기업 답변 기한이 지난 제보 #}
     {% if layout == 'reporter_base.html' %}<a class="jl-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
