@@ -2189,7 +2189,7 @@ def set_review(db,case,review,note=''):
     if review in jebo.NOT_VALID and case['published']:db.execute('UPDATE cases SET published=0 WHERE id=?',(case_id,));log_case(db,case_id,'비공개로 전환')
     if review!=case['review']:log_case(db,case_id,f"검토 결과: {jebo.REVIEWS[case['review']]} → {jebo.REVIEWS[review]}")
     if review=='ok' and case['status']=='접수':set_status(db,case,'검토 중')  # 정상으로 승인하면 '접수'에서 '검토'로 (운영자 2026-11-13)
-def reporter_replied(db,case,body,title='제보자 새 답글'):
+def reporter_replied(db,case,body,title='제보자 메시지'):
     # 운영자 2026-11-23: 제보자가 답글을 남기면 관리자 목록에 '새 답글' 표시 + 운영 알림(메일·텔레그램)
     db.execute('UPDATE cases SET reply_unread=? WHERE id=?',(now(),case['id']))
     ops_admin_alert(case,'admin_reply',title,[f"■ 업체: {case['company']}",f"■ 제목: {case['subject'][:80]}",f"■ 내용: {notify.short(body,200)}"])

@@ -4307,7 +4307,7 @@ class SiteTest(unittest.TestCase):
         reporter.post('/lookup/%d' % cid, data={'_csrf': self.csrf(reporter, '/lookup')})
         mails.clear()
         reporter.post('/case', data={'_csrf': self.csrf(reporter, '/case'), 'message': '영수증 다시 보냅니다'})
-        self.assertTrue([m for m in mails if m[0] == 'ops@example.com' and '제보자 새 답글' in m[1]])
+        self.assertTrue([m for m in mails if m[0] == 'ops@example.com' and '제보자 메시지' in m[1]])
         with self.site.conn() as db: self.assertTrue(db.execute("SELECT 1 FROM notifications WHERE case_id=? AND event='admin_reply'", (cid,)).fetchone())
         page = admin.get('/admin/reports').get_data(as_text=True)
         self.assertIn('새 답글 <b>1</b>', page); self.assertIn('<span class="jl-reply">새 답글</span>', page)
