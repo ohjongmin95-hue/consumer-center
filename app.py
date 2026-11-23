@@ -35,7 +35,6 @@ if (os.getenv('ENABLE_INTAKE')=='1' or os.getenv('ENABLE_BOARD')=='1') and (not 
 app.config['MAX_CONTENT_LENGTH']=205*1024*1024  # 첨부 합계 200MB + 글 내용 (운영자 2026-11-09: 폰 영상도 올라가게)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.getenv('HTTPS_ONLY')=='1')
 STATUSES=site_content.STATUSES
-CONTACT_STATUS='연락 시도 중'  # 운영자 2026-11-16: 기업 연락처를 못 찾아 자동 전달을 못 한 제보. 연락처를 넣으면 자동으로 보내고 '기업 답변 대기'로
 HOME_LATEST=20  # 최신 제보 수 기본값 (소비자고발제보센터 메인은 관리자 문구 home.latest_count로 3~20)
 REPORTS_PAGE_SIZE=20
 def status_step(status):return STATUSES.index(status)+1 if status in STATUSES else 1
@@ -435,7 +434,7 @@ def ui_rich(key,default,**values):
 app.jinja_env.globals['ui_rich']=ui_rich
 def status_name(status):
     # 진행 단계 이름 (저장값은 그대로 두고 화면에 보이는 이름만 바꿈)
-    names={'접수':lambda:ui('status.n1','접수'),'검토 중':lambda:ui('status.n2','검토 중'),'추가 확인':lambda:ui('status.n3','추가 확인'),CONTACT_STATUS:lambda:ui('status.n7','연락 시도 중'),
+    names={'접수':lambda:ui('status.n1','접수'),'검토 중':lambda:ui('status.n2','검토 중'),'추가 확인':lambda:ui('status.n3','추가 확인'),
            '기업 답변 대기':lambda:ui('status.n4','기업 답변 대기'),'기업 답변 도착':lambda:ui('status.n5','기업 답변 도착'),'종결':lambda:ui('status.n6','종결')}
     return names[status]() if status in names else status
 app.jinja_env.globals['status_name']=status_name
@@ -446,7 +445,7 @@ def my_descs():return [ui('status.m1_desc2','제보가 들어왔어요'),ui('sta
 app.jinja_env.globals.update(pub_names=pub_names,my_names=my_names,my_descs=my_descs)
 # 관리자·기자실은 6단계로 보고 고름 (제보자 화면 5단계 + '추가자료 요청'). 제보자 화면에서는 '추가 확인'을 검토 단계로 보여 줌
 STAGE_STATUS=list(STATUSES)
-def stage_names():n=my_names();return [n[0],n[1],ui('status.a3','추가자료 요청'),ui('status.a4','연락 시도 중'),n[2],n[3],n[4]]
+def stage_names():n=my_names();return [n[0],n[1],ui('status.a3','추가자료 요청'),n[2],n[3],n[4]]
 def stage_of(status):return STATUSES.index(status)+1 if status in STATUSES else 1
 def stage_count(counts,status):return counts.get(status,0)
 app.jinja_env.globals.update(STAGE_STATUS=STAGE_STATUS,stage_of=stage_of,stage_count=stage_count,stage_names=stage_names)
@@ -2192,32 +2191,15 @@ def set_review(db,case,review,note=''):
 WAIT_STATUS='기업 답변 대기'
 def set_status(db,case,status):
     """진행 단계 바꾸기 (제보 화면 저장·목록 일괄 처리·줄마다 고르기). 제보자 화면 단계가 바뀔 때만 알림. 관리자에게 보일 문구를 돌려줌.
-    운영자 2026-11-13: '기업 전달'로 바꾸면 그대로 기업에 자동으로 보냄 (검토 결과를 따로 고르지 않음).
-    못 보내도 단계는 바꿈 (기자가 직접 취재·연락하는 경우). 못 보낸 이유를 알려 주고, 연락처를 넣으면 그때 자동으로 보냄"""
+    운영자 2026-11-23: 단계만 바꿈. 기업에 자동으로 보내지 않음 (관리자가 '기업 안내'에서 승인해야 나감. 기자가 직접 전화로 전할 수도 있음)"""
     if status==case['status']:return ''
-    fail=''
-    if status==WAIT_STATUS and not case['forwarded_at'] and case['share_company'] and case['company_id']!=0 and case['review'] in jebo.NOT_VALID:
-        fail='중복·제외로 처리한 제보라 기업에 자동으로 보내지 않았어요.'
-    elif status==WAIT_STATUS and not case['forwarded_at'] and case['share_company'] and case['company_id']!=0:
-        if case['review']!='ok':set_review(db,case,'ok')
-        msg=ops_auto_forward(db,case['id'])
-        if db.execute('SELECT forwarded_at FROM cases WHERE id=?',(case['id'],)).fetchone()['forwarded_at']:
-            cur=db.execute('SELECT * FROM cases WHERE id=?',(case['id'],)).fetchone()
-            if cur['status']!=WAIT_STATUS:set_status(db,cur,WAIT_STATUS)
-            return msg
-        fail=msg or '기업에 자동으로 보내지 못했어요.'
-        if '이메일이나 휴대폰' in fail:
-            fail+=" '연락처 필요' 목록에 올려 뒀어요. 연락처를 넣으면 그때 자동으로 보내져요."
-            cur=db.execute('SELECT * FROM cases WHERE id=?',(case['id'],)).fetchone()
-            if cur['status']!=CONTACT_STATUS:set_status(db,cur,CONTACT_STATUS)
-            return fail+" 단계는 '연락 시도 중'으로 바꿨어요."
     db.execute('UPDATE cases SET status=? WHERE id=?',(status,case['id']))
     log_case(db,case['id'],f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
-    if jebo.STATUS_MY.get(status)!=jebo.STATUS_MY.get(case['status']):notify_later(case['id'],'status')
-    if status!='접수':jebo.mark(db,case['id'],'reviewed_at')
+    if status!='접수':jebo.mark(db,case['id'],'reviewed_at')  # 운영자 2026-11-23: 손으로 단계를 바꿀 땐 제보자에게 알리지 않음
     if status=='종결':jebo.mark(db,case['id'],'closed_at')
-    return (fail+" 단계는 '기업 전달'로 바꿨어요.") if fail else ''
-BULK_ACTS={'ok':'승인하고 기업에 보내기','forward':'기업에 다시 보내기','duplicate':'중복으로 처리','rejected':'제외로 처리'}
+    if status==WAIT_STATUS and not case['forwarded_at']:return "단계를 '기업 전달'로 바꿨어요. 기업에 안내를 보내려면 '기업 안내'에서 승인해 주세요."
+    return ''
+BULK_ACTS={'ok':'승인','forward':'기업에 안내 보내기','duplicate':'중복으로 처리','rejected':'제외로 처리'}
 
 def reports_list():
     ep=AREAS[g.area]
@@ -2331,7 +2313,6 @@ def report_detail(case_id):
                 if review not in jebo.REVIEWS:abort(400)
                 set_review(db,case,review,request.form.get('review_note',''))
                 flash(f"검토 결과를 '{jebo.REVIEWS[review]}'(으)로 저장했어요."+(' 공개 목록에서 빠져요.' if review in jebo.NOT_VALID else ''))
-                if review=='ok':(lambda m:m and flash(m))(ops_auto_forward(db,case_id))  # 승인하면 기업에 자동 전달 (운영자 결정 2026-10-21)
             elif form=='company_new':
                 # 제보에 적힌 이름으로 기업을 등록 (가입하지 않은 기업). 이름이 같은 기업이 있으면 그 기업에 연결.
                 name=(request.form.get('name','') or case['company']).strip()[:120]
@@ -2342,7 +2323,6 @@ def report_detail(case_id):
                     found=db.execute('SELECT * FROM companies WHERE id=?',(cid,)).fetchone()
                 db.execute('UPDATE cases SET company_id=? WHERE id=?',(found['id'],case_id));log_case(db,case_id,f"기업 연결: {found['name']}")
                 flash(f"{found['name']}에 연결했어요.")
-                (lambda m:m and flash(m))(ops_auto_forward(db,case_id))
             elif form=='company_rename':
                 # 운영자 2026-11-15: 자동 저장된 기업 이름 고치기. 같은 이름 기업이 따로 있으면 그쪽으로 연결(중복 저장 금지)
                 name=re.sub(r'\s+',' ',request.form.get('name','')).strip()[:120]
@@ -2378,7 +2358,6 @@ def report_detail(case_id):
                     if linked['status']=='active' and case['share_company']:
                         jebo.mark(db,case_id,'forwarded_at');flash(f"{linked['name']}에 연결했어요. 기업 담당자 화면에 바로 보여요.")
                     else:flash(f"{linked['name']}에 연결했어요. 기업 페이지에 모여요.")
-                    (lambda m:m and flash(m))(ops_auto_forward(db,case_id))
                 else:
                     db.execute('UPDATE cases SET company_id=0 WHERE id=?',(case_id,));log_case(db,case_id,'기업 연결 해제')  # 0 = 운영자가 일부러 뗌 (자동 연결이 다시 붙이지 않음);flash('기업 연결을 해제했어요.')
             elif form=='answer_public':
@@ -2590,7 +2569,7 @@ def admin_reports_bulk():
                 set_review(db,case,act,'목록에서 일괄 처리' if act!='ok' else '');done+=1
                 if act!='ok':continue
             elif case['review']!='ok':skipped.append(case['receipt']);continue
-            if act=='forward' or act=='ok':
+            if act=='forward':  # 운영자 2026-11-23: 기업에는 '기업에 안내 보내기'를 골랐을 때만 보냄
                 before=db.execute('SELECT forwarded_at FROM cases WHERE id=?',(cid,)).fetchone()['forwarded_at']
                 msg=ops_auto_forward(db,cid)
                 if msg and not msg.startswith('기업 자동 전달은 못') and not msg.startswith('기업 안내 메일을 보내지 못'):sent+=1
@@ -2598,10 +2577,10 @@ def admin_reports_bulk():
                 elif act=='forward' and not before:skipped.append(case['receipt'])
     parts=[]
     if act!='forward':parts.append(f"{done}건을 '{jebo.REVIEWS[act]}'(으)로 바꿨어요."+(' 공개 목록에서 빠져요.' if act in jebo.NOT_VALID else ''))
-    if act in ('ok','forward'):parts.append(f'기업에 {sent}건 보냈어요.')
+    if act=='forward':parts.append(f'기업에 {sent}건 보냈어요.')
     if skipped:parts.append(f"못 보낸 {len(skipped)}건은 제보를 열어 확인해 주세요 ({', '.join(skipped[:5])}{' 외' if len(skipped)>5 else ''}).")
     with conn() as db:need=ops_contact_needed(db)
-    if need and act in ('ok','forward'):parts.append(f"연락처가 없는 기업 {len(need)}곳은 위 연락처 필요 칸에서 넣으면 바로 보내져요.")
+    if need and act=='forward':parts.append(f"연락처가 없는 기업 {len(need)}곳은 위 연락처 필요 칸에서 연락처를 넣고 다시 보내 주세요.")
     flash(' '.join(parts));return redirect(back)
 @app.route('/admin/reports/contact',methods=['POST'])
 @admin_area
@@ -2620,7 +2599,7 @@ def admin_reports_contact():
         if phone:db.execute('UPDATE companies SET notice_phone=? WHERE id=?',(phone,co['id']))
         sent=ops_send_pending(db,co['id'])
         left=db.execute("SELECT COUNT(*) FROM cases WHERE company_id=? AND review='ok' AND COALESCE(forwarded_at,'')='' AND share_company=1",(co['id'],)).fetchone()[0]
-    flash(f"{co['name']} 연락처를 저장하고 제보 {sent}건을 보냈어요."+(f" {left}건은 아직 못 보냈어요. 제보를 열어 처리 기록을 확인해 주세요." if left else ''))
+    flash(f"{co['name']} 연락처를 저장했어요."+(f" 보낼 제보 {left}건은 제보 화면 '기업 안내'에서 승인해 보내 주세요." if left else ''))
     return redirect(back)
 @app.route('/admin/reports/<int:case_id>',methods=['GET','POST'])
 @admin_area

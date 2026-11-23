@@ -10,7 +10,7 @@
     <p class="cs-meta"><span class="mono">{{ case['receipt'] }}</span> · {% if case['industry'] %}{{ case['industry'] }} · {% endif %}{{ cat_label(case['category']) }} · 접수 {{ case['created'][:16]|replace('T', ' ')|replace('-', '.') }}{% if case['occurred_on'] %} · 발생 {{ case['occurred_on']|replace('-', '.') }}{% endif %}</p>
     <h1 class="cs-title">{{ case['subject'] }}</h1>
     <p class="cs-company">업체 <b>{{ case['company'] }}</b> {% if case['review'] == 'duplicate' %}<span class="cs-status s-dup">중복 반려</span>{% else %}<span class="cs-status s{{ stage_of(case['status']) }}">{{ stage_names()[stage_of(case['status']) - 1] }}</span>{% endif %}</p>
-    {% set ck = ops.clock if ops and case['status'] in ('기업 답변 대기', '연락 시도 중') else None %}{% if ck %}{# 운영자 2026-11-17: 기업에 보낸 때부터 답변 기한을 실시간으로. 지나면 기사 초안으로 #}
+    {% set ck = ops.clock if ops and case['status'] == '기업 답변 대기' else None %}{% if ck %}{# 운영자 2026-11-17: 기업에 보낸 때부터 답변 기한을 실시간으로. 지나면 기사 초안으로 #}
     <div class="ans-clock{{ ' is-done' if ck.answered else ' is-over' if ck.over else '' }}" data-due="{{ ck.due_ms }}"{% if ck.answered %} data-answered="1"{% endif %}>
       <div class="ans-clock-main"><span class="ans-clock-k">기업 답변 기한</span><b class="ans-clock-left">{% if ck.answered %}기업이 답했어요{% elif ck.over %}기한 지남{% else %}남은 시간 계산 중{% endif %}</b></div>
       <p class="ans-clock-sub">보낸 때 {{ ck.sent[5:]|replace('-', '.') }} · 기한 {{ ck.due[5:]|replace('-', '.') }}{% if ck.answered %} · 답한 때 {{ ck.answered[5:]|replace('-', '.') }}{% endif %}</p>
@@ -26,10 +26,10 @@
   {% set answered_msg = msgs|selectattr('author', 'equalto', '기업 답변')|list %}
   {% set has_contact = (ops.notice_to or ops.notice_phone) if ops else False %}
   {% if case['review'] in ('duplicate', 'rejected') %}{% set td = None %}{# 운영자 2026-11-17: 중복·제외로 반려한 제보는 할 일 없음 #}
-  {% elif ck and ck.over and not ck.answered and case['status'] in ('기업 답변 대기', '연락 시도 중') %}{% set td = ('red', '기업 답변 기한이 지났어요', '보낸 때 ' ~ ck.sent[5:]|replace('-', '.') ~ ' · 기한 ' ~ ck.due[5:]|replace('-', '.') ~ '. 초안을 만들면 관리자 > 기사 초안에 들어가요.', 'draft', '기사 초안 만들기') %}
+  {% elif ck and ck.over and not ck.answered and case['status'] == '기업 답변 대기' %}{% set td = ('red', '기업 답변 기한이 지났어요', '보낸 때 ' ~ ck.sent[5:]|replace('-', '.') ~ ' · 기한 ' ~ ck.due[5:]|replace('-', '.') ~ '. 초안을 만들면 관리자 > 기사 초안에 들어가요.', 'draft', '기사 초안 만들기') %}
   {% elif answered_msg and case['status'] != STATUSES[-1] %}{% set td = ('or', '기업 답변이 왔어요', '답변을 확인하고 제보자에게 알린 뒤 종결해 주세요.', '#settings', '단계 바꾸기') %}
   {% elif case['review'] == '' %}{% set td = ('or', '제보를 검토해 주세요', '내용과 개인정보를 확인하고 처리 단계를 정해 주세요.', '#check', '검토하러 가기') %}
-  {% elif case['status'] == '연락 시도 중' or (case['share_company'] and not case['forwarded_at'] and not has_contact and case['review'] == 'ok') %}{% set td = ('bl', '기업 연락처를 넣어 주세요', '연락처를 넣으면 답변 요청이 바로 나가고, 그때부터 ' ~ NOTICE_ANSWER_HOURS ~ '시간 답변 기한이 시작돼요.', '#desk_contact', '연락처 넣기') %}
+  {% elif case['share_company'] and not case['forwarded_at'] and not has_contact and case['review'] == 'ok' %}{% set td = ('bl', '기업 연락처를 넣어 주세요', '연락처를 넣고 \'기업 안내\'에서 승인하면 답변 요청이 나가고, 그때부터 ' ~ NOTICE_ANSWER_HOURS ~ '시간 답변 기한이 시작돼요. 직접 전화로 전해도 돼요.', '#desk_contact', '연락처 넣기') %}
   {% elif ck and not ck.answered %}{% set td = ('gr', '기업 답변을 기다리고 있어요', '기한이 지나면 여기서 바로 기사 초안을 만들 수 있어요.', '', '') %}
   {% else %}{% set td = None %}{% endif %}
   {% if td %}
@@ -306,7 +306,7 @@
         {% else %}<p class="cs-muted">제보자가 기업 전달에 동의하지 않아 기업에 내용을 보낼 수 없어요. 기업 페이지 연결은 할 수 있어요.</p>{% endif %}
       </section>
 
-      {# 2-1. 기업 안내: 검토 '정상' 승인 때 자동으로, 또는 버튼으로 공식 이메일에 답변 링크를 보냄. 보낸 기록·직접 연락 기록 #}
+      {# 2-1. 기업 안내: 관리자가 버튼을 눌러야만 (운영자 2026-11-23, 자동 X) 공식 이메일에 답변 링크를 보냄. 보낸 기록·직접 연락 기록 #}
       {% if case['share_company'] %}
       <section class="cs-panel cs-card" id="notice">
         <h2>기업 안내 {% if case['seen_at'] %}<span class="cs-pill on">기업이 열어 봄 · {{ case['seen_at'][5:16]|replace('T', ' ')|replace('-', '.') }}</span>{% elif case['forwarded_at'] %}<span class="cs-pill">전달 시도</span>{% endif %}</h2>
@@ -389,7 +389,7 @@
         <details class="cs-more"{% if sent and sent[0]['status'] == 'failed' %} open{% endif %}>
           <summary>알림 기록 <small>카톡 {{ '켜짐' if notify_on.kakao else '꺼짐' }} · 메일 {{ '켜짐' if notify_on.email else '꺼짐' }}{% if sent %} · {{ sent|length }}건{% endif %}</small></summary>
           {% if sent %}<ul class="cs-sent">{% for n in sent %}<li class="{{ n['status'] }}"><b>{{ {'kakao': '카카오톡', 'email': '이메일', 'admin_email': '운영자 메일', 'admin_sms': '운영자 문자', 'admin_kakao': '운영자 카톡', 'admin_telegram': '운영자 텔레그램'}.get(n['channel'], n['channel']) }}</b> {{ events.get(n['event'], n['event']) }} · {{ n['target'] }} · {{ '보냄' if n['status'] == 'sent' else '실패' }}<span>{{ n['created'][5:16]|replace('T', ' ') }}{% if n['detail'] %} · {{ n['detail'] }}{% endif %}</span></li>{% endfor %}</ul>
-          {% else %}<p class="cs-hint">접수·단계 변경·센터 메시지·기업 답변 때 자동으로 보내요. 아직 보낸 알림이 없어요.</p>{% endif %}
+          {% else %}<p class="cs-hint">접수·센터 메시지·기업 답변 때 자동으로 보내요. 아직 보낸 알림이 없어요.</p>{% endif %}
         </details>
         {% if ep.list == 'admin_reports' %}<details class="cs-more cs-danger">
           <summary>제보 삭제</summary>
