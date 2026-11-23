@@ -23,8 +23,9 @@
   {% endif %}
   {% if view == 'contact' %}<a class="jl-back" href="{{ url_for('admin_reports') }}">‹ 제보 목록</a>{% endif %}
   <nav class="jl-tabs"{% if view == 'contact' %} hidden{% endif %} aria-label="진행 단계별 보기">
-    <a href="{{ qs(status='') }}"{% if not status and not view and not due %} class="on" aria-current="page"{% endif %}>전체 <b>{{ all_count }}</b></a>
+    <a href="{{ qs(status='') }}"{% if not status and not view and not due and not reply %} class="on" aria-current="page"{% endif %}>전체 <b>{{ all_count }}</b></a>
     {% for s in STAGE_STATUS %}<a href="{{ qs(status=s) }}"{% if status == s %} class="on" aria-current="page"{% endif %}>{{ stage_names()[loop.index0] }} <b>{{ counts.get(s, 0) }}</b></a>{% endfor %}
+    {% if n_reply or reply %}<a class="jl-tab-reply{% if reply %} on{% endif %}" href="{{ url_for(ep.list, reply='1') }}"{% if reply %} aria-current="page"{% endif %}>새 답글 <b>{{ n_reply }}</b></a>{% endif %}{# 운영자 2026-11-23: 제보자가 새로 남긴 답글 #}
     {% if n_over or due %}<a class="jl-tab-over{% if due %} on{% endif %}" href="{{ url_for('admin_reports', due='over') }}"{% if due %} aria-current="page"{% endif %}>기한 지남 <b>{{ n_over }}</b></a>{% endif %}{# 운영자 2026-11-17: 기업 답변 기한이 지난 제보 #}
     {% if layout == 'reporter_base.html' %}<a class="jl-tab-mine{% if mine %} on{% endif %}" href="{{ qs(mine=not mine) }}">내 담당 제보</a>{% endif %}
   </nav>
@@ -90,7 +91,7 @@
       <tr class="{{ 'is-new' if c['status'] == STATUSES[0] }}" data-href="{{ url_for(ep.case, case_id=c['id']) }}">
         {% if bulk %}<td class="jl-ck"><label class="jl-ckbox"><input type="checkbox" name="id" value="{{ c['id'] }}" form="bulk" data-review="{{ c['review'] }}" aria-label="{{ c['receipt'] }} 고르기"></label></td>{% endif %}
         <td class="jl-sub">
-          <a href="{{ url_for(ep.case, case_id=c['id']) }}" title="{{ c['subject'] }}">{{ c['subject'] }}</a>
+          <a href="{{ url_for(ep.case, case_id=c['id']) }}" title="{{ c['subject'] }}">{% if c['reply_unread'] %}<span class="jl-reply">새 답글</span>{% endif %}{{ c['subject'] }}</a>
           <span class="jl-meta"><span class="jl-meta-co">{{ c['company'] }}</span><span class="mono">{{ c['receipt'] }}</span><span title="{{ (c['industry'] ~ ' · ' if c['industry']) ~ c['category'] }}">{{ c['category'] }}</span>{# 운영자 2026-11-17: 목록에서 AI 분류(취재·자동 응답) 표시 뺌. 'AI 분류' 거르기는 그대로 #}{% if not c['public_consent'] %}<span class="jl-lock" title="제보자가 비밀글로 접수">비밀</span>{% elif not c['published'] %}<span title="게시되지 않음 (운영자가 내림)">비공개</span>{% endif %}</span>
         </td>
         <td class="jl-co" title="{{ c['company'] }}">{{ c['company'] }}</td>

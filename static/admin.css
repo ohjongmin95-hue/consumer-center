@@ -1178,3 +1178,7 @@ body.v3-detail .v3-aside #settings{order:2}
 }
 body.console .cs-status.s-dup{background:#F2F4F6;color:#6B7684}
 body.v3-detail .v3-aside-in>#settings:only-child{border-top:0!important;padding-top:0!important}
+/* 운영자 2026-11-23: 제보자 새 답글 */
+body.console .jl-tabs a.jl-tab-reply{color:#3182F6!important}
+body.console .jl-tabs a.jl-tab-reply.on{background:#3182F6!important;color:#fff!important}
+.jl-reply{display:inline-block;margin-right:6px;padding:1px 6px;border-radius:6px;background:#E8F3FF;color:#1B64DA;font-size:12px;font-weight:700;line-height:18px;vertical-align:1px;white-space:nowrap}

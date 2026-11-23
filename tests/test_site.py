@@ -4287,6 +4287,33 @@ class SiteTest(unittest.TestCase):
         reporter.post('/case/nudge', data={'_csrf': self.csrf(reporter, '/case')})
         self.assertFalse([m for m in mails if m[0] == 'cs@nudge-shop.example'])
 
+    def test_reporter_reply_marks_new_for_admin(self):
+        """제보자가 답글을 남기면 관리자 목록에 '새 답글' + 운영 알림, 열어 보면 표시가 사라짐 (운영자 2026-11-23)"""
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        mails = []
+        patcher = patch.dict(os.environ, {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'ops@example.com'}); patcher.start(); self.addCleanup(patcher.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '답글상점', 'subject': '답글상점 환불', 'description': '환불이 안 돼요',
+                'reporter_name': '김소비', 'phone': '010-7777-4545', 'contact': 'reply@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'use_consent': 'on', 'truth': 'on', 'visibility': 'public', 'share_company': 'on'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db: cid = db.execute("SELECT id FROM cases WHERE company='답글상점'").fetchone()['id']
+        admin = self.login_admin()
+        self.assertNotIn('jl-tab-reply', admin.get('/admin/reports').get_data(as_text=True))
+        reporter = self.site.app.test_client()
+        self.post_form(reporter, '/lookup', {'mode': 'phone', 'phone': '010-7777-4545', 'password': '1234'})
+        reporter.post('/lookup/%d' % cid, data={'_csrf': self.csrf(reporter, '/lookup')})
+        mails.clear()
+        reporter.post('/case', data={'_csrf': self.csrf(reporter, '/case'), 'message': '영수증 다시 보냅니다'})
+        self.assertTrue([m for m in mails if m[0] == 'ops@example.com' and '제보자 새 답글' in m[1]])
+        page = admin.get('/admin/reports').get_data(as_text=True)
+        self.assertIn('새 답글 <b>1</b>', page); self.assertIn('<span class="jl-reply">새 답글</span>', page)
+        self.assertIn('답글상점 환불', admin.get('/admin/reports?reply=1').get_data(as_text=True))
+        admin.get('/admin/reports/%d' % cid)
+        self.assertNotIn('class="jl-reply"', admin.get('/admin/reports').get_data(as_text=True))
+
     def test_admin_bulk_review_and_forward(self):
         """목록에서 여러 제보를 골라 한 번에 정상 승인(기업 자동 전달)·중복 처리·기업 전달 (운영자 요청 2026-11-13)"""
         notify = self.site.notify
