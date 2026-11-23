@@ -2198,6 +2198,7 @@ def set_status(db,case,status):
     """진행 단계 바꾸기 (제보 화면 저장·목록 일괄 처리·줄마다 고르기). 제보자 화면 단계가 바뀔 때만 알림. 관리자에게 보일 문구를 돌려줌.
     운영자 2026-11-23: 단계만 바꿈. 기업에 자동으로 보내지 않음 (관리자가 '기업 안내'에서 승인해야 나감. 기자가 직접 전화로 전할 수도 있음)"""
     if status==case['status']:return ''
+    if case['review']=='' and stage_of(status)>=stage_of(WAIT_STATUS):set_review(db,case,'ok')  # 운영자 2026-11-23: 기업 전달 뒤 단계로 바꾸면 검토도 끝난 것으로 ('검토해 주세요'가 다시 뜨지 않게)
     db.execute('UPDATE cases SET status=? WHERE id=?',(status,case['id']))
     log_case(db,case['id'],f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
     if status!='접수':jebo.mark(db,case['id'],'reviewed_at')  # 운영자 2026-11-23: 손으로 단계를 바꿀 땐 제보자에게 알리지 않음

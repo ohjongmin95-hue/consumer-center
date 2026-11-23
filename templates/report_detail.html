@@ -28,7 +28,7 @@
   {% if case['review'] in ('duplicate', 'rejected') %}{% set td = None %}{# 운영자 2026-11-17: 중복·제외로 반려한 제보는 할 일 없음 #}
   {% elif ck and ck.over and not ck.answered and case['status'] == '기업 답변 대기' %}{% set td = ('red', '기업 답변 기한이 지났어요', '보낸 때 ' ~ ck.sent[5:]|replace('-', '.') ~ ' · 기한 ' ~ ck.due[5:]|replace('-', '.') ~ '. 초안을 만들면 관리자 > 기사 초안에 들어가요.', 'draft', '기사 초안 만들기') %}
   {% elif answered_msg and case['status'] != STATUSES[-1] %}{% set td = ('or', '기업 답변이 왔어요', '답변을 확인하고 제보자에게 알린 뒤 종결해 주세요.', '#settings', '단계 바꾸기') %}
-  {% elif case['review'] == '' %}{% set td = ('or', '제보를 검토해 주세요', '내용과 개인정보를 확인하고 처리 단계를 정해 주세요.', '#check', '검토하러 가기') %}
+  {% elif case['review'] == '' and stage_of(case['status']) <= 2 %}{% set td = ('or', '제보를 검토해 주세요', '내용과 개인정보를 확인하고 처리 단계를 정해 주세요.', '#check', '검토하러 가기') %}
   {% elif case['share_company'] and not case['forwarded_at'] and not has_contact and case['review'] == 'ok' %}{% set td = ('bl', '기업 연락처를 넣어 주세요', '연락처를 넣고 \'기업 안내\'에서 승인하면 답변 요청이 나가고, 그때부터 ' ~ NOTICE_ANSWER_HOURS ~ '시간 답변 기한이 시작돼요. 직접 전화로 전해도 돼요.', '#desk_contact', '연락처 넣기') %}
   {% elif ck and not ck.answered %}{% set td = ('gr', '기업 답변을 기다리고 있어요', '기한이 지나면 여기서 바로 기사 초안을 만들 수 있어요.', '', '') %}
   {% else %}{% set td = None %}{% endif %}
