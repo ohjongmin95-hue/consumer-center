@@ -4314,6 +4314,10 @@ class SiteTest(unittest.TestCase):
         self.assertIn('답글상점 환불', admin.get('/admin/reports?reply=1').get_data(as_text=True))
         admin.get('/admin/reports/%d' % cid)
         self.assertNotIn('class="jl-reply"', admin.get('/admin/reports').get_data(as_text=True))
+        with self.site.conn() as db: db.execute("INSERT INTO messages(case_id,author,body,created) VALUES(?,'기업 답변','확인했습니다','2026-11-23T10:00:00')", (cid,))
+        page = admin.get('/admin/reports?answered=1').get_data(as_text=True)
+        self.assertIn('기업 답변 받음 <b>1</b>', page); self.assertIn('답글상점 환불', page)
+        self.assertIn('/admin/reports?answered=1', admin.get('/admin').get_data(as_text=True))
         # 관리자 휴대폰 알림톡 (템플릿 KAKAO_TPL_ADMIN_REPLY)
         sent = []
         bm = notify.bizmsg
