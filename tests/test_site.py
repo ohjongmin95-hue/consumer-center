@@ -4308,11 +4308,20 @@ class SiteTest(unittest.TestCase):
         mails.clear()
         reporter.post('/case', data={'_csrf': self.csrf(reporter, '/case'), 'message': '영수증 다시 보냅니다'})
         self.assertTrue([m for m in mails if m[0] == 'ops@example.com' and '제보자 새 답글' in m[1]])
+        with self.site.conn() as db: self.assertTrue(db.execute("SELECT 1 FROM notifications WHERE case_id=? AND event='admin_reply'", (cid,)).fetchone())
         page = admin.get('/admin/reports').get_data(as_text=True)
         self.assertIn('새 답글 <b>1</b>', page); self.assertIn('<span class="jl-reply">새 답글</span>', page)
         self.assertIn('답글상점 환불', admin.get('/admin/reports?reply=1').get_data(as_text=True))
         admin.get('/admin/reports/%d' % cid)
         self.assertNotIn('class="jl-reply"', admin.get('/admin/reports').get_data(as_text=True))
+        # 관리자 휴대폰 알림톡 (템플릿 KAKAO_TPL_ADMIN_REPLY)
+        sent = []
+        bm = notify.bizmsg
+        with patch.dict(os.environ, {'ADMIN_ALERT_PHONE': '010-1234-5678'}), patch.object(bm, 'kakao_ready', return_value=True), \
+             patch.object(bm, 'template', side_effect=lambda n: 'TPL_R' if n == 'KAKAO_TPL_ADMIN_REPLY' else ''), \
+             patch.object(bm, 'alimtalk', side_effect=lambda *a, **k: sent.append(a)):
+            reporter.post('/case', data={'_csrf': self.csrf(reporter, '/case'), 'message': '하나 더 보냅니다'})
+        self.assertEqual(sent[0][0], '01012345678'); self.assertEqual(sent[0][1], 'TPL_R'); self.assertEqual(sent[0][2]['#{업체}'], '답글상점')
 
     def test_admin_bulk_review_and_forward(self):
         """목록에서 여러 제보를 골라 한 번에 정상 승인(기업 자동 전달)·중복 처리·기업 전달 (운영자 요청 2026-11-13)"""

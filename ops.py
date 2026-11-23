@@ -89,9 +89,14 @@ def install(S):
 
     # ---- 알림 -----------------------------------------------------------------
     def admin_alert(case, event, title, lines):
-        body = '\n'.join(lines + ['', '관리자 화면에서 확인해 주세요.', case_link(case['id'])])
+        link = case_link(case['id'])
+        body = '\n'.join(lines + ['', '관리자 화면에서 확인해 주세요.', link])
         subject = f"[{notify.site_name()}] {title}: {case['receipt']}"
-        later(lambda: notify.admin_alert(conn, case, event, subject, body))
+        kakao = None
+        if event == 'admin_reply':  # 운영자 2026-11-23: 제보자 새 답글은 관리자 휴대폰 알림톡으로 (템플릿 KAKAO_TPL_ADMIN_REPLY, 심사 전엔 문자)
+            vals = {'#{구분}': title, '#{접수번호}': case['receipt'], '#{업체}': notify.short(case['company'], 20), '#{제목}': notify.short(case['subject'], 30), '#{링크}': link}
+            kakao = ('KAKAO_TPL_ADMIN_REPLY', vals, f"[{notify.site_name()}] {title}\n{case['receipt']} · {notify.short(case['company'], 15)}\n{notify.short(case['subject'], 30)}\n{link}")
+        later(lambda: notify.admin_alert(conn, case, event, subject, body, kakao))
 
     def optout_url(db, company):
         token = company['optout_token']
