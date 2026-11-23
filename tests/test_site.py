@@ -3233,7 +3233,7 @@ class SiteTest(unittest.TestCase):
             self.assertIsNone(db.execute('SELECT 1 FROM company_requests WHERE case_id=?', (ids['전달 미동의'],)).fetchone())
         self.assertEqual((req['version'], req['origin'], req['status'], req['model']), (1, 'ai', 'draft', 'gpt-test'))
         self.assertEqual(req['title'], '[소비자고발제보센터] 고양이몰 관련 사실관계 확인 및 공식 입장 요청')
-        for text in ('안녕하세요. 소비자고발제보센터(소비자를위한신문)입니다.', '■ 주요 제보 내용', '■ 확인 요청 사항', '1. 반품 접수 여부', '2. ', '■ 제보 내용 확인',
+        for text in ('안녕하세요. 소비자고발제보센터(소비자를위한신문)입니다.', '■ 주요 제보 내용', '■ 확인 요청 사항', '1. 제보자가 원하는 해결이 가능한지', '2. 제보 내용이 사실인지', '■ 제보 내용 확인',
                      f"/reports/{ids['환불이 안 돼요']}", '소비자고발제보센터 드림\nhttps://consumerjebo.co.kr', '향후 추가 취재 및 보도가 진행될 수 있음'):
             self.assertIn(text, req['body'])
         self.assertNotIn('010-9999-8888', req['body'])  # AI가 돌려준 개인정보도 지움
@@ -4286,6 +4286,42 @@ class SiteTest(unittest.TestCase):
         mails.clear()
         reporter.post('/case/nudge', data={'_csrf': self.csrf(reporter, '/case')})
         self.assertFalse([m for m in mails if m[0] == 'cs@nudge-shop.example'])
+
+    def test_reporter_reply_marks_new_for_admin(self):
+        """제보자가 답글을 남기면 관리자 목록에 '새 답글' + 운영 알림, 열어 보면 표시가 사라짐 (운영자 2026-11-23)"""
+        notify = self.site.notify
+        notify.ASYNC = False
+        self.addCleanup(setattr, notify, 'ASYNC', True)
+        mails = []
+        patcher = patch.dict(os.environ, {'SMTP_HOST': 'smtp.example.com', 'SMTP_USER': 'bot@example.com', 'SMTP_PASSWORD': 'pw', 'ADMIN_ALERT_EMAIL': 'ops@example.com'}); patcher.start(); self.addCleanup(patcher.stop)
+        mailer = patch.object(notify, 'send_email', side_effect=lambda *a, **k: mails.append(a)); mailer.start(); self.addCleanup(mailer.stop)
+        base = {'industry': '쇼핑·유통', 'category': '배송·교환·환불', 'company': '답글상점', 'subject': '답글상점 환불', 'description': '환불이 안 돼요',
+                'reporter_name': '김소비', 'phone': '010-7777-4545', 'contact': 'reply@example.com', 'request_text': '환불', 'consent': 'on', 'lookup_pw': '1234', 'lookup_pw2': '1234',
+                'use_consent': 'on', 'truth': 'on', 'visibility': 'public', 'share_company': 'on'}
+        self.post_form(self.client, '/report', base)
+        with self.site.conn() as db: cid = db.execute("SELECT id FROM cases WHERE company='답글상점'").fetchone()['id']
+        admin = self.login_admin()
+        self.assertNotIn('jl-tab-reply', admin.get('/admin/reports').get_data(as_text=True))
+        reporter = self.site.app.test_client()
+        self.post_form(reporter, '/lookup', {'mode': 'phone', 'phone': '010-7777-4545', 'password': '1234'})
+        reporter.post('/lookup/%d' % cid, data={'_csrf': self.csrf(reporter, '/lookup')})
+        mails.clear()
+        reporter.post('/case', data={'_csrf': self.csrf(reporter, '/case'), 'message': '영수증 다시 보냅니다'})
+        self.assertTrue([m for m in mails if m[0] == 'ops@example.com' and '제보자 메시지' in m[1]])
+        with self.site.conn() as db: self.assertTrue(db.execute("SELECT 1 FROM notifications WHERE case_id=? AND event='admin_reply'", (cid,)).fetchone())
+        page = admin.get('/admin/reports').get_data(as_text=True)
+        self.assertIn('새 답글 <b>1</b>', page); self.assertIn('<span class="jl-reply">새 답글</span>', page)
+        self.assertIn('답글상점 환불', admin.get('/admin/reports?reply=1').get_data(as_text=True))
+        admin.get('/admin/reports/%d' % cid)
+        self.assertNotIn('class="jl-reply"', admin.get('/admin/reports').get_data(as_text=True))
+        # 관리자 휴대폰 알림톡 (템플릿 KAKAO_TPL_ADMIN_REPLY)
+        sent = []
+        bm = notify.bizmsg
+        with patch.dict(os.environ, {'ADMIN_ALERT_PHONE': '010-1234-5678'}), patch.object(bm, 'kakao_ready', return_value=True), \
+             patch.object(bm, 'template', side_effect=lambda n: 'TPL_R' if n == 'KAKAO_TPL_ADMIN_REPLY' else ''), \
+             patch.object(bm, 'alimtalk', side_effect=lambda *a, **k: sent.append(a)):
+            reporter.post('/case', data={'_csrf': self.csrf(reporter, '/case'), 'message': '하나 더 보냅니다'})
+        self.assertEqual(sent[0][0], '01012345678'); self.assertEqual(sent[0][1], 'TPL_R'); self.assertEqual(sent[0][2]['#{업체}'], '답글상점')
 
     def test_admin_bulk_review_and_forward(self):
         """목록에서 여러 제보를 골라 한 번에 정상 승인(기업 자동 전달)·중복 처리·기업 전달 (운영자 요청 2026-11-13)"""

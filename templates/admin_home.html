@@ -42,7 +42,7 @@
     <dl class="v3-stats">
       <a href="{{ url_for('admin_visits') }}"><dt>오늘 방문</dt><dd>{{ '{:,}'.format(h.visits_today) }}<small>명</small></dd><i>오늘 제보 {{ h.cases_today }}건</i></a>
       <a href="{{ url_for('admin_reports') }}"><dt>전체 제보</dt><dd>{{ '{:,}'.format(h.cases_total) }}<small>건</small></dd><i>최근 7일 +{{ stats.new_cases }}</i></a>
-      <a href="{{ url_for('admin_stats') }}"><dt>기업 답변 받음</dt><dd>{{ '{:,}'.format(h.answered) }}<small>건</small></dd><i>답변 도착·종결</i></a>
+      <a href="{{ url_for('admin_stats') }}"><dt>기업 답변 받음</dt><dd>{{ '{:,}'.format(h.answered) }}<small>건</small></dd><i>종결 {{ '{:,}'.format(h.closed) }}건</i></a>
       <a href="{{ url_for('admin_members') }}"><dt>회원</dt><dd>{{ '{:,}'.format(stats.members) }}<small>명</small></dd><i>최근 7일 +{{ stats.new_members }}</i></a>
     </dl>
     <p class="v3-mini"><a href="{{ url_for('admin_experts') }}">소보루 자문단 {{ h.experts }}명</a><a href="{{ url_for('admin_letter') }}">소보루 레터 구독 {{ '{:,}'.format(h.letter) }}명</a><a href="{{ url_for('admin_ai_usage') }}">이번 달 AI 비용 {{ '{:,}'.format(h.ai_krw) }}원</a></p>

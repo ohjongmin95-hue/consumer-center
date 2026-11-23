@@ -37,7 +37,7 @@ def branded(text):
         text = text.replace(k, v)
     return text
 EVENTS = {'received': '제보 접수', 'status': '진행 단계 변경', 'message': '센터 답변', 'company': '기업 답변', 'supplement': '보완 요청', 'seen': '기업 전달 확인',
-          'admin_answer': '운영자: 기업 답변', 'admin_request': '운영자: 정정·삭제·이의', 'admin_risk': '운영자: 개인정보 위험',
+          'admin_answer': '운영자: 기업 답변', 'admin_request': '운영자: 정정·삭제·이의', 'admin_risk': '운영자: 개인정보 위험', 'admin_reply': '운영자: 제보자 새 답글',
           'company_notice': '기업 공식 안내', 'company_new': '기업: 새 제보', 'company_opinion': '기업: 제보자 추가 의견', 'company_files': '기업: 추가 자료', 'company_nudge': '기업: 제보자 독촉', 'article': '기사 보도'}
 
 # 이메일 본문. 카카오 템플릿과 같은 내용 + 조회 주소
@@ -247,12 +247,21 @@ def dispatch(conn, case, event, link, admin_link=None):
     return run_jobs(conn, case, event, jobs)
 
 
-def admin_alert(conn, case, event, subject, body):
-    """운영자에게 메일(ADMIN_ALERT_EMAIL)·텔레그램으로 알림. 기업 답변, 정정·삭제·이의 신청, 개인정보 위험 등."""
+def admin_alert(conn, case, event, subject, body, kakao=None):
+    """운영자에게 메일(ADMIN_ALERT_EMAIL)·텔레그램으로 알림. 기업 답변, 정정·삭제·이의 신청, 개인정보 위험 등.
+    kakao=(템플릿 설정 이름, 변수, 문자 글)이면 운영자 휴대폰(ADMIN_ALERT_PHONE)에도 알림톡, 템플릿 심사 전이면 문자."""
     emails = admin_targets()[0]
     jobs = [('admin_email', e, lambda e=e: send_email(e, subject, body)) for e in emails]
     if env('TELEGRAM_BOT_TOKEN'):
         jobs += [('admin_telegram', c, lambda c=c: send_telegram(c, subject + '\n' + body)) for c in env('TELEGRAM_CHAT_ID').replace(' ', '').split(',') if c]
+    if kakao:
+        name, values, text = kakao
+        code = bizmsg.template(name) if bizmsg.kakao_ready() else ''
+        phones = [digits(p) for p in env('ADMIN_ALERT_PHONE').split(',') if digits(p).startswith('01')]
+        if code:
+            jobs += [('admin_kakao', p, lambda p=p: bizmsg.alimtalk(p, code, values, fallback=True)) for p in phones]
+        elif sms_ready():
+            jobs += [('admin_sms', p, lambda p=p: send_sms(p, text)) for p in phones]
     return run_jobs(conn, case, event, jobs)
 
 

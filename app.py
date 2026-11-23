@@ -68,6 +68,7 @@ with conn() as db:
     if 'rating_note' not in cols: db.execute("ALTER TABLE cases ADD COLUMN rating_note TEXT NOT NULL DEFAULT ''")  # 운영자 2026-11-13: 해결 확인 때 남긴 한마디 (헤이마오 만족도 한마디, 앱 첫 화면 소식 줄)
     if 'title_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN title_hidden INTEGER NOT NULL DEFAULT 0')
     if 'company_hidden' not in cols: db.execute('ALTER TABLE cases ADD COLUMN company_hidden INTEGER NOT NULL DEFAULT 0')  # 운영자가 업체명을 공개 화면에서 가림 (2026-11-10)  # 비밀글 제목·업체명을 목록에서 숨김(운영자)
+    if 'reply_unread' not in cols: db.execute("ALTER TABLE cases ADD COLUMN reply_unread TEXT NOT NULL DEFAULT ''")  # 운영자 2026-11-23: 제보자가 새로 남긴 답글을 관리자가 아직 안 봄 (그때 시각)
     for col in ('article_url','article_title','article_sent_at'):  # 제보가 기사로 나가면 기사 주소·제목 (운영자 2026-11-10: 제보자에게 알림톡으로 기사 보내기)
         if col not in cols: db.execute(f"ALTER TABLE cases ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
     db.execute('CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,case_id INTEGER NOT NULL,channel TEXT NOT NULL,event TEXT NOT NULL,target TEXT NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL DEFAULT \'\',created TEXT NOT NULL)')
@@ -1015,7 +1016,7 @@ def case_detail():
             if not msg or len(msg)>3000:abort(400)
             want=int(bool(request.form.get('want_public')) and bool(case['public_consent']))
             db.execute('INSERT INTO messages(case_id,author,body,created,want_public) VALUES(?,?,?,?,?)',(case_id,'제보자',msg,now(),want))
-            ops_member_alert(db,case,'company_opinion')
+            ops_member_alert(db,case,'company_opinion');reporter_replied(db,case,msg)
             return redirect(url_for('case_detail'))
         msgs=db.execute('SELECT * FROM messages WHERE case_id=? ORDER BY id',(case_id,)).fetchall()
         events,step,has_answer=jebo.timeline(db,case,mask_personal)
@@ -1247,7 +1248,7 @@ def company_ai_summary(db,case):
         except ValueError:f=None
         if isinstance(f,dict) and f.get('paragraphs'):
             need=lambda v:v if v and v!='확인 필요' else ''
-            return {'paragraphs':f['paragraphs'],'product':need(f.get('product')),'damage_date':need(f.get('damage_date')),'demands':need(f.get('demands')),'questions':f.get('questions') or []}
+            return {'paragraphs':f['paragraphs'],'product':need(f.get('product')),'damage_date':need(f.get('damage_date')),'demands':need(f.get('demands')),'questions':companydesk.two_questions(f.get('demands'))}  # 운영자 2026-11-23: 질문은 두 가지만
     if case['share_company'] and companydesk.ai_ready() and (case['id'] not in _CO_AI_RUNNING):
         import threading
         _CO_AI_RUNNING.add(case['id'])
@@ -2188,11 +2189,16 @@ def set_review(db,case,review,note=''):
     if review in jebo.NOT_VALID and case['published']:db.execute('UPDATE cases SET published=0 WHERE id=?',(case_id,));log_case(db,case_id,'비공개로 전환')
     if review!=case['review']:log_case(db,case_id,f"검토 결과: {jebo.REVIEWS[case['review']]} → {jebo.REVIEWS[review]}")
     if review=='ok' and case['status']=='접수':set_status(db,case,'검토 중')  # 정상으로 승인하면 '접수'에서 '검토'로 (운영자 2026-11-13)
+def reporter_replied(db,case,body,title='제보자 메시지'):
+    # 운영자 2026-11-23: 제보자가 답글을 남기면 관리자 목록에 '새 답글' 표시 + 운영 알림(메일·텔레그램)
+    db.execute('UPDATE cases SET reply_unread=? WHERE id=?',(now(),case['id']))
+    ops_admin_alert(case,'admin_reply',title,[f"■ 업체: {case['company']}",f"■ 제목: {case['subject'][:80]}",f"■ 내용: {notify.short(body,200)}"])
 WAIT_STATUS='기업 답변 대기'
 def set_status(db,case,status):
     """진행 단계 바꾸기 (제보 화면 저장·목록 일괄 처리·줄마다 고르기). 제보자 화면 단계가 바뀔 때만 알림. 관리자에게 보일 문구를 돌려줌.
     운영자 2026-11-23: 단계만 바꿈. 기업에 자동으로 보내지 않음 (관리자가 '기업 안내'에서 승인해야 나감. 기자가 직접 전화로 전할 수도 있음)"""
     if status==case['status']:return ''
+    if case['review']=='' and stage_of(status)>=stage_of(WAIT_STATUS):set_review(db,case,'ok')  # 운영자 2026-11-23: 기업 전달 뒤 단계로 바꾸면 검토도 끝난 것으로 ('검토해 주세요'가 다시 뜨지 않게)
     db.execute('UPDATE cases SET status=? WHERE id=?',(status,case['id']))
     log_case(db,case['id'],f"진행 단계 변경: {stage_names()[stage_of(case['status'])-1]} → {stage_names()[stage_of(status)-1]}")
     if status!='접수':jebo.mark(db,case['id'],'reviewed_at')  # 운영자 2026-11-23: 손으로 단계를 바꿀 땐 제보자에게 알리지 않음
@@ -2223,6 +2229,8 @@ def reports_list():
     if assignee=='-':where.append("COALESCE(assignee,'')=''")
     elif assignee:where.append('assignee=?');args.append(assignee)
     due='over' if request.args.get('due')=='over' and g.area=='admin' else ''
+    reply='1' if request.args.get('reply')=='1' else ''
+    if reply:where.append("COALESCE(reply_unread,'')!=''")
     if due:
         with conn() as db:over=ops_overdue_ids(db)
         where.append('id IN (%s)'%(','.join(str(int(i)) for i in over) or '0'))
@@ -2238,12 +2246,13 @@ def reports_list():
         review_counts={r['review']:r['n'] for r in db.execute('SELECT review,COUNT(*) AS n FROM cases GROUP BY review')}
         legacy_pending=db.execute('SELECT COUNT(*) FROM cases WHERE '+LEGACY_PENDING).fetchone()[0] if g.area=='admin' else 0
         order="CASE WHEN review='' THEN 0 ELSE 1 END,id DESC" if sort else 'id DESC'
-        cases=db.execute('SELECT id,receipt,industry,category,company,subject,status,created,assignee,public_consent,published,share_company,review FROM cases WHERE '+cond+' ORDER BY '+order+' LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
+        cases=db.execute('SELECT id,receipt,industry,category,company,subject,status,created,assignee,public_consent,published,share_company,review,reply_unread FROM cases WHERE '+cond+' ORDER BY '+order+' LIMIT ? OFFSET ?',args+[STAFF_PAGE_SIZE,(page-1)*STAFF_PAGE_SIZE]).fetchall()
         track_counts=triage_counts(db);track_of=triage_rows(db,[c['id'] for c in cases])
         assignee_counts=db.execute("SELECT COALESCE(assignee,'') AS name,COUNT(*) AS n FROM cases GROUP BY 1 ORDER BY name=''").fetchall()
         clocks=ops_answer_clocks(db,[c['id'] for c in cases]) if g.area=='admin' else {}
         n_over=len(ops_overdue_ids(db)) if g.area=='admin' else 0
-    return render_template('reports_list.html',due=due,clocks=clocks,n_over=n_over,layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
+        n_reply=db.execute("SELECT COUNT(*) FROM cases WHERE COALESCE(reply_unread,'')!=''").fetchone()[0]
+    return render_template('reports_list.html',reply=reply,n_reply=n_reply,due=due,clocks=clocks,n_over=n_over,layout=ep['layout'],ep=ep,cases=cases,counts=counts,all_count=sum(counts.values()),status=status,q=q,mine=bool(mine),page=page,pages=max(1,-(-total//STAFF_PAGE_SIZE)),total=total,
                            review=review,sort=sort,review_counts={k:review_counts.get(v,0) for k,v in jebo.REVIEW_KEYS.items()},reviews=jebo.REVIEWS,review_keys=jebo.REVIEW_KEYS,legacy_pending=legacy_pending,
                            track=track,track_counts=track_counts,track_of=track_of,assignee=assignee,assignee_counts=assignee_counts,view=view,need=need,need_cases=sum(len(c) for _,c in need),staff_names=staff_names,statuses=STATUSES)
 
@@ -2252,6 +2261,7 @@ def report_detail(case_id):
     with conn() as db:
         case=db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if not case:abort(404)
+        if request.method=='GET' and case['reply_unread']:db.execute("UPDATE cases SET reply_unread='' WHERE id=?",(case_id,))  # 열어 보면 '새 답글' 표시를 뗌
         if request.method=='POST':
             form=request.form.get('form','settings')
             if form=='delete':
@@ -2680,7 +2690,8 @@ def admin_home_overview(db):
             ai_usd+=aiusage.cost_usd(r[0],r[1],r[2],r[3],r[4]) or 0
         rate=aiusage.usd_krw()
     except Exception:rate=1400
-    answered=one("SELECT COUNT(*) FROM cases WHERE status IN (?,?)",(STATUSES[-2],STATUSES[-1])) if len(STATUSES)>=2 else 0
+    # 운영자 2026-11-23: 종결 ≠ 답변 받음. 기업 답변이 실제로 등록된 제보만 세고, 종결은 따로
+    answered=one("SELECT COUNT(DISTINCT case_id) FROM messages WHERE author='기업 답변'");closed=one("SELECT COUNT(*) FROM cases WHERE status=?",(STATUSES[-1],))
     feed=[]
     try:
         for r in db.execute('SELECT id,subject,company,created FROM cases ORDER BY id DESC LIMIT 4'):feed.append({'at':r['created'],'kind':'제보','text':r['subject'],'sub':r['company'],'href':url_for('admin_report',case_id=r['id'])})
@@ -2695,7 +2706,7 @@ def admin_home_overview(db):
     feed.sort(key=lambda x:x['at'],reverse=True)
     return {'today':today,'days':days,'peak':peak,
         'visits_today':visits_by.get(week[-1],0),'cases_today':cases_by.get(week[-1],0),
-        'cases_total':one('SELECT COUNT(*) FROM cases'),'answered':answered,
+        'cases_total':one('SELECT COUNT(*) FROM cases'),'answered':answered,'closed':closed,
         'experts':one("SELECT COUNT(*) FROM experts WHERE status='approved'"),'experts_wait':one("SELECT COUNT(*) FROM experts WHERE status='pending'"),
         'letter':one("SELECT COUNT(*) FROM letter_subscribers WHERE status='active'"),
         'companies':one('SELECT COUNT(*) FROM companies'),

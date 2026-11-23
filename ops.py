@@ -89,9 +89,14 @@ def install(S):
 
     # ---- 알림 -----------------------------------------------------------------
     def admin_alert(case, event, title, lines):
-        body = '\n'.join(lines + ['', '관리자 화면에서 확인해 주세요.', case_link(case['id'])])
+        link = case_link(case['id'])
+        body = '\n'.join(lines + ['', '관리자 화면에서 확인해 주세요.', link])
         subject = f"[{notify.site_name()}] {title}: {case['receipt']}"
-        later(lambda: notify.admin_alert(conn, case, event, subject, body))
+        kakao = None
+        if event == 'admin_reply':  # 운영자 2026-11-23: 제보자 새 답글은 관리자 휴대폰 알림톡으로 (템플릿 KAKAO_TPL_ADMIN_REPLY, 심사 전엔 문자)
+            vals = {'#{구분}': title.replace('제보자 ', ''), '#{접수번호}': case['receipt'], '#{업체}': notify.short(case['company'], 20), '#{제목}': notify.short(case['subject'], 30)}  # 버튼은 템플릿에 고정 주소 (관리자 > 새 답글)
+            kakao = ('KAKAO_TPL_ADMIN_REPLY', vals, f"[{notify.site_name()}] {title}\n{case['receipt']} · {notify.short(case['company'], 15)}\n{notify.short(case['subject'], 30)}\n{link}")
+        later(lambda: notify.admin_alert(conn, case, event, subject, body, kakao))
 
     def optout_url(db, company):
         token = company['optout_token']
@@ -556,7 +561,8 @@ def install(S):
             elif case['share_company'] and company and not notice_block(db, case, company) and send_notice(db, case, company, quiet=True, actor='제보자', nudge='followup'):
                 how = '기업 공식 연락처로 재안내'
             db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)', (case['id'], '제보자', f'추가 불만 ({how})', now()))
-            admin_alert(case, 'admin_request', '제보자 추가 불만', [f"■ 업체: {case['company']}", f"■ 내용: {notify.short(body, 200)}"] + ([] if how != '센터에 알림' else ['기업에 자동으로 보낼 수 없어 운영자 연락이 필요해요.']))
+            db.execute('UPDATE cases SET reply_unread=? WHERE id=?', (now(), case['id']))  # 관리자 목록 '새 답글'
+            admin_alert(case, 'admin_reply', '제보자 추가 불만', [f"■ 업체: {case['company']}", f"■ 내용: {notify.short(body, 200)}"] + ([] if how != '센터에 알림' else ['기업에 자동으로 보낼 수 없어 운영자 연락이 필요해요.']))
         flash('추가 불만을 남겼어요. 기업에 다시 답변을 요청했어요. 답변이 오면 알려 드릴게요.')
         return redirect(url_for('case_detail') + '#followup')
 
@@ -600,7 +606,7 @@ def install(S):
                 stored = secrets.token_hex(20) + suffix; f.save(S.UPLOAD / stored)
                 db.execute('INSERT INTO attachments(case_id,stored,original) VALUES(?,?,?)', (case['id'], stored, original))
             db.execute('INSERT INTO case_log(case_id,actor,action,created) VALUES(?,?,?,?)', (case['id'], '제보자', f'추가 자료 {len(checked)}개 제출', now()))
-            member_alert(db, case, 'company_files')
+            member_alert(db, case, 'company_files'); S.reporter_replied(db, case, f'추가 자료 {len(checked)}개를 올렸어요.', '제보자 추가 자료')
         flash('추가 자료를 올렸어요. 센터가 확인해요. 자료는 공개되지 않아요.')
         return redirect(url_for('case_detail') + '#more-files')
 
