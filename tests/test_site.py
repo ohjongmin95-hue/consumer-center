@@ -490,9 +490,9 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(db.execute("SELECT COUNT(*) FROM case_shots WHERE note='dup'").fetchone()[0], 1)
         self.assertEqual(len(rows), 3)
         shot = Image.open(self.site.UPLOAD / 'shots' / rows[0]['stored']).convert('RGB')
-        left = [shot.getpixel((x, 60)) for x in range(20, 200, 2)]; right = shot.getpixel((330, 262))
+        left = [shot.getpixel((x, 60)) for x in range(20, 200, 2)]; right = shot.getpixel((560, 60))
         self.assertLess(max(map(sum, left)) - min(map(sum, left)), 90)  # 가린 곳은 줄무늬가 뭉개짐 (검정·빨강이 섞여 한 색)
-        self.assertGreater(sum(right), 700)  # 나머지는 그대로 (흰 바탕)
+        self.assertGreater(sum(right), 700)  # 가린 곳 밖 흰 바탕은 흰색 그대로
         home = self.client.get('/', base_url=jebo).get_data(as_text=True)
         self.assertIn('home-shots', home); self.assertIn('/shot/' + rows[0]['stored'], home); self.assertNotIn('<strong>사진 제보 4</strong>', home)
         self.assertEqual(self.client.get('/shot/' + rows[0]['stored']).status_code, 200)
@@ -514,7 +514,9 @@ class SiteTest(unittest.TestCase):
         face = Image.open(io.BytesIO(case_shots.make_shot(face, found))).convert('RGB')
         row = [face.getpixel((x, 150)) for x in range(80, 240, 2)]; far = [face.getpixel((x, 420)) for x in range(400, 560, 2)]
         self.assertLess(max(map(sum, row)) - min(map(sum, row)), 90)  # 얼굴 자리는 뭉개짐
-        self.assertGreater(max(map(sum, far)) - min(map(sum, far)), 200)  # 나머지 줄무늬는 그대로
+        self.assertLess(max(map(sum, far)) - min(map(sum, far)), 90)  # 운영자 2026-11-26: 나머지도 약하게 모자이크 (빗맞힌 작은 글씨·번호판도 안 읽힘)
+        self.assertEqual(ai({'boxes': [], 'faces': [], 'plates': [], 'plate_count': 1}), 'plate')  # 번호판이 있다는데 자리를 못 대면 안 씀
+        self.assertEqual(len(ai({'boxes': [], 'faces': [], 'plates': [{'x': 0.4, 'y': 0.7, 'w': 0.1, 'h': 0.05}], 'plate_count': 1})['boxes']), 1)
         with self.site.conn() as db:
             self.assertEqual(db.execute('SELECT hidden FROM case_shots WHERE id=?', (rows[2]['id'],)).fetchone()[0], 1)
             db.execute('DELETE FROM case_shots')
