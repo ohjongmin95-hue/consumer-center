@@ -7,6 +7,8 @@ AI(사진 보기)가 찾아 그 자리만 굵게 모자이크한 사본을 새�
 - 사람 얼굴은 따로 묻는다 (운영자 2026-11-05: 얼굴은 무조건 모자이크). 얼굴은 넉넉하게 더 굵게 가리고,
   AI가 얼굴이 있다면서 자리를 못 대면 그 사진은 쓰지 않는다.
 - 신분증·증명서처럼 개인정보가 대부분인 사진은 AI가 private=true로 답하고, 그런 사진은 빼 둔다.
+- 운영자 2026-11-26: AI가 자리를 조금 빗맞히면 이름·번호·번호판이 보였음 → 사진 전체를 한 번 약하게 모자이크해 작은 글씨·번호판은
+  어디에 있든 안 읽히게 하고, 그 위에 AI가 찾은 곳을 더 넓고 굵게 가린다. 번호판은 얼굴처럼 따로 묻고, 다 못 찾으면 그 사진은 안 쓴다.
 - 제보가 비공개로 바뀌거나 내려가면 바로 안 보인다. 관리자 > 첫 화면 사진에서 '빼기'를 누르면 다시 들어오지 않는다.
 """
 import base64
@@ -23,13 +25,14 @@ from flask import abort, redirect, request, send_file, url_for
 import companydesk
 from hero_photos import PUBLIC, IMAGE_EXT, near, norm_co, phash_bytes, phash_file
 
-VER = 2           # 2: 얼굴 따로 찾기 (운영자 2026-11-05) — 예전 사본은 다시 만듦
+VER = 3           # 2: 얼굴 따로 찾기 (11-05), 3: 전체 약한 모자이크·번호판 따로 (11-26) — 예전 사본은 다시 만듦
 SHOW = 12          # 첫 화면에 보이는 카드 수
 EVERY = 600        # 새 사진을 찾는 간격(초)
 PER_RUN = 4        # 한 번에 AI로 보는 사진 수 (비용)
 SW, SH = 640, 480  # 공개 사본 크기 (4:3)
-CELLS = 28         # 가린 곳 모자이크 굵기 (사진 가로 칸 수)
-PAD = 0.015        # 가린 네모를 조금 넓게
+BASE_CELLS = 72    # 사진 전체 약한 모자이크 (가로 칸 수): 물건 모양은 보이고 글씨·번호판은 안 읽힘 (운영자 2026-11-26)
+CELLS = 14         # 가린 곳 모자이크 굵기 (사진 가로 칸 수, 굵게)
+PAD = 0.04         # 가린 네모를 넉넉하게 (AI가 자리를 조금 빗맞혀도 덮이게)
 FACE_PAD = 0.25    # 얼굴은 얼굴 크기의 1/4씩 더 넓게 (머리·턱까지)
 FACE_CELLS = 16    # 얼굴은 더 굵게
 MAX_BOXES = 24
@@ -39,10 +42,12 @@ PROMPT = ('소비자 피해 제보에 붙은 사진입니다. 이 사진을 누�
           '계좌·카드번호, 주민등록번호·생년월일, 사람 얼굴, 프로필 사진, 차 번호판, 서명. '
           '업체 이름·상품 이름·가격·날짜·사진 속 물건은 가리지 않습니다. '
           'x·y는 왼쪽 위, w·h는 너비·높이, 모두 사진 전체를 1로 본 비율. 글자 줄 전체를 넉넉하게 감싸 주세요. '
+          '차 번호판은 boxes가 아니라 plates에 따로 넣고, plate_count는 사진에 보이는 번호판 수입니다(멀리 있거나 일부만 보여도 셉니다). '
           '사람 얼굴은 boxes가 아니라 faces에 따로 넣습니다. 정면·옆얼굴·얼굴 일부·셀카·피부 트러블처럼 피해 부위를 보여 주는 얼굴 클로즈업, '
           '화면 속·사진 속·포스터 속 얼굴까지 사람 얼굴이면 모두 넣고, 이마부터 턱까지 얼굴 전체를 감싸 주세요. face_count는 사진에 보이는 얼굴 수입니다. '
           '신분증·증명서·계약서 전체처럼 개인정보가 대부분이라 가려도 보여 줄 게 없는 사진이면 private=true. '
-          'JSON만: {"boxes": [{"x": 0.1, "y": 0.2, "w": 0.3, "h": 0.05, "what": "전화번호"}], "faces": [{"x": 0.2, "y": 0.1, "w": 0.5, "h": 0.6}], "face_count": 1, "private": false}.')
+          'JSON만: {"boxes": [{"x": 0.1, "y": 0.2, "w": 0.3, "h": 0.05, "what": "전화번호"}], "faces": [{"x": 0.2, "y": 0.1, "w": 0.5, "h": 0.6}], "face_count": 1, '
+          '"plates": [{"x": 0.4, "y": 0.7, "w": 0.15, "h": 0.05}], "plate_count": 1, "private": false}.')
 
 
 def prepared(data):
@@ -82,12 +87,14 @@ def find_boxes(jpg):
     except Exception: return None
     if not isinstance(out, dict): return None
     if out.get('private'): return 'private'
-    boxes, faces = _ratios(out.get('boxes'), MAX_BOXES), _ratios(out.get('faces'), MAX_BOXES)
-    if len(boxes) + len(faces) > MAX_BOXES: return 'private'
-    try: count = int(out.get('face_count') or 0)
-    except (TypeError, ValueError): count = 0
-    if count > len(faces): return 'face'  # 얼굴이 있다는데 자리를 다 못 댐 → 안 씀
-    return {'boxes': boxes, 'faces': faces}
+    boxes, faces, plates = _ratios(out.get('boxes'), MAX_BOXES), _ratios(out.get('faces'), MAX_BOXES), _ratios(out.get('plates'), MAX_BOXES)
+    if len(boxes) + len(faces) + len(plates) > MAX_BOXES: return 'private'
+    def count(k):
+        try: return int(out.get(k) or 0)
+        except (TypeError, ValueError): return 0
+    if count('face_count') > len(faces): return 'face'  # 얼굴이 있다는데 자리를 다 못 댐 → 안 씀
+    if count('plate_count') > len(plates): return 'plate'  # 번호판도 같음 (운영자 2026-11-26)
+    return {'boxes': boxes + plates, 'faces': faces}
 
 
 def make_shot(im, found):
@@ -96,11 +103,12 @@ def make_shot(im, found):
     from hero_photos import mosaic
     W, H = im.size
     boxes, faces = found.get('boxes') or [], found.get('faces') or []
+    im = mosaic(im, BASE_CELLS)  # 사진 전체를 먼저 약하게 (빗맞힌 글씨·번호판도 안 읽히게)
     for items, cells, pad in ((boxes, CELLS, None), (faces, FACE_CELLS, FACE_PAD)):
         if not items: continue
         rough = mosaic(im, cells)
         for x, y, w, h in items:
-            px, py = (w * pad, h * pad) if pad else (PAD, PAD)
+            px, py = (w * pad, h * pad) if pad else (PAD, max(PAD, h * 0.5))  # 글자 줄은 위아래로 반 줄씩 더
             box = (max(0, round((x - px) * W)), max(0, round((y - py) * H)), min(W, round((x + w + px) * W)), min(H, round((y + h + py) * H)))
             if box[2] > box[0] and box[3] > box[1]: im.paste(rough.crop(box), box[:2])
     im = ImageOps.fit(im, (SW, SH), Image.LANCZOS)
